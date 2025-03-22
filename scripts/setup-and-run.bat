@@ -9,9 +9,16 @@ set BACKEND_PORT=5001
 set FRONTEND_PORT=8080
 set DB_SERVER=localhost
 set DB_NAME=openjoconde
-set DB_USER=postgres
-set DB_PASSWORD=postgres
 set JOCONDE_URL=https://data.culture.gouv.fr/explore/dataset/joconde-musees-de-france-base-joconde/download/?format=xml
+
+echo ===
+echo Configuration de la connexion PostgreSQL
+echo ===
+set /p DB_USER="Nom d'utilisateur PostgreSQL (defaut: postgres): "
+if "%DB_USER%"=="" set DB_USER=postgres
+
+set /p DB_PASSWORD="Mot de passe PostgreSQL (ne sera pas affiche): "
+if "%DB_PASSWORD%"=="" set DB_PASSWORD=postgres
 
 echo.
 echo === Verification des prerequis ===
@@ -40,8 +47,11 @@ if %errorlevel% neq 0 (
 
 echo.
 echo === Creation et initialisation de la base de donnees ===
-echo pgAdmin doit etre lance pour cette etape.
+echo pgAdmin doit etre lance ou le service PostgreSQL doit etre actif pour cette etape.
 echo Si la base existe deja, cette etape peut etre ignoree.
+echo.
+echo Connexion avec : %DB_USER%@%DB_SERVER%
+echo Base de donnees : %DB_NAME%
 echo.
 set /p SKIP_DB="Ignorer la creation de la base de donnees? (O/n): "
 if /i "%SKIP_DB%"=="n" (
@@ -63,6 +73,30 @@ if /i "%SKIP_DB%"=="n" (
 )
 
 echo.
+echo === Configuration de la chaine de connexion ===
+if exist src\Backend\OpenJoconde.API\appsettings.json (
+    echo Mise a jour du fichier appsettings.json avec les informations de connexion...
+    set CONNECTION_STRING="Server=%DB_SERVER%;Database=%DB_NAME%;User Id=%DB_USER%;Password=%DB_PASSWORD%;"
+    powershell -Command "(Get-Content -Path 'src\Backend\OpenJoconde.API\appsettings.json') -replace '\"DefaultConnection\"\s*:\s*\"[^\"]*\"', '\"DefaultConnection\": %CONNECTION_STRING%' | Set-Content -Path 'src\Backend\OpenJoconde.API\appsettings.json'"
+) else (
+    echo Creation du fichier appsettings.json avec les informations de connexion...
+    set CONNECTION_STRING="Server=%DB_SERVER%;Database=%DB_NAME%;User Id=%DB_USER%;Password=%DB_PASSWORD%;"
+    echo { > "src\Backend\OpenJoconde.API\appsettings.json"
+    echo   "ConnectionStrings": { >> "src\Backend\OpenJoconde.API\appsettings.json"
+    echo     "DefaultConnection": %CONNECTION_STRING% >> "src\Backend\OpenJoconde.API\appsettings.json"
+    echo   }, >> "src\Backend\OpenJoconde.API\appsettings.json"
+    echo   "Logging": { >> "src\Backend\OpenJoconde.API\appsettings.json"
+    echo     "LogLevel": { >> "src\Backend\OpenJoconde.API\appsettings.json"
+    echo       "Default": "Information", >> "src\Backend\OpenJoconde.API\appsettings.json"
+    echo       "Microsoft": "Warning", >> "src\Backend\OpenJoconde.API\appsettings.json"
+    echo       "Microsoft.Hosting.Lifetime": "Information" >> "src\Backend\OpenJoconde.API\appsettings.json"
+    echo     } >> "src\Backend\OpenJoconde.API\appsettings.json"
+    echo   }, >> "src\Backend\OpenJoconde.API\appsettings.json"
+    echo   "AllowedHosts": "*" >> "src\Backend\OpenJoconde.API\appsettings.json"
+    echo } >> "src\Backend\OpenJoconde.API\appsettings.json"
+)
+
+echo.
 echo === Restauration des packages backend (.NET) ===
 cd src\Backend\OpenJoconde.API
 dotnet restore
@@ -73,7 +107,7 @@ echo === Installation des dependances frontend (Node.js) ===
 cd ..\..\Frontend
 call npm install
 if %errorlevel% neq 0 goto :error
-cd ..\..\
+cd ..\..
 
 echo === Telechargement des donnees Joconde ===
 set /p DOWNLOAD_DATA="Telecharger et importer les donnees Joconde? (O/n): "
