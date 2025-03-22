@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Core.Models;
+using OpenJoconde.Infrastructure.Data;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace OpenJoconde.API.Controllers
@@ -12,59 +14,100 @@ namespace OpenJoconde.API.Controllers
     [Route("api/[controller]")]
     public class ArtworksController : ControllerBase
     {
+        private readonly OpenJocondeDbContext _context;
         private readonly ILogger<ArtworksController> _logger;
-        private readonly IArtworkRepository _artworkRepository;
 
-        public ArtworksController(
-            ILogger<ArtworksController> logger,
-            IArtworkRepository artworkRepository)
+        public ArtworksController(OpenJocondeDbContext context, ILogger<ArtworksController> logger)
         {
-            _logger = logger;
-            _artworkRepository = artworkRepository;
+            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
-        /// Get all artworks with pagination
+        /// Récupère une liste paginée d'oeuvres d'art
         /// </summary>
-        /// <param name="page">Page number (default: 1)</param>
-        /// <param name="pageSize">Number of items per page (default: 10)</param>
-        /// <returns>List of artworks</returns>
+        /// <param name="page">Numéro de page (commence à 1)</param>
+        /// <param name="pageSize">Nombre d'éléments par page</param>
+        /// <param name="search">Terme de recherche (titre, référence, etc.)</param>
+        /// <returns>Liste paginée d'oeuvres d'art</returns>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Artwork>>> GetAll(
+        public async Task<ActionResult<PaginatedResult<Artwork>>> GetArtworks(
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 10)
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string search = null)
         {
             try
             {
-                var artworks = await _artworkRepository.GetAllAsync(page, pageSize);
-                var totalCount = await _artworkRepository.GetCountAsync();
+                _logger.LogInformation("Récupération des oeuvres d'art - Page: {Page}, PageSize: {PageSize}, Search: {Search}",
+                    page, pageSize, search ?? "null");
 
-                Response.Headers.Add("X-Total-Count", totalCount.ToString());
-                Response.Headers.Add("X-Page", page.ToString());
-                Response.Headers.Add("X-Page-Size", pageSize.ToString());
+                if (page < 1) page = 1;
+                if (pageSize < 1) pageSize = 10;
+                if (pageSize > 100) pageSize = 100;
 
-                return Ok(artworks);
+                // Query de base
+                IQueryable<Artwork> query = _context.Artworks
+                    .Where(a => !a.IsDeleted)
+                    .OrderBy(a => a.Title);
+
+                // Appliquer la recherche si nécessaire
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    search = search.Trim().ToLower();
+                    query = query.Where(a =>
+                        a.Title.ToLower().Contains(search) ||
+                        a.Reference.ToLower().Contains(search) ||
+                        a.InventoryNumber.ToLower().Contains(search) ||
+                        a.Description.ToLower().Contains(search));
+                }
+
+                // Calculer le nombre total d'éléments
+                var totalItems = await query.CountAsync();
+
+                // Appliquer la pagination
+                var items = await query
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                // Construire le résultat paginé
+                var result = new PaginatedResult<Artwork>
+                {
+                    Items = items,
+                    TotalItems = totalItems,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalPages = (int)Math.Ceiling(totalItems / (double)pageSize)
+                };
+
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting artworks");
-                return StatusCode(500, "An error occurred while processing your request");
+                _logger.LogError(ex, "Erreur lors de la récupération des oeuvres d'art: {Message}", ex.Message);
+                return StatusCode(500, "Une erreur est survenue lors de la récupération des oeuvres d'art.");
             }
         }
 
         /// <summary>
-        /// Get artwork by ID
+        /// Récupère une oeuvre d'art par son identifiant
         /// </summary>
-        /// <param name="id">Artwork ID</param>
-        /// <returns>Artwork if found</returns>
+        /// <param name="id">Identifiant de l'oeuvre d'art</param>
+        /// <returns>L'oeuvre d'art</returns>
         [HttpGet("{id}")]
-        public async Task<ActionResult<Artwork>> GetById(Guid id)
+        public async Task<ActionResult<Artwork>> GetArtwork(Guid id)
         {
             try
             {
-                var artwork = await _artworkRepository.GetByIdAsync(id);
+                _logger.LogInformation("Récupération de l'oeuvre d'art avec l'identifiant {Id}", id);
+
+                var artwork = await _context.Artworks
+                    .Where(a => a.Id == id && !a.IsDeleted)
+                    .FirstOrDefaultAsync();
+
                 if (artwork == null)
                 {
+                    _logger.LogWarning("Oeuvre d'art avec l'identifiant {Id} non trouvée", id);
                     return NotFound();
                 }
 
@@ -72,46 +115,41 @@ namespace OpenJoconde.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting artwork with ID {Id}", id);
-                return StatusCode(500, "An error occurred while processing your request");
+                _logger.LogError(ex, "Erreur lors de la récupération de l'oeuvre d'art {Id}: {Message}", id, ex.Message);
+                return StatusCode(500, "Une erreur est survenue lors de la récupération de l'oeuvre d'art.");
             }
         }
+    }
+
+    /// <summary>
+    /// Résultat paginé pour les listes d'éléments
+    /// </summary>
+    /// <typeparam name="T">Type d'élément</typeparam>
+    public class PaginatedResult<T>
+    {
+        /// <summary>
+        /// Éléments de la page courante
+        /// </summary>
+        public IEnumerable<T> Items { get; set; }
 
         /// <summary>
-        /// Search artworks based on criteria
+        /// Nombre total d'éléments (toutes pages confondues)
         /// </summary>
-        /// <param name="searchText">Text to search in title, description, etc.</param>
-        /// <param name="artistId">Filter by artist ID</param>
-        /// <param name="domainId">Filter by domain ID</param>
-        /// <param name="techniqueId">Filter by technique ID</param>
-        /// <param name="periodId">Filter by period ID</param>
-        /// <param name="museumId">Filter by museum ID</param>
-        /// <param name="page">Page number (default: 1)</param>
-        /// <param name="pageSize">Number of items per page (default: 10)</param>
-        /// <returns>List of artworks matching criteria</returns>
-        [HttpGet("search")]
-        public async Task<ActionResult<IEnumerable<Artwork>>> Search(
-            [FromQuery] string searchText = null,
-            [FromQuery] Guid? artistId = null,
-            [FromQuery] Guid? domainId = null,
-            [FromQuery] Guid? techniqueId = null,
-            [FromQuery] Guid? periodId = null,
-            [FromQuery] Guid? museumId = null,
-            [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            try
-            {
-                var artworks = await _artworkRepository.SearchAsync(
-                    searchText, artistId, domainId, techniqueId, periodId, museumId, page, pageSize);
+        public int TotalItems { get; set; }
 
-                return Ok(artworks);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error searching artworks");
-                return StatusCode(500, "An error occurred while processing your request");
-            }
-        }
+        /// <summary>
+        /// Numéro de la page courante
+        /// </summary>
+        public int Page { get; set; }
+
+        /// <summary>
+        /// Nombre d'éléments par page
+        /// </summary>
+        public int PageSize { get; set; }
+
+        /// <summary>
+        /// Nombre total de pages
+        /// </summary>
+        public int TotalPages { get; set; }
     }
 }

@@ -1,5 +1,7 @@
-import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router';
+
+// Views
+import HomeView from '@/views/HomeView.vue';
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -8,43 +10,50 @@ const routes: Array<RouteRecordRaw> = [
     component: HomeView
   },
   {
-    path: '/search',
-    name: 'search',
-    component: () => import(/* webpackChunkName: "search" */ '../views/SearchView.vue')
+    path: '/artworks',
+    name: 'artworks',
+    component: () => import('@/views/ArtworksView.vue')
   },
   {
-    path: '/artwork/:id',
+    path: '/artworks/:id',
     name: 'artwork-detail',
-    component: () => import(/* webpackChunkName: "artwork-detail" */ '../views/ArtworkDetailView.vue'),
-    props: true
+    component: () => import('@/views/ArtworkDetailView.vue')
   },
   {
     path: '/artists',
     name: 'artists',
-    component: () => import(/* webpackChunkName: "artists" */ '../views/ArtistsView.vue')
+    component: () => import('@/views/ArtistsView.vue')
   },
   {
-    path: '/artist/:id',
+    path: '/artists/:id',
     name: 'artist-detail',
-    component: () => import(/* webpackChunkName: "artist-detail" */ '../views/ArtistDetailView.vue'),
-    props: true
+    component: () => import('@/views/ArtistDetailView.vue')
   },
   {
     path: '/museums',
     name: 'museums',
-    component: () => import(/* webpackChunkName: "museums" */ '../views/MuseumsView.vue')
+    component: () => import('@/views/MuseumsView.vue')
   },
   {
-    path: '/museum/:id',
+    path: '/museums/:id',
     name: 'museum-detail',
-    component: () => import(/* webpackChunkName: "museum-detail" */ '../views/MuseumDetailView.vue'),
-    props: true
+    component: () => import('@/views/MuseumDetailView.vue')
+  },
+  {
+    path: '/about',
+    name: 'about',
+    component: () => import('@/views/AboutView.vue')
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'not-found',
+    component: () => import('@/views/NotFoundView.vue')
   }
-]
+];
 
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes
-})
+});
 
-export default router
+export default router;

@@ -1,31 +1,67 @@
+using OpenJoconde.Core.Models;
+using OpenJoconde.Core.Parsers;
+using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace OpenJoconde.Core.Interfaces
 {
     /// <summary>
-    /// Service for importing data from Joconde XML files
+    /// Service responsable de l'importation des données depuis le parseur vers la base de données
     /// </summary>
     public interface IDataImportService
     {
         /// <summary>
-        /// Import data from a Joconde XML file
+        /// Importe les données du résultat de parsing dans la base de données
         /// </summary>
-        /// <param name="xmlFilePath">Path to the XML file</param>
-        /// <returns>Number of records imported</returns>
-        Task<int> ImportFromXmlFileAsync(string xmlFilePath);
+        /// <param name="parsingResult">Résultat du parsing contenant les entités à importer</param>
+        /// <param name="progressCallback">Callback pour suivre la progression</param>
+        /// <param name="cancellationToken">Token d'annulation</param>
+        /// <returns>Statistiques sur l'importation</returns>
+        Task<ImportStatistics> ImportDataAsync(
+            ParsingResult parsingResult, 
+            Action<string, int, int> progressCallback = null, 
+            CancellationToken cancellationToken = default);
+    }
+
+    /// <summary>
+    /// Statistiques sur l'importation des données
+    /// </summary>
+    public class ImportStatistics
+    {
+        /// <summary>
+        /// Nombre d'œuvres importées
+        /// </summary>
+        public int ArtworksImported { get; set; }
 
         /// <summary>
-        /// Download the latest Joconde XML file from data.gouv.fr
+        /// Nombre d'artistes importés
         /// </summary>
-        /// <param name="destinationPath">Path where to save the file</param>
-        /// <returns>Path of the downloaded file</returns>
-        Task<string> DownloadLatestXmlFileAsync(string destinationPath);
+        public int ArtistsImported { get; set; }
 
         /// <summary>
-        /// Run the complete import process: download the latest file and import it
+        /// Nombre de musées importés
         /// </summary>
-        /// <param name="downloadPath">Path where to save the downloaded file</param>
-        /// <returns>Number of records imported</returns>
-        Task<int> RunImportProcessAsync(string downloadPath);
+        public int MuseumsImported { get; set; }
+
+        /// <summary>
+        /// Nombre de domaines importés
+        /// </summary>
+        public int DomainsImported { get; set; }
+
+        /// <summary>
+        /// Nombre de techniques importées
+        /// </summary>
+        public int TechniquesImported { get; set; }
+
+        /// <summary>
+        /// Nombre de périodes importées
+        /// </summary>
+        public int PeriodsImported { get; set; }
+
+        /// <summary>
+        /// Durée totale de l'importation
+        /// </summary>
+        public TimeSpan Duration { get; set; }
     }
 }

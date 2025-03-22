@@ -1,148 +1,123 @@
 <template>
-  <div class="artwork-card" @click="navigateToArtwork">
+  <div class="artwork-card" @click="$emit('click')">
     <div class="artwork-image">
-      <img v-if="artwork.imageUrl" :src="artwork.imageUrl" :alt="artwork.title" />
-      <div v-else class="no-image">
-        <span>Image non disponible</span>
-      </div>
+      <img :src="imageUrl" :alt="title" />
     </div>
     <div class="artwork-info">
-      <h3 class="artwork-title">{{ artwork.title || 'Sans titre' }}</h3>
-      <div class="artwork-artist">
-        <template v-if="artwork.artists && artwork.artists.length > 0">
-          {{ getArtistName(artwork.artists[0]) }}
-          <span v-if="artwork.artists.length > 1"> et {{ artwork.artists.length - 1 }} autre(s)</span>
-        </template>
-        <template v-else>
-          Artiste inconnu
-        </template>
-      </div>
-      <div class="artwork-details">
-        <span v-if="artwork.creationDate">{{ artwork.creationDate }}</span>
-        <span v-if="artwork.denomination">{{ artwork.denomination }}</span>
-      </div>
+      <h3>{{ title || 'Sans titre' }}</h3>
+      <p v-if="artists && artists.length">
+        {{ formattedArtists }}
+      </p>
+      <p class="date">{{ date || 'Date inconnue' }}</p>
     </div>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from 'vue';
-import { useRouter } from 'vue-router';
-import { Artwork, ArtworkArtist } from '@/types/models';
+import { defineComponent, computed } from 'vue';
 
 export default defineComponent({
   name: 'ArtworkCard',
   props: {
-    artwork: {
-      type: Object as PropType<Artwork>,
+    id: {
+      type: String,
       required: true
+    },
+    title: {
+      type: String,
+      default: ''
+    },
+    imageUrl: {
+      type: String,
+      default: '/placeholder-image.jpg'
+    },
+    date: {
+      type: String,
+      default: ''
+    },
+    artists: {
+      type: Array as () => { id: string; firstName: string; lastName: string }[],
+      default: () => []
     }
   },
+  emits: ['click'],
   setup(props) {
-    const router = useRouter();
-
-    const navigateToArtwork = () => {
-      router.push(`/artwork/${props.artwork.id}`);
-    };
-
-    const getArtistName = (artistWork: ArtworkArtist) => {
-      if (!artistWork.artist) {
-        return 'Artiste inconnu';
-      }
-      
-      const { firstName, lastName } = artistWork.artist;
-      if (firstName && lastName) {
-        return `${firstName} ${lastName}`;
-      } else if (lastName) {
-        return lastName;
-      } else if (firstName) {
-        return firstName;
-      } else {
-        return 'Artiste inconnu';
-      }
-    };
+    const formattedArtists = computed(() => {
+      return props.artists
+        .map(artist => `${artist.firstName || ''} ${artist.lastName || ''}`.trim())
+        .join(', ');
+    });
 
     return {
-      navigateToArtwork,
-      getArtistName
+      formattedArtists
     };
   }
 });
 </script>
 
-<style lang="scss" scoped>
+<style scoped lang="scss">
 .artwork-card {
+  background-color: white;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s, box-shadow 0.3s;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   cursor: pointer;
-  background-color: white;
-  
+  transition: transform 0.3s, box-shadow 0.3s;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
   &:hover {
     transform: translateY(-5px);
-    box-shadow: 0 15px 20px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
   }
-}
 
-.artwork-image {
-  height: 200px;
-  overflow: hidden;
-  background-color: #f8f9fa;
-  
-  img {
+  .artwork-image {
+    position: relative;
     width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s;
+    padding-top: 75%; // 4:3 ratio
+
+    img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
   }
-  
-  .no-image {
-    height: 100%;
+
+  .artwork-info {
+    padding: 16px;
+    flex-grow: 1;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #aaa;
-  }
-  
-  .artwork-card:hover & img {
-    transform: scale(1.05);
-  }
-}
+    flex-direction: column;
 
-.artwork-info {
-  padding: 15px;
-  text-align: left;
-}
+    h3 {
+      margin-bottom: 8px;
+      color: var(--primary-color);
+      font-size: 1.1rem;
+      // Ellipsis pour les titres longs
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
-.artwork-title {
-  margin: 0 0 5px 0;
-  font-size: 1.1em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+    p {
+      color: #666;
+      font-size: 0.9rem;
+      margin-bottom: 4px;
+      // Ellipsis pour les noms d'artistes longs
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
-.artwork-artist {
-  color: #42b983;
-  font-size: 0.9em;
-  margin-bottom: 8px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.artwork-details {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  font-size: 0.8em;
-  color: #666;
-  
-  span {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    .date {
+      margin-top: auto;
+      font-size: 0.8rem;
+      color: #888;
+    }
   }
 }
 </style>
