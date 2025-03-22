@@ -44,7 +44,9 @@ cd openjoconde
 ### Configurer la base de données
 
 1. Créer une base de données PostgreSQL nommée `openjoconde`
-2. Mettre à jour la chaîne de connexion dans `src/Backend/OpenJoconde.API/appsettings.json`
+2. Exécuter le script de création dans `src/Backend/OpenJoconde.Infrastructure/Database/CreateDatabase.sql`
+3. Exécuter le script de migration initiale dans `src/Backend/OpenJoconde.Infrastructure/Database/Migrations/Initial_Migration.sql`
+4. Mettre à jour la chaîne de connexion dans `src/Backend/OpenJoconde.API/appsettings.json`
 
 ### Backend (.NET)
 
@@ -87,6 +89,11 @@ openjoconde/
 │   │   ├── OpenJoconde.API/             # Couche API
 │   │   ├── OpenJoconde.Core/            # Domaine métier
 │   │   ├── OpenJoconde.Infrastructure/  # Infrastructure (accès aux données)
+│   │   │   ├── Data/                    # Accès aux données
+│   │   │   ├── Services/                # Services d'infrastructure
+│   │   │   └── Database/                # Scripts de base de données
+│   │   │       ├── Migrations/          # Scripts de migration
+│   │   │       └── CreateDatabase.sql   # Script initial
 │   │   └── OpenJoconde.Tests/           # Tests
 │   └── Frontend/               # Frontend Vue.js
 │       ├── public/             # Fichiers statiques
