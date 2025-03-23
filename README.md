@@ -182,6 +182,12 @@ openjoconde/
 - Optimisation des requêtes textuelles avec des index GIN
 - Schéma amélioré pour la collecte de statistiques d'utilisation
 
+### Corrections techniques dans le backend
+- Mise à jour des services d'importation de données pour corriger les problèmes de nullabilité
+- Correction des signatures de méthodes dans les services JocondeDataService et JocondeDataServiceAlt
+- Amélioration de la robustesse du code avec utilisation systématique des types nullables (nullable reference types)
+- Préparation à la mise à jour vers .NET 8 (actuellement en .NET 7)
+
 ### Prochains développements
 - Mise à jour des modèles C# pour refléter les nouvelles tables
 - Extension des API REST pour exploiter les nouvelles fonctionnalités
