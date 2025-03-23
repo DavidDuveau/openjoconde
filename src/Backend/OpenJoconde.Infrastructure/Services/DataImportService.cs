@@ -113,7 +113,7 @@ namespace OpenJoconde.Infrastructure.Services
         /// <returns>Statistiques sur l'importation</returns>
         public async Task<ImportStatistics> ImportDataAsync(
             ParsingResult parsingResult, 
-            Action<string, int, int> progressCallback = null, 
+            Action<string, int, int>? progressCallback = null, 
             CancellationToken cancellationToken = default)
         {
             try

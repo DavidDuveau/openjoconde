@@ -214,51 +214,54 @@ namespace OpenJoconde.Infrastructure.Services
         /// <inheritdoc />
         public async Task<ImportReport> UpdateJocondeDataAsync(string xmlUrl, string tempDirectory, CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("Démarrage de la mise à jour des données Joconde");
-            
-            var report = new ImportReport
-            {
-                ImportDate = DateTime.UtcNow
-            };
-            
-            var stopwatch = Stopwatch.StartNew();
-            
-            try
-            {
-                // Créer le répertoire temporaire s'il n'existe pas
-                if (!Directory.Exists(tempDirectory))
-                    Directory.CreateDirectory(tempDirectory);
-                
-                // Générer un nom de fichier temporaire
-                var tempFilePath = Path.Combine(tempDirectory, $"joconde_{DateTime.Now:yyyyMMdd_HHmmss}.xml");
-                
-                // Télécharger les données
-                await DownloadJocondeDataAsync(xmlUrl, tempFilePath, cancellationToken);
-                
-                // Analyser le fichier XML
-                var artworks = await ParseJocondeXmlAsync(tempFilePath, cancellationToken);
-                report.TotalArtworks = artworks.Count();
-                
-                // Importer les oeuvres
-                report.ImportedArtworks = await ImportArtworksAsync(artworks, cancellationToken);
-                
-                // Nettoyer les fichiers temporaires
-                if (File.Exists(tempFilePath))
-                    File.Delete(tempFilePath);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erreur lors de la mise à jour des données Joconde: {Message}", ex.Message);
-                report.Errors++;
-            }
-            finally
-            {
-                stopwatch.Stop();
-                report.Duration = stopwatch.Elapsed;
-                _logger.LogInformation("Mise à jour des données Joconde terminée en {Duration}", report.Duration);
-            }
-            
-            return report;
+        _logger.LogInformation("Démarrage de la mise à jour des données Joconde");
+        
+        var report = new ImportReport
+        {
+        ImportDate = DateTime.UtcNow,
+            Success = true
+        };
+        
+        var stopwatch = Stopwatch.StartNew();
+        
+        try
+        {
+        // Créer le répertoire temporaire s'il n'existe pas
+        if (!Directory.Exists(tempDirectory))
+            Directory.CreateDirectory(tempDirectory);
+        
+        // Générer un nom de fichier temporaire
+        var tempFilePath = Path.Combine(tempDirectory, $"joconde_{DateTime.Now:yyyyMMdd_HHmmss}.xml");
+        
+        // Télécharger les données
+        await DownloadJocondeDataAsync(xmlUrl, tempFilePath, cancellationToken);
+        
+        // Analyser le fichier XML
+        var artworks = await ParseJocondeXmlAsync(tempFilePath, cancellationToken);
+        report.TotalArtworks = artworks.Count();
+        
+        // Importer les oeuvres
+        report.ImportedArtworks = await ImportArtworksAsync(artworks, cancellationToken);
+        
+        // Nettoyer les fichiers temporaires
+        if (File.Exists(tempFilePath))
+                File.Delete(tempFilePath);
+        }
+        catch (Exception ex)
+        {
+        _logger.LogError(ex, "Erreur lors de la mise à jour des données Joconde: {Message}", ex.Message);
+            report.Errors++;
+            report.Success = false;
+            report.ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            stopwatch.Stop();
+            report.Duration = stopwatch.Elapsed;
+            _logger.LogInformation("Mise à jour des données Joconde terminée en {Duration}", report.Duration);
+        }
+        
+        return report;
         }
     }
 }

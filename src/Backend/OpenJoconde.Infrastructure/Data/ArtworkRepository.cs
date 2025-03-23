@@ -96,7 +96,7 @@ namespace OpenJoconde.Infrastructure.Data
         /// <param name="pageSize">Number of items per page</param>
         /// <returns>List of artworks matching criteria</returns>
         public async Task<IEnumerable<Artwork>> SearchAsync(
-            string searchText = null,
+            string? searchText = null,
             Guid? artistId = null,
             Guid? domainId = null,
             Guid? techniqueId = null,

@@ -24,7 +24,7 @@ namespace OpenJoconde.Infrastructure.Services
         /// <inheritdoc />
         public async Task<ParsingResult> ParseAsync(
             string xmlFilePath, 
-            Action<int, int> progressCallback = null, 
+            Action<int, int>? progressCallback = null, 
             CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Démarrage du parsing du fichier XML Joconde: {FilePath}", xmlFilePath);
