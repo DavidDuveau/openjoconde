@@ -114,6 +114,57 @@ openjoconde/
 - [Base Joconde sur data.gouv.fr](https://www.data.gouv.fr/fr/datasets/joconde-catalogue-collectif-des-collections-des-musees-de-france/)
 - [Documentation de la base Joconde](https://www.culture.gouv.fr/Espace-documentation/Bases-de-donnees/Fiches-bases-de-donnees/Joconde-catalogue-collectif-des-collections-des-musees-de-France)
 
+## État d'avancement du projet
+
+### Phases terminées
+
+1. **Phase 1 : Analyse et conception** ✅
+   - Analyse complète des données Joconde
+   - Conception de l'architecture (base de données, backend, frontend)
+   - Définition des cas d'utilisation principaux
+
+2. **Phase 2 : Mise en place de l'infrastructure** ✅
+   - Structure du projet .NET avec Clean Architecture
+   - Configuration de la base de données PostgreSQL
+   - Scripts de création des tables et indexes
+   - Initialisation du projet frontend Vue.js avec TypeScript
+
+### Phase en cours
+
+1. **Phase 3 : Développement du backend** 🔄 (90%)
+   - Service de téléchargement des données ✅
+   - Parseur XML Joconde ✅
+   - Service de peuplement de la base de données ✅
+   - API REST (implémentation partielle) 🔄
+
+2. **Phase 4 : Développement du frontend** 🔄 (30%)
+   - Architecture et composants de base ✅
+   - Interface de recherche (en cours) 🔄
+   - Visualisation des œuvres (en cours) 🔄
+   - Navigation thématique (à venir) ⏳
+
+### Prochaines étapes
+
+1. **Finalisation du Backend**
+   - Complétion des endpoints API
+   - Documentation OpenAPI/Swagger
+   - Tests d'intégration des API
+
+2. **Avancement du Frontend**
+   - Finalisation de l'interface de recherche avancée
+   - Amélioration de la visualisation détaillée des œuvres
+   - Implémentation de la navigation thématique
+
+3. **Phase 5 : Tests et optimisation** ⏳
+   - Tests unitaires et d'intégration
+   - Optimisation des performances
+   - Mise en cache et optimisations
+
+4. **Phase 6 : Déploiement et livraison** ⏳
+   - Préparation des environnements de production
+   - Documentation finale
+   - Formation et transfert de connaissances
+
 ## Licence
 
 Ce projet est disponible sous licence MIT. Voir le fichier LICENSE pour plus de détails.
