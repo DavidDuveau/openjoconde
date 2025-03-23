@@ -9,6 +9,7 @@ using OpenJoconde.Infrastructure.Data;
 using OpenJoconde.Infrastructure.Services;
 using OpenJoconde.API.Extensions;
 using System;
+using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,7 +35,10 @@ builder.Services.AddSwaggerGen(c =>
     // Activation des commentaires XML pour la documentation Swagger
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = System.IO.Path.Combine(AppContext.BaseDirectory, xmlFile);
-    c.IncludeXmlComments(xmlPath);
+    if (File.Exists(xmlPath))
+    {
+        c.IncludeXmlComments(xmlPath);
+    }
 });
 
 // Database Configuration
@@ -51,9 +55,16 @@ builder.Services.AddDbContext<OpenJocondeDbContext>(options =>
 
 // Register HTTP client
 builder.Services.AddHttpClient<IJocondeDataService, JocondeDataService>();
+builder.Services.AddHttpClient<AutoSyncService>();
 
 // Register infrastructure services
 builder.Services.AddInfrastructureServices(builder.Configuration);
+
+// Register auto sync service if enabled
+if (builder.Configuration.GetValue<bool>("JocondeData:CheckForUpdatesOnStartup", false))
+{
+    builder.Services.AddHostedService<AutoSyncService>();
+}
 
 // CORS Policy
 builder.Services.AddCors(options =>
@@ -69,6 +80,13 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Ensure the temp directory exists
+var tempDir = builder.Configuration["JocondeData:TempDirectory"];
+if (!string.IsNullOrEmpty(tempDir) && !Directory.Exists(tempDir))
+{
+    Directory.CreateDirectory(tempDir);
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
