@@ -29,15 +29,13 @@ namespace OpenJoconde.Core.Parsers
             if (!File.Exists(jsonFilePath))
                 throw new FileNotFoundException("Le fichier JSON n'existe pas", jsonFilePath);
 
-            var result = new ParsingResult
-            {
-                Artworks = new List<Artwork>(),
-                Artists = new HashSet<Artist>(),
-                Domains = new HashSet<Domain>(),
-                Techniques = new HashSet<Technique>(),
-                Periods = new HashSet<Period>(),
-                Museums = new HashSet<Museum>()
-            };
+            // Utiliser des dictionnaires pour éviter les doublons
+            var artists = new Dictionary<string, Artist>();
+            var domains = new Dictionary<string, Domain>();
+            var techniques = new Dictionary<string, Technique>();
+            var periods = new Dictionary<string, Period>();
+            var museums = new Dictionary<string, Museum>();
+            var artworks = new List<Artwork>();
 
             try
             {
@@ -67,10 +65,10 @@ namespace OpenJoconde.Core.Parsers
                         var artwork = ExtractArtwork(artworkElement);
                         
                         // Extraction des entités liées (artistes, domaines, techniques, etc.)
-                        ExtractRelatedEntities(artworkElement, artwork, result);
+                        ExtractRelatedEntities(artworkElement, artwork, artists, domains, techniques, periods, museums);
                         
                         // Ajout de l'œuvre au résultat
-                        result.Artworks.Add(artwork);
+                        artworks.Add(artwork);
                         
                         // Mise à jour de la progression
                         processedItems++;
@@ -87,6 +85,17 @@ namespace OpenJoconde.Core.Parsers
             {
                 throw new Exception($"Erreur lors du parsing du fichier JSON: {ex.Message}", ex);
             }
+
+            // Créer le résultat final avec des List<T> pour toutes les collections
+            var result = new ParsingResult
+            {
+                Artworks = artworks,
+                Artists = artists.Values.ToList(),
+                Domains = domains.Values.ToList(),
+                Techniques = techniques.Values.ToList(),
+                Periods = periods.Values.ToList(),
+                Museums = museums.Values.ToList()
+            };
 
             return result;
         }
@@ -118,20 +127,33 @@ namespace OpenJoconde.Core.Parsers
         /// <summary>
         /// Extraction des entités liées (artistes, domaines, techniques, etc.)
         /// </summary>
-        private void ExtractRelatedEntities(JsonElement artworkElement, Artwork artwork, ParsingResult result)
+        private void ExtractRelatedEntities(
+            JsonElement artworkElement, 
+            Artwork artwork,
+            Dictionary<string, Artist> artists,
+            Dictionary<string, Domain> domains,
+            Dictionary<string, Technique> techniques,
+            Dictionary<string, Period> periods,
+            Dictionary<string, Museum> museums)
         {
             // Extraction des artistes
             var artistName = GetStringValue(artworkElement, "AUTR");
             if (!string.IsNullOrEmpty(artistName))
             {
-                var artist = new Artist
-                {
-                    Id = Guid.NewGuid(),
-                    LastName = artistName,
-                    // D'autres champs peuvent être extraits selon la structure JSON
-                };
+                // Utiliser le nom comme clé
+                string artistKey = artistName.ToLower();
                 
-                result.Artists.Add(artist);
+                if (!artists.TryGetValue(artistKey, out var artist))
+                {
+                    artist = new Artist
+                    {
+                        Id = Guid.NewGuid(),
+                        LastName = artistName,
+                        // D'autres champs peuvent être extraits selon la structure JSON
+                    };
+                    
+                    artists[artistKey] = artist;
+                }
                 
                 // Lier l'artiste à l'œuvre
                 artwork.Artists.Add(new ArtworkArtist
@@ -146,13 +168,20 @@ namespace OpenJoconde.Core.Parsers
             var domainName = GetStringValue(artworkElement, "DOMN");
             if (!string.IsNullOrEmpty(domainName))
             {
-                var domain = new Domain
-                {
-                    Id = Guid.NewGuid(),
-                    Name = domainName
-                };
+                // Utiliser le nom comme clé
+                string domainKey = domainName.ToLower();
                 
-                result.Domains.Add(domain);
+                if (!domains.TryGetValue(domainKey, out var domain))
+                {
+                    domain = new Domain
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = domainName
+                    };
+                    
+                    domains[domainKey] = domain;
+                }
+                
                 artwork.Domains.Add(domain);
             }
             
@@ -160,13 +189,20 @@ namespace OpenJoconde.Core.Parsers
             var techniqueName = GetStringValue(artworkElement, "TECH");
             if (!string.IsNullOrEmpty(techniqueName))
             {
-                var technique = new Technique
-                {
-                    Id = Guid.NewGuid(),
-                    Name = techniqueName
-                };
+                // Utiliser le nom comme clé
+                string techniqueKey = techniqueName.ToLower();
                 
-                result.Techniques.Add(technique);
+                if (!techniques.TryGetValue(techniqueKey, out var technique))
+                {
+                    technique = new Technique
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = techniqueName
+                    };
+                    
+                    techniques[techniqueKey] = technique;
+                }
+                
                 artwork.Techniques.Add(technique);
             }
             
@@ -174,13 +210,20 @@ namespace OpenJoconde.Core.Parsers
             var periodName = GetStringValue(artworkElement, "PERI");
             if (!string.IsNullOrEmpty(periodName))
             {
-                var period = new Period
-                {
-                    Id = Guid.NewGuid(),
-                    Name = periodName
-                };
+                // Utiliser le nom comme clé
+                string periodKey = periodName.ToLower();
                 
-                result.Periods.Add(period);
+                if (!periods.TryGetValue(periodKey, out var period))
+                {
+                    period = new Period
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = periodName
+                    };
+                    
+                    periods[periodKey] = period;
+                }
+                
                 artwork.Periods.Add(period);
             }
             
@@ -188,13 +231,20 @@ namespace OpenJoconde.Core.Parsers
             var museumName = GetStringValue(artworkElement, "LOCA2");
             if (!string.IsNullOrEmpty(museumName))
             {
-                var museum = new Museum
-                {
-                    Id = Guid.NewGuid(),
-                    Name = museumName
-                };
+                // Utiliser le nom comme clé
+                string museumKey = museumName.ToLower();
                 
-                result.Museums.Add(museum);
+                if (!museums.TryGetValue(museumKey, out var museum))
+                {
+                    museum = new Museum
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = museumName
+                    };
+                    
+                    museums[museumKey] = museum;
+                }
+                
                 // La relation entre œuvre et musée peut être gérée ici
             }
         }
