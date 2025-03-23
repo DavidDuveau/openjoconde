@@ -138,7 +138,7 @@ openjoconde/
 
 1. **Phase 3 : Développement du backend** ✅ (100%)
    - Service de téléchargement des données ✅
-   - Parseur XML Joconde ✅
+   - Parseur XML et JSON Joconde ✅
    - Service de peuplement de la base de données ✅
    - API REST (implémentation complète) ✅
    - Documentation OpenAPI/Swagger ✅
@@ -175,6 +175,12 @@ openjoconde/
 
 ## Dernières mises à jour (23/03/2025)
 
+### Support du format JSON
+- Migration du format XML vers JSON pour l'importation des données
+- Implémentation d'un parseur JSON pour la base Joconde
+- Mise à jour de l'URL source vers l'API JSON officielle
+- Maintien du support XML pour la rétrocompatibilité
+
 ### Améliorations de la base de données (v1.1)
 - Ajout de tables pour la gestion des métadonnées et synchronisation
 - Support pour les images multiples par œuvre
@@ -185,7 +191,7 @@ openjoconde/
 ### Corrections techniques dans le backend
 - Ajout des repositories manquants (DomainRepository, TechniqueRepository, PeriodRepository)
 - Mise à jour des services d'importation de données pour corriger les problèmes de nullabilité
-- Correction des signatures de méthodes dans les services JocondeDataService et JocondeXmlParserService
+- Adaptation des services pour supporter le format JSON
 - Implémentation du service de synchronisation automatique (AutoSyncService)
 - Ajout des méthodes manquantes dans l'interface IDataImportService et leur implémentation
 - Correction des problèmes de compilation dans les contrôleurs

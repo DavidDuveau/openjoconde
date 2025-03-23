@@ -34,6 +34,7 @@ namespace OpenJoconde.API.Extensions
             // Services
             services.AddScoped<IJocondeDataService, JocondeDataService>();
             services.AddScoped<IJocondeXmlParser, JocondeXmlParserService>();
+            services.AddScoped<IJocondeJsonParser, JocondeJsonParserService>(); // Nouveau service de parseur JSON
             services.AddScoped<IDataImportService, AdvancedDataImportService>();
 
             return services;

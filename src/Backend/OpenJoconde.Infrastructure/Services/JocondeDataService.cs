@@ -12,6 +12,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using System.Text.Json;
 
 namespace OpenJoconde.Infrastructure.Services
 {
@@ -24,17 +25,20 @@ namespace OpenJoconde.Infrastructure.Services
         private readonly ILogger<JocondeDataService> _logger;
         private readonly HttpClient _httpClient;
         private readonly IJocondeXmlParser _xmlParser;
+        private readonly IJocondeJsonParser _jsonParser;
 
         public JocondeDataService(
             OpenJocondeDbContext dbContext,
             ILogger<JocondeDataService> logger,
             HttpClient httpClient,
-            IJocondeXmlParser xmlParser)
+            IJocondeXmlParser xmlParser,
+            IJocondeJsonParser jsonParser)
         {
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _xmlParser = xmlParser ?? throw new ArgumentNullException(nameof(xmlParser));
+            _jsonParser = jsonParser ?? throw new ArgumentNullException(nameof(jsonParser));
         }
 
         /// <summary>
@@ -76,7 +80,7 @@ namespace OpenJoconde.Infrastructure.Services
         }
 
         /// <summary>
-        /// Analyse un fichier XML Joconde et extrait les oeuvres d'art
+        /// Analyse un fichier XML Joconde et extrait les oeuvres d'art (méthode maintenue pour compatibilité)
         /// </summary>
         public async Task<IEnumerable<Artwork>> ParseJocondeXmlAsync(string xmlFilePath, CancellationToken cancellationToken = default)
         {
@@ -137,6 +141,37 @@ namespace OpenJoconde.Infrastructure.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur lors de l'analyse du fichier XML Joconde: {Message}", ex.Message);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Analyse un fichier JSON Joconde et extrait les œuvres d'art
+        /// </summary>
+        public async Task<IEnumerable<Artwork>> ParseJocondeJsonAsync(string jsonFilePath, CancellationToken cancellationToken = default)
+        {
+            _logger.LogInformation("Analyse du fichier JSON Joconde {FilePath}", jsonFilePath);
+
+            if (!File.Exists(jsonFilePath))
+                throw new FileNotFoundException("Le fichier JSON Joconde n'existe pas", jsonFilePath);
+
+            try
+            {
+                // Utiliser directement le parser JSON pour obtenir la liste d'œuvres
+                var parsingResult = await _jsonParser.ParseAsync(jsonFilePath, (current, total) =>
+                {
+                    if (current % 100 == 0 || current == total)
+                    {
+                        _logger.LogInformation("Progression du parsing JSON: {Current}/{Total}", current, total);
+                    }
+                }, cancellationToken);
+
+                _logger.LogInformation("Analyse JSON terminée: {Count} œuvres extraites", parsingResult.Artworks.Count);
+                return parsingResult.Artworks;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de l'analyse du fichier JSON Joconde: {Message}", ex.Message);
                 throw;
             }
         }
@@ -215,7 +250,7 @@ namespace OpenJoconde.Infrastructure.Services
         /// <summary>
         /// Exécute le processus complet de mise à jour des données Joconde
         /// </summary>
-        public async Task<ImportReport> UpdateJocondeDataAsync(string xmlUrl, string tempDirectory, CancellationToken cancellationToken = default)
+        public async Task<ImportReport> UpdateJocondeDataAsync(string dataUrl, string tempDirectory, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Démarrage de la mise à jour des données Joconde");
             
@@ -233,14 +268,27 @@ namespace OpenJoconde.Infrastructure.Services
                 if (!Directory.Exists(tempDirectory))
                     Directory.CreateDirectory(tempDirectory);
                 
-                // Générer un nom de fichier temporaire
-                var tempFilePath = Path.Combine(tempDirectory, $"joconde_{DateTime.Now:yyyyMMdd_HHmmss}.xml");
+                // Déterminer s'il s'agit de JSON ou XML en fonction de l'URL
+                bool isJson = dataUrl.Contains("json", StringComparison.OrdinalIgnoreCase);
+                
+                // Générer un nom de fichier temporaire avec l'extension appropriée
+                string extension = isJson ? "json" : "xml";
+                var tempFilePath = Path.Combine(tempDirectory, $"joconde_{DateTime.Now:yyyyMMdd_HHmmss}.{extension}");
                 
                 // Télécharger les données
-                await DownloadJocondeDataAsync(xmlUrl, tempFilePath, cancellationToken);
+                await DownloadJocondeDataAsync(dataUrl, tempFilePath, cancellationToken);
                 
-                // Analyser le fichier XML
-                var artworks = await ParseJocondeXmlAsync(tempFilePath, cancellationToken);
+                // Analyser le fichier selon son format
+                IEnumerable<Artwork> artworks;
+                if (isJson)
+                {
+                    artworks = await ParseJocondeJsonAsync(tempFilePath, cancellationToken);
+                }
+                else
+                {
+                    artworks = await ParseJocondeXmlAsync(tempFilePath, cancellationToken);
+                }
+                
                 report.TotalArtworks = artworks.Count();
                 
                 // Importer les oeuvres
@@ -276,8 +324,8 @@ namespace OpenJoconde.Infrastructure.Services
             {
                 _logger.LogInformation("Téléchargement du dernier fichier Joconde disponible");
                 
-                // URL par défaut pour les données Joconde (à personnaliser selon les besoins)
-                var url = "https://data.culture.gouv.fr/api/datasets/1.0/joconde-catalogue-collectif-des-collections-des-musees-de-france/attachments/base_joconde_extrait_xml_zip";
+                // URL mis à jour pour les données Joconde au format JSON
+                var url = "https://data.culture.gouv.fr/api/explore/v2.1/catalog/datasets/base-joconde-extrait/exports/json?lang=fr&timezone=Europe%2FBerlin";
                 
                 // Créer le répertoire de destination s'il n'existe pas
                 if (!Directory.Exists(destinationDirectory))
@@ -285,8 +333,8 @@ namespace OpenJoconde.Infrastructure.Services
                     Directory.CreateDirectory(destinationDirectory);
                 }
                 
-                // Générer un nom de fichier avec timestamp
-                var fileName = $"joconde_{DateTime.Now:yyyyMMdd_HHmmss}.xml";
+                // Générer un nom de fichier avec timestamp (format JSON)
+                var fileName = $"joconde_{DateTime.Now:yyyyMMdd_HHmmss}.json";
                 var filePath = Path.Combine(destinationDirectory, fileName);
                 
                 // Télécharger le fichier
@@ -354,6 +402,70 @@ namespace OpenJoconde.Infrastructure.Services
                 stopwatch.Stop();
                 report.Duration = stopwatch.Elapsed;
                 _logger.LogInformation("Importation depuis le fichier XML terminée en {Duration}", report.Duration);
+            }
+            
+            return report;
+        }
+        
+        /// <summary>
+        /// Importe les données depuis un fichier JSON
+        /// </summary>
+        public async Task<ImportReport> ImportFromJsonFileAsync(string jsonFilePath, CancellationToken cancellationToken = default)
+        {
+            _logger.LogInformation("Démarrage de l'importation depuis le fichier JSON {FilePath}", jsonFilePath);
+            
+            var report = new ImportReport
+            {
+                ImportDate = DateTime.UtcNow,
+                Success = true
+            };
+            
+            var stopwatch = Stopwatch.StartNew();
+            
+            try
+            {
+                // Vérifier l'existence du fichier
+                if (!File.Exists(jsonFilePath))
+                {
+                    throw new FileNotFoundException("Le fichier JSON Joconde n'existe pas", jsonFilePath);
+                }
+                
+                // Analyser le fichier JSON avec le parser dédié
+                var parsingResult = await _jsonParser.ParseAsync(jsonFilePath, (current, total) => 
+                {
+                    // Option pour ajouter un callback de progression ici si nécessaire
+                    if (current % 100 == 0 || current == total)
+                    {
+                        _logger.LogInformation("Progression du parsing JSON: {Current}/{Total}", current, total);
+                    }
+                }, cancellationToken);
+                
+                // Mettre à jour le rapport avec le nombre d'éléments trouvés
+                report.TotalArtworks = parsingResult.Artworks.Count;
+                report.TotalArtists = parsingResult.Artists.Count;
+                report.TotalMuseums = parsingResult.Museums.Count;
+                report.TotalDomains = parsingResult.Domains.Count;
+                report.TotalTechniques = parsingResult.Techniques.Count;
+                report.TotalPeriods = parsingResult.Periods.Count;
+                
+                // Importer les œuvres
+                report.ImportedArtworks = await ImportArtworksAsync(parsingResult.Artworks, cancellationToken);
+                
+                // Pour un rapport complet, il faudrait aussi suivre l'importation des autres entités
+                // Ce code simplifié se concentre uniquement sur les œuvres
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de l'importation depuis le fichier JSON: {Message}", ex.Message);
+                report.Errors++;
+                report.Success = false;
+                report.ErrorMessage = ex.Message;
+            }
+            finally
+            {
+                stopwatch.Stop();
+                report.Duration = stopwatch.Elapsed;
+                _logger.LogInformation("Importation depuis le fichier JSON terminée en {Duration}", report.Duration);
             }
             
             return report;
