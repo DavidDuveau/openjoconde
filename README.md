@@ -73,7 +73,6 @@ L'application frontend sera accessible à l'adresse : `http://localhost:8080`
 
 ```
 openjoconde/
-├── docs/                       # Documentation interne (non versionné)
 ├── src/                        # Code source
 │   ├── Backend/                # Backend .NET
 │   │   ├── OpenJoconde.API/             # Couche API
