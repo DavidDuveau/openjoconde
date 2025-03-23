@@ -33,7 +33,9 @@ namespace OpenJoconde.Infrastructure.Services
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Télécharge les données Joconde depuis l'URL spécifiée
+        /// </summary>
         public async Task<string> DownloadJocondeDataAsync(string url, string destinationPath, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Téléchargement des données Joconde depuis {Url}", url);
@@ -69,7 +71,9 @@ namespace OpenJoconde.Infrastructure.Services
             }
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Analyse un fichier XML Joconde et extrait les oeuvres d'art
+        /// </summary>
         public async Task<IEnumerable<Artwork>> ParseJocondeXmlAsync(string xmlFilePath, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Analyse du fichier XML Joconde {FilePath}", xmlFilePath);
@@ -79,10 +83,6 @@ namespace OpenJoconde.Infrastructure.Services
 
             try
             {
-                // Implémenter le parseur XML en utilisant une approche streaming pour les grands fichiers
-                // Note: Ceci est une implémentation simplifiée. Une version plus robuste utiliserait XmlReader 
-                // pour gérer les très grands fichiers XML.
-                
                 // Chargement du fichier XML
                 var doc = await Task.Run(() => XDocument.Load(xmlFilePath), cancellationToken);
                 
@@ -124,7 +124,6 @@ namespace OpenJoconde.Infrastructure.Services
                     if (artworks.Count >= 1000)
                     {
                         _logger.LogInformation("Traitement par lot: {Count} oeuvres analysées", artworks.Count);
-                        // Dans une implémentation complète, on traiterait les lots ici
                     }
                 }
                 
@@ -146,13 +145,11 @@ namespace OpenJoconde.Infrastructure.Services
             return element.Element(ns + name)?.Value?.Trim() ?? string.Empty;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Importe les oeuvres d'art dans la base de données
+        /// </summary>
         public async Task<int> ImportArtworksAsync(IEnumerable<Artwork> artworks, CancellationToken cancellationToken = default)
         {
-            // Note: Cette méthode est une implémentation simplifiée. Une version plus robuste 
-            // gérerait les entités liées (artistes, domaines, techniques, etc.)
-            // et utiliserait une approche par lot pour les performances.
-            
             _logger.LogInformation("Importation de {Count} oeuvres dans la base de données", artworks.Count());
             
             int importedCount = 0;
@@ -211,57 +208,59 @@ namespace OpenJoconde.Infrastructure.Services
             return importedCount;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Exécute le processus complet de mise à jour des données Joconde
+        /// </summary>
         public async Task<ImportReport> UpdateJocondeDataAsync(string xmlUrl, string tempDirectory, CancellationToken cancellationToken = default)
         {
-        _logger.LogInformation("Démarrage de la mise à jour des données Joconde");
-        
-        var report = new ImportReport
-        {
-        ImportDate = DateTime.UtcNow,
-            Success = true
-        };
-        
-        var stopwatch = Stopwatch.StartNew();
-        
-        try
-        {
-        // Créer le répertoire temporaire s'il n'existe pas
-        if (!Directory.Exists(tempDirectory))
-            Directory.CreateDirectory(tempDirectory);
-        
-        // Générer un nom de fichier temporaire
-        var tempFilePath = Path.Combine(tempDirectory, $"joconde_{DateTime.Now:yyyyMMdd_HHmmss}.xml");
-        
-        // Télécharger les données
-        await DownloadJocondeDataAsync(xmlUrl, tempFilePath, cancellationToken);
-        
-        // Analyser le fichier XML
-        var artworks = await ParseJocondeXmlAsync(tempFilePath, cancellationToken);
-        report.TotalArtworks = artworks.Count();
-        
-        // Importer les oeuvres
-        report.ImportedArtworks = await ImportArtworksAsync(artworks, cancellationToken);
-        
-        // Nettoyer les fichiers temporaires
-        if (File.Exists(tempFilePath))
-                File.Delete(tempFilePath);
-        }
-        catch (Exception ex)
-        {
-        _logger.LogError(ex, "Erreur lors de la mise à jour des données Joconde: {Message}", ex.Message);
-            report.Errors++;
-            report.Success = false;
-            report.ErrorMessage = ex.Message;
-        }
-        finally
-        {
-            stopwatch.Stop();
-            report.Duration = stopwatch.Elapsed;
-            _logger.LogInformation("Mise à jour des données Joconde terminée en {Duration}", report.Duration);
-        }
-        
-        return report;
+            _logger.LogInformation("Démarrage de la mise à jour des données Joconde");
+            
+            var report = new ImportReport
+            {
+                ImportDate = DateTime.UtcNow,
+                Success = true
+            };
+            
+            var stopwatch = Stopwatch.StartNew();
+            
+            try
+            {
+                // Créer le répertoire temporaire s'il n'existe pas
+                if (!Directory.Exists(tempDirectory))
+                    Directory.CreateDirectory(tempDirectory);
+                
+                // Générer un nom de fichier temporaire
+                var tempFilePath = Path.Combine(tempDirectory, $"joconde_{DateTime.Now:yyyyMMdd_HHmmss}.xml");
+                
+                // Télécharger les données
+                await DownloadJocondeDataAsync(xmlUrl, tempFilePath, cancellationToken);
+                
+                // Analyser le fichier XML
+                var artworks = await ParseJocondeXmlAsync(tempFilePath, cancellationToken);
+                report.TotalArtworks = artworks.Count();
+                
+                // Importer les oeuvres
+                report.ImportedArtworks = await ImportArtworksAsync(artworks, cancellationToken);
+                
+                // Nettoyer les fichiers temporaires
+                if (File.Exists(tempFilePath))
+                    File.Delete(tempFilePath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la mise à jour des données Joconde: {Message}", ex.Message);
+                report.Errors++;
+                report.Success = false;
+                report.ErrorMessage = ex.Message;
+            }
+            finally
+            {
+                stopwatch.Stop();
+                report.Duration = stopwatch.Elapsed;
+                _logger.LogInformation("Mise à jour des données Joconde terminée en {Duration}", report.Duration);
+            }
+            
+            return report;
         }
     }
 }
