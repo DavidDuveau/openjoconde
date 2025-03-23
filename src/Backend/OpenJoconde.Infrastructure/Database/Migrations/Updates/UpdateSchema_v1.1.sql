@@ -3,6 +3,9 @@
 -- Date: 2025-03-23
 -- Cette migration met à jour et complète les tables existantes selon la documentation
 
+-- IMPORTANT: Créer d'abord l'extension pg_trgm avant de créer les index qui en dépendent
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 -- 1. Modifications de champs existants pour correspondre au DbContext
 
 -- Mettre à jour les longueurs de champs dans la table Artwork
@@ -35,9 +38,6 @@ CREATE TABLE IF NOT EXISTS DataSyncLog (
 CREATE INDEX IF NOT EXISTS idx_artwork_title_gin ON Artwork USING gin(Title gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_artist_lastname_gin ON Artist USING gin(LastName gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_museum_name_gin ON Museum USING gin(Name gin_trgm_ops);
-
--- 4. Ajout d'une extension pour la recherche de texte si elle n'existe pas
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- 5. Ajout d'une table pour les statistiques d'utilisation
 CREATE TABLE IF NOT EXISTS UsageStatistics (
