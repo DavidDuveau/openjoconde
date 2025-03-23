@@ -69,41 +69,11 @@ npm run serve
 
 L'application frontend sera accessible à l'adresse : `http://localhost:8080`
 
-## Installation et lancement complet
-
-Pour installer, configurer et lancer le projet complet en une seule étape, utilisez le script `setup-and-run.bat` (Windows) :
-
-```bash
-setup-and-run.bat
-```
-
-Ce script :
-1. Vérifie les prérequis (.NET, Node.js, PostgreSQL)
-2. Crée et initialise la base de données PostgreSQL
-3. Télécharge les données Joconde depuis data.culture.gouv.fr
-4. Importe les données dans la base de données
-5. Lance l'application (Backend et Frontend)
-
-## Lancement en développement
-
-Si vous avez déjà configuré la base de données et souhaitez simplement lancer les serveurs de développement, utilisez le script `run-dev.bat` (Windows) :
-
-```bash
-run-dev.bat
-```
-
-Ce script lancera à la fois le backend et le frontend dans des fenêtres de terminal séparées.
-
 ## Structure du projet
 
 ```
 openjoconde/
 ├── docs/                       # Documentation interne (non versionné)
-├── scripts/                     # Scripts d'automatisation
-│   ├── setup-and-run.bat         # Installation et lancement complet
-│   ├── run-dev.bat              # Lancement en développement
-│   ├── commit-changes.bat       # Utilitaire Git
-│   └── conventional-commits.bat # Utilitaire Git
 ├── src/                        # Code source
 │   ├── Backend/                # Backend .NET
 │   │   ├── OpenJoconde.API/             # Couche API
