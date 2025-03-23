@@ -60,11 +60,11 @@ builder.Services.AddHttpClient<AutoSyncService>();
 // Register infrastructure services
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
-// Register auto sync service if enabled
-if (builder.Configuration.GetValue<bool>("JocondeData:CheckForUpdatesOnStartup", false))
-{
-    builder.Services.AddHostedService<AutoSyncService>();
-}
+// Register auto sync service if enabled - temporarily disabled until fixed
+// if (builder.Configuration.GetValue<bool>("JocondeData:CheckForUpdatesOnStartup", false))
+// {
+//     builder.Services.AddHostedService<AutoSyncService>();
+// }
 
 // CORS Policy
 builder.Services.AddCors(options =>
