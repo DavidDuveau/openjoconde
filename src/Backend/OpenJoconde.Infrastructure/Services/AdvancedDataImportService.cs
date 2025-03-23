@@ -5,7 +5,9 @@ using OpenJoconde.Core.Parsers;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,6 +27,8 @@ namespace OpenJoconde.Infrastructure.Services
         private readonly ITechniqueRepository _techniqueRepository;
         private readonly IPeriodRepository _periodRepository;
         private readonly IArtworkRelationsRepository _artworkRelationsRepository;
+        private readonly IJocondeXmlParser _xmlParser;
+        private readonly HttpClient _httpClient;
 
         public AdvancedDataImportService(
             ILogger<AdvancedDataImportService> logger,
@@ -34,16 +38,20 @@ namespace OpenJoconde.Infrastructure.Services
             IDomainRepository domainRepository,
             ITechniqueRepository techniqueRepository,
             IPeriodRepository periodRepository,
-            IArtworkRelationsRepository artworkRelationsRepository)
+            IArtworkRelationsRepository artworkRelationsRepository,
+            IJocondeXmlParser xmlParser,
+            HttpClient httpClient)
         {
-            _logger = logger;
-            _artworkRepository = artworkRepository;
-            _artistRepository = artistRepository;
-            _museumRepository = museumRepository;
-            _domainRepository = domainRepository;
-            _techniqueRepository = techniqueRepository;
-            _periodRepository = periodRepository;
-            _artworkRelationsRepository = artworkRelationsRepository;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _artworkRepository = artworkRepository ?? throw new ArgumentNullException(nameof(artworkRepository));
+            _artistRepository = artistRepository ?? throw new ArgumentNullException(nameof(artistRepository));
+            _museumRepository = museumRepository ?? throw new ArgumentNullException(nameof(museumRepository));
+            _domainRepository = domainRepository ?? throw new ArgumentNullException(nameof(domainRepository));
+            _techniqueRepository = techniqueRepository ?? throw new ArgumentNullException(nameof(techniqueRepository));
+            _periodRepository = periodRepository ?? throw new ArgumentNullException(nameof(periodRepository));
+            _artworkRelationsRepository = artworkRelationsRepository ?? throw new ArgumentNullException(nameof(artworkRelationsRepository));
+            _xmlParser = xmlParser ?? throw new ArgumentNullException(nameof(xmlParser));
+            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         }
 
         /// <summary>
@@ -239,6 +247,109 @@ namespace OpenJoconde.Infrastructure.Services
             }
 
             _logger.LogInformation("Importation de {Count} œuvres et leurs relations terminée", totalProcessed);
+        }
+
+        /// <summary>
+        /// Télécharge le fichier Joconde depuis l'URL spécifiée
+        /// </summary>
+        public async Task<string> DownloadJocondeDataAsync(string url, string destinationPath, CancellationToken cancellationToken = default)
+        {
+            _logger.LogInformation("Téléchargement des données Joconde depuis {Url}", url);
+
+            if (string.IsNullOrEmpty(url))
+                throw new ArgumentException("L'URL ne peut pas être vide", nameof(url));
+
+            if (string.IsNullOrEmpty(destinationPath))
+                throw new ArgumentException("Le chemin de destination ne peut pas être vide", nameof(destinationPath));
+
+            // Créer le répertoire de destination s'il n'existe pas
+            var directory = Path.GetDirectoryName(destinationPath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                Directory.CreateDirectory(directory);
+
+            try
+            {
+                // Télécharger le fichier
+                var response = await _httpClient.GetAsync(url, cancellationToken);
+                response.EnsureSuccessStatusCode();
+
+                // Écrire le contenu dans le fichier de destination
+                using var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None);
+                await response.Content.CopyToAsync(fileStream, cancellationToken);
+
+                _logger.LogInformation("Données Joconde téléchargées avec succès dans {FilePath}", destinationPath);
+                return destinationPath;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors du téléchargement des données Joconde: {Message}", ex.Message);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Importe les données depuis un fichier XML
+        /// </summary>
+        public async Task<ImportReport> ImportFromXmlFileAsync(string xmlFilePath, Action<string, int, int> progressCallback = null, CancellationToken cancellationToken = default)
+        {
+            _logger.LogInformation("Démarrage de l'importation depuis le fichier XML {FilePath}", xmlFilePath);
+            
+            var report = new ImportReport
+            {
+                ImportDate = DateTime.UtcNow,
+                Success = true
+            };
+            
+            var stopwatch = Stopwatch.StartNew();
+            
+            try
+            {
+                // Vérifier l'existence du fichier
+                if (!File.Exists(xmlFilePath))
+                {
+                    throw new FileNotFoundException("Le fichier XML Joconde n'existe pas", xmlFilePath);
+                }
+                
+                // Analyser le fichier XML avec le parser dédié
+                var parsingResult = await _xmlParser.ParseAsync(xmlFilePath, (current, total) => 
+                {
+                    progressCallback?.Invoke("Analyse XML", current, total);
+                }, cancellationToken);
+                
+                // Mettre à jour le rapport avec le nombre d'éléments trouvés
+                report.TotalArtworks = parsingResult.Artworks.Count;
+                report.TotalArtists = parsingResult.Artists.Count;
+                report.TotalMuseums = parsingResult.Museums.Count;
+                report.TotalDomains = parsingResult.Domains.Count;
+                report.TotalTechniques = parsingResult.Techniques.Count;
+                report.TotalPeriods = parsingResult.Periods.Count;
+                
+                // Importer les données
+                var importStats = await ImportDataAsync(parsingResult, progressCallback, cancellationToken);
+                
+                // Mettre à jour le rapport avec les statistiques d'importation
+                report.ImportedArtworks = importStats.ArtworksImported;
+                report.ImportedArtists = importStats.ArtistsImported;
+                report.ImportedMuseums = importStats.MuseumsImported;
+                report.ImportedDomains = importStats.DomainsImported;
+                report.ImportedTechniques = importStats.TechniquesImported;
+                report.ImportedPeriods = importStats.PeriodsImported;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de l'importation depuis le fichier XML: {Message}", ex.Message);
+                report.Errors++;
+                report.Success = false;
+                report.ErrorMessage = ex.Message;
+            }
+            finally
+            {
+                stopwatch.Stop();
+                report.Duration = stopwatch.Elapsed;
+                _logger.LogInformation("Importation depuis le fichier XML terminée en {Duration}", report.Duration);
+            }
+            
+            return report;
         }
     }
 }

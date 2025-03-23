@@ -88,10 +88,8 @@ namespace OpenJoconde.API.Controllers
                 var tempDirectory = Path.Combine(Path.GetTempPath(), "OpenJoconde");
                 Directory.CreateDirectory(tempDirectory);
                 
-                var tempFilePath = Path.Combine(tempDirectory, $"joconde_{DateTime.Now:yyyyMMdd_HHmmss}.xml");
-
                 // Télécharger le fichier XML
-                await _dataImportService.DownloadJocondeDataAsync(jocondeUrl, tempFilePath, cancellationToken);
+                var tempFilePath = await _dataImportService.DownloadJocondeDataAsync(jocondeUrl, Path.Combine(tempDirectory, $"joconde_{DateTime.Now:yyyyMMdd_HHmmss}.xml"), cancellationToken);
                 
                 // Importer les données avec le service avancé
                 var report = await _dataImportService.ImportFromXmlFileAsync(
