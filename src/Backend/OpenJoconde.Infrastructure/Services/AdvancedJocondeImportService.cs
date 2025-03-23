@@ -83,16 +83,84 @@ namespace OpenJoconde.Infrastructure.Services
         }
 
         /// <summary>
-        /// Importe les données Joconde à partir d'un fichier XML
+        /// Importe les données du résultat de parsing dans la base de données
         /// </summary>
-        /// <param name="xmlFilePath">Chemin du fichier XML</param>
-        /// <param name="progressCallback">Callback de progression</param>
+        /// <param name="parsingResult">Résultat du parsing contenant les entités à importer</param>
+        /// <param name="progressCallback">Callback pour suivre la progression</param>
         /// <param name="cancellationToken">Token d'annulation</param>
-        /// <returns>Rapport d'importation</returns>
-        public async Task<ImportReport> ImportFromXmlFileAsync(
-            string xmlFilePath, 
-            Action<string, int, int> progressCallback = null, 
-            CancellationToken cancellationToken = default)
+        /// <returns>Statistiques sur l'importation</returns>
+        public async Task<ImportStatistics> ImportDataAsync(
+        ParsingResult parsingResult, 
+        Action<string, int, int>? progressCallback = null, 
+        CancellationToken cancellationToken = default)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var stats = new ImportStatistics();
+
+        try
+        {
+            // Désactiver le suivi des changements pour améliorer les performances
+            _dbContext.ChangeTracker.AutoDetectChangesEnabled = false;
+
+            // 1. Importer les domaines
+            _logger.LogInformation("Importation des domaines");
+            await ImportDomainsAsync(parsingResult.Domains, progressCallback, cancellationToken);
+            stats.DomainsImported = parsingResult.Domains.Count;
+
+            // 2. Importer les techniques
+            _logger.LogInformation("Importation des techniques");
+            await ImportTechniquesAsync(parsingResult.Techniques, progressCallback, cancellationToken);
+            stats.TechniquesImported = parsingResult.Techniques.Count;
+
+            // 3. Importer les périodes
+            _logger.LogInformation("Importation des périodes");
+            await ImportPeriodsAsync(parsingResult.Periods, progressCallback, cancellationToken);
+            stats.PeriodsImported = parsingResult.Periods.Count;
+
+            // 4. Importer les musées
+            _logger.LogInformation("Importation des musées");
+            await ImportMuseumsAsync(parsingResult.Museums, progressCallback, cancellationToken);
+            stats.MuseumsImported = parsingResult.Museums.Count;
+
+            // 5. Importer les artistes
+            _logger.LogInformation("Importation des artistes");
+            await ImportArtistsAsync(parsingResult.Artists, progressCallback, cancellationToken);
+            stats.ArtistsImported = parsingResult.Artists.Count;
+
+            // 6. Importer les œuvres et leurs relations
+            _logger.LogInformation("Importation des œuvres");
+            await ImportArtworksAsync(parsingResult.Artworks, progressCallback, cancellationToken);
+            stats.ArtworksImported = parsingResult.Artworks.Count;
+
+            // Réactiver le suivi des changements
+            _dbContext.ChangeTracker.AutoDetectChangesEnabled = true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erreur lors de l'importation des données: {Message}", ex.Message);
+            throw;
+        }
+        finally
+        {
+            stopwatch.Stop();
+            stats.Duration = stopwatch.Elapsed;
+            _logger.LogInformation("Importation terminée en {Duration}", stats.Duration);
+        }
+
+        return stats;
+    }
+    
+    /// <summary>
+    /// Importe les données Joconde à partir d'un fichier XML
+    /// </summary>
+    /// <param name="xmlFilePath">Chemin du fichier XML</param>
+    /// <param name="progressCallback">Callback de progression</param>
+    /// <param name="cancellationToken">Token d'annulation</param>
+    /// <returns>Rapport d'importation</returns>
+    public async Task<ImportReport> ImportFromXmlFileAsync(
+        string xmlFilePath, 
+        Action<string, int, int>? progressCallback = null, 
+        CancellationToken cancellationToken = default)
         {
             var stopwatch = Stopwatch.StartNew();
             var report = new ImportReport
@@ -158,7 +226,7 @@ namespace OpenJoconde.Infrastructure.Services
         /// </summary>
         private async Task ImportEntitiesAsync(
             ParsingResult parsingResult,
-            Action<string, int, int> progressCallback = null,
+            Action<string, int, int>? progressCallback = null,
             CancellationToken cancellationToken = default)
         {
             // Désactiver le suivi des changements pour améliorer les performances
@@ -197,7 +265,7 @@ namespace OpenJoconde.Infrastructure.Services
         /// </summary>
         private async Task ImportDomainsAsync(
             List<Domain> domains,
-            Action<string, int, int> progressCallback = null,
+            Action<string, int, int>? progressCallback = null,
             CancellationToken cancellationToken = default)
         {
             if (domains.Count == 0)
@@ -250,7 +318,7 @@ namespace OpenJoconde.Infrastructure.Services
         /// </summary>
         private async Task ImportTechniquesAsync(
             List<Technique> techniques,
-            Action<string, int, int> progressCallback = null,
+            Action<string, int, int>? progressCallback = null,
             CancellationToken cancellationToken = default)
         {
             if (techniques.Count == 0)
@@ -303,7 +371,7 @@ namespace OpenJoconde.Infrastructure.Services
         /// </summary>
         private async Task ImportPeriodsAsync(
             List<Period> periods,
-            Action<string, int, int> progressCallback = null,
+            Action<string, int, int>? progressCallback = null,
             CancellationToken cancellationToken = default)
         {
             if (periods.Count == 0)
@@ -356,7 +424,7 @@ namespace OpenJoconde.Infrastructure.Services
         /// </summary>
         private async Task ImportMuseumsAsync(
             List<Museum> museums,
-            Action<string, int, int> progressCallback = null,
+            Action<string, int, int>? progressCallback = null,
             CancellationToken cancellationToken = default)
         {
             if (museums.Count == 0)
@@ -412,7 +480,7 @@ namespace OpenJoconde.Infrastructure.Services
         /// </summary>
         private async Task ImportArtistsAsync(
             List<Artist> artists,
-            Action<string, int, int> progressCallback = null,
+            Action<string, int, int>? progressCallback = null,
             CancellationToken cancellationToken = default)
         {
             if (artists.Count == 0)
@@ -476,7 +544,7 @@ namespace OpenJoconde.Infrastructure.Services
         /// </summary>
         private async Task ImportArtworksAsync(
             List<Artwork> artworks,
-            Action<string, int, int> progressCallback = null,
+            Action<string, int, int>? progressCallback = null,
             CancellationToken cancellationToken = default)
         {
             if (artworks.Count == 0)
@@ -600,7 +668,7 @@ namespace OpenJoconde.Infrastructure.Services
         /// <summary>
         /// Nom du fichier importé
         /// </summary>
-        public string FileName { get; set; }
+        public string? FileName { get; set; }
 
         /// <summary>
         /// Nombre total d'œuvres dans le fichier
@@ -645,7 +713,7 @@ namespace OpenJoconde.Infrastructure.Services
         /// <summary>
         /// Message d'erreur en cas d'échec
         /// </summary>
-        public string ErrorMessage { get; set; }
+        public string? ErrorMessage { get; set; }
 
         /// <summary>
         /// Durée de l'importation

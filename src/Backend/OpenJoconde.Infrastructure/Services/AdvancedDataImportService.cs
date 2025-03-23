@@ -51,7 +51,7 @@ namespace OpenJoconde.Infrastructure.Services
         /// </summary>
         public async Task<ImportStatistics> ImportDataAsync(
             ParsingResult parsingResult, 
-            Action<string, int, int> progressCallback = null, 
+            Action<string, int, int>? progressCallback = null, 
             CancellationToken cancellationToken = default)
         {
             var stopwatch = Stopwatch.StartNew();
@@ -102,7 +102,7 @@ namespace OpenJoconde.Infrastructure.Services
         /// </summary>
         private async Task ImportReferenceEntitiesAsync(
             ParsingResult parsingResult,
-            Action<string, int, int> progressCallback,
+            Action<string, int, int>? progressCallback,
             CancellationToken cancellationToken)
         {
             // Importer les domaines
@@ -156,7 +156,7 @@ namespace OpenJoconde.Infrastructure.Services
         /// </summary>
         private async Task ImportArtworksAsync(
             List<Artwork> artworks,
-            Action<string, int, int> progressCallback,
+            Action<string, int, int>? progressCallback,
             CancellationToken cancellationToken)
         {
             if (!artworks.Any())
