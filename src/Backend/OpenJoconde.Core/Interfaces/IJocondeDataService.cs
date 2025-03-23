@@ -6,42 +6,48 @@ using System.Threading.Tasks;
 namespace OpenJoconde.Core.Interfaces
 {
     /// <summary>
-    /// Interface pour le service de gestion des données Joconde
+    /// Interface pour le service de données Joconde
     /// </summary>
     public interface IJocondeDataService
     {
         /// <summary>
         /// Télécharge les données Joconde depuis l'URL spécifiée
         /// </summary>
-        /// <param name="url">URL du fichier XML Joconde</param>
-        /// <param name="destinationPath">Chemin de destination pour le fichier téléchargé</param>
-        /// <param name="cancellationToken">Token d'annulation</param>
-        /// <returns>Chemin du fichier téléchargé</returns>
         Task<string> DownloadJocondeDataAsync(string url, string destinationPath, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Analyse un fichier XML Joconde et extrait les oeuvres d'art
+        /// Analyse un fichier XML Joconde et extrait les oeuvres d'art (méthode maintenue pour compatibilité)
         /// </summary>
-        /// <param name="xmlFilePath">Chemin du fichier XML</param>
-        /// <param name="cancellationToken">Token d'annulation</param>
-        /// <returns>Liste des oeuvres d'art extraites</returns>
         Task<IEnumerable<Artwork>> ParseJocondeXmlAsync(string xmlFilePath, CancellationToken cancellationToken = default);
+        
+        /// <summary>
+        /// Analyse un fichier JSON Joconde et extrait les oeuvres d'art
+        /// </summary>
+        Task<IEnumerable<Artwork>> ParseJocondeJsonAsync(string jsonFilePath, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Importe les oeuvres d'art dans la base de données
         /// </summary>
-        /// <param name="artworks">Liste des oeuvres d'art à importer</param>
-        /// <param name="cancellationToken">Token d'annulation</param>
-        /// <returns>Nombre d'oeuvres importées</returns>
         Task<int> ImportArtworksAsync(IEnumerable<Artwork> artworks, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Exécute le processus complet de mise à jour des données Joconde
         /// </summary>
-        /// <param name="xmlUrl">URL du fichier XML Joconde</param>
-        /// <param name="tempDirectory">Répertoire temporaire pour stocker le fichier téléchargé</param>
-        /// <param name="cancellationToken">Token d'annulation</param>
-        /// <returns>Rapport d'importation avec les statistiques</returns>
-        Task<ImportReport> UpdateJocondeDataAsync(string xmlUrl, string tempDirectory, CancellationToken cancellationToken = default);
+        Task<ImportReport> UpdateJocondeDataAsync(string dataUrl, string tempDirectory, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Télécharge le dernier fichier Joconde disponible
+        /// </summary>
+        Task<string> DownloadLatestFileAsync(string destinationDirectory, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Importe les données depuis un fichier XML
+        /// </summary>
+        Task<ImportReport> ImportFromXmlFileAsync(string xmlFilePath, CancellationToken cancellationToken = default);
+        
+        /// <summary>
+        /// Importe les données depuis un fichier JSON
+        /// </summary>
+        Task<ImportReport> ImportFromJsonFileAsync(string jsonFilePath, CancellationToken cancellationToken = default);
     }
 }
