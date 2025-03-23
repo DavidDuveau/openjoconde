@@ -1,10 +1,13 @@
 using Microsoft.Extensions.Logging;
 using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Core.Models;
+using OpenJoconde.Core.Parsers;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 
@@ -101,6 +104,47 @@ namespace OpenJoconde.Infrastructure.Services
             }
         }
 
+        /// <summary>
+        /// Importe les données du résultat de parsing dans la base de données
+        /// </summary>
+        /// <param name="parsingResult">Résultat du parsing contenant les entités à importer</param>
+        /// <param name="progressCallback">Callback pour suivre la progression</param>
+        /// <param name="cancellationToken">Token d'annulation</param>
+        /// <returns>Statistiques sur l'importation</returns>
+        public async Task<ImportStatistics> ImportDataAsync(
+            ParsingResult parsingResult, 
+            Action<string, int, int> progressCallback = null, 
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                _logger.LogInformation("Starting import from parsing result");
+                var stopwatch = Stopwatch.StartNew();
+                var stats = new ImportStatistics();
+                
+                // Cette implémentation simple n'importe que les œuvres
+                // Une implémentation plus complète importerait toutes les entités (artistes, musées, etc.)
+                
+                progressCallback?.Invoke("Importing artworks", 0, parsingResult.Artworks.Count);
+                
+                // Bulk insert the artworks
+                var importedCount = await _artworkRepository.BulkUpsertAsync(parsingResult.Artworks);
+                
+                progressCallback?.Invoke("Importing artworks", parsingResult.Artworks.Count, parsingResult.Artworks.Count);
+                
+                stats.ArtworksImported = importedCount;
+                stats.Duration = stopwatch.Elapsed;
+                
+                _logger.LogInformation("Imported {Count} artworks in {Duration}", importedCount, stats.Duration);
+                return stats;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error importing from parsing result");
+                throw;
+            }
+        }
+        
         /// <summary>
         /// Run the complete import process: download the latest file and import it
         /// </summary>
