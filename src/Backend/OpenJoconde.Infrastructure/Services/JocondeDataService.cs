@@ -323,7 +323,10 @@ namespace OpenJoconde.Infrastructure.Services
                 }
                 
                 // Analyser le fichier XML avec le parser dédié
-                var parsingResult = await _xmlParser.ParseAsync(xmlFilePath, null, cancellationToken);
+                var parsingResult = await _xmlParser.ParseAsync(xmlFilePath, (current, total) => 
+                {
+                    // Option pour ajouter un callback de progression ici si nécessaire
+                }, cancellationToken);
                 
                 // Mettre à jour le rapport avec le nombre d'éléments trouvés
                 report.TotalArtworks = parsingResult.Artworks.Count;
