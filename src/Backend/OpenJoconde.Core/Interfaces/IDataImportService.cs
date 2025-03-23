@@ -22,6 +22,24 @@ namespace OpenJoconde.Core.Interfaces
             ParsingResult parsingResult, 
             Action<string, int, int> progressCallback = null, 
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Télécharge les données Joconde depuis une URL
+        /// </summary>
+        /// <param name="url">URL du fichier à télécharger</param>
+        /// <param name="destinationPath">Chemin de destination pour le fichier</param>
+        /// <param name="cancellationToken">Token d'annulation</param>
+        /// <returns>Chemin du fichier téléchargé</returns>
+        Task<string> DownloadJocondeDataAsync(string url, string destinationPath, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Importe les données depuis un fichier XML
+        /// </summary>
+        /// <param name="xmlFilePath">Chemin du fichier XML à importer</param>
+        /// <param name="progressCallback">Callback pour suivre la progression</param>
+        /// <param name="cancellationToken">Token d'annulation</param>
+        /// <returns>Rapport d'importation</returns>
+        Task<ImportReport> ImportFromXmlFileAsync(string xmlFilePath, Action<string, int, int> progressCallback = null, CancellationToken cancellationToken = default);
     }
 
     /// <summary>
