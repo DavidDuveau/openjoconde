@@ -212,15 +212,7 @@ namespace OpenJoconde.Infrastructure.Services
         }
 
         /// <inheritdoc />
-        Task<ImportReport> IJocondeDataService.UpdateJocondeDataAsync(string xmlUrl, string tempDirectory, CancellationToken cancellationToken)
-        {
-            return UpdateJocondeDataInternalAsync(xmlUrl, tempDirectory, cancellationToken);
-        }
-
-        /// <summary>
-        /// Implémentation interne de la mise à jour des données Joconde
-        /// </summary>
-        private async Task<ImportReport> UpdateJocondeDataInternalAsync(string xmlUrl, string tempDirectory, CancellationToken cancellationToken = default)
+        public async Task<ImportReport> UpdateJocondeDataAsync(string xmlUrl, string tempDirectory, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Démarrage de la mise à jour des données Joconde");
             
