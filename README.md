@@ -191,6 +191,7 @@ openjoconde/
 ### Corrections techniques dans le backend
 - Ajout des repositories manquants (DomainRepository, TechniqueRepository, PeriodRepository)
 - Mise à jour des services d'importation de données pour corriger les problèmes de nullabilité
+- Mise à jour de la classe ImportReport avec les propriétés manquantes pour le suivi des entités (artistes, musées, domaines, etc.)
 - Adaptation des services pour supporter le format JSON
 - Implémentation du service de synchronisation automatique (AutoSyncService)
 - Ajout des méthodes manquantes dans l'interface IDataImportService et leur implémentation
