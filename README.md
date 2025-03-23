@@ -183,8 +183,10 @@ openjoconde/
 - Schéma amélioré pour la collecte de statistiques d'utilisation
 
 ### Corrections techniques dans le backend
+- Ajout des repositories manquants (DomainRepository, TechniqueRepository, PeriodRepository)
 - Mise à jour des services d'importation de données pour corriger les problèmes de nullabilité
-- Correction des signatures de méthodes dans les services JocondeDataService et JocondeDataServiceAlt
+- Correction des signatures de méthodes dans les services JocondeDataService et JocondeXmlParserService
+- Implémentation du service de synchronisation automatique (AutoSyncService)
 - Amélioration de la robustesse du code avec utilisation systématique des types nullables (nullable reference types)
 - Préparation à la mise à jour vers .NET 8 (actuellement en .NET 7)
 

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Core.Models;
+using OpenJoconde.Core.Parsers;
 using OpenJoconde.Infrastructure.Data;
 using System;
 using System.Collections.Generic;
@@ -22,15 +23,18 @@ namespace OpenJoconde.Infrastructure.Services
         private readonly OpenJocondeDbContext _dbContext;
         private readonly ILogger<JocondeDataService> _logger;
         private readonly HttpClient _httpClient;
+        private readonly IJocondeXmlParser _xmlParser;
 
         public JocondeDataService(
             OpenJocondeDbContext dbContext,
             ILogger<JocondeDataService> logger,
-            HttpClient httpClient)
+            HttpClient httpClient,
+            IJocondeXmlParser xmlParser)
         {
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            _xmlParser = xmlParser ?? throw new ArgumentNullException(nameof(xmlParser));
         }
 
         /// <summary>
@@ -258,6 +262,95 @@ namespace OpenJoconde.Infrastructure.Services
                 stopwatch.Stop();
                 report.Duration = stopwatch.Elapsed;
                 _logger.LogInformation("Mise à jour des données Joconde terminée en {Duration}", report.Duration);
+            }
+            
+            return report;
+        }
+
+        /// <summary>
+        /// Télécharge le dernier fichier Joconde disponible
+        /// </summary>
+        public async Task<string> DownloadLatestFileAsync(string destinationDirectory, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                _logger.LogInformation("Téléchargement du dernier fichier Joconde disponible");
+                
+                // URL par défaut pour les données Joconde (à personnaliser selon les besoins)
+                var url = "https://data.culture.gouv.fr/api/datasets/1.0/joconde-catalogue-collectif-des-collections-des-musees-de-france/attachments/base_joconde_extrait_xml_zip";
+                
+                // Créer le répertoire de destination s'il n'existe pas
+                if (!Directory.Exists(destinationDirectory))
+                {
+                    Directory.CreateDirectory(destinationDirectory);
+                }
+                
+                // Générer un nom de fichier avec timestamp
+                var fileName = $"joconde_{DateTime.Now:yyyyMMdd_HHmmss}.xml";
+                var filePath = Path.Combine(destinationDirectory, fileName);
+                
+                // Télécharger le fichier
+                return await DownloadJocondeDataAsync(url, filePath, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors du téléchargement du dernier fichier Joconde: {Message}", ex.Message);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Importe les données depuis un fichier XML
+        /// </summary>
+        public async Task<ImportReport> ImportFromXmlFileAsync(string xmlFilePath, CancellationToken cancellationToken = default)
+        {
+            _logger.LogInformation("Démarrage de l'importation depuis le fichier XML {FilePath}", xmlFilePath);
+            
+            var report = new ImportReport
+            {
+                ImportDate = DateTime.UtcNow,
+                Success = true
+            };
+            
+            var stopwatch = Stopwatch.StartNew();
+            
+            try
+            {
+                // Vérifier l'existence du fichier
+                if (!File.Exists(xmlFilePath))
+                {
+                    throw new FileNotFoundException("Le fichier XML Joconde n'existe pas", xmlFilePath);
+                }
+                
+                // Analyser le fichier XML avec le parser dédié
+                var parsingResult = await _xmlParser.ParseAsync(xmlFilePath, null, cancellationToken);
+                
+                // Mettre à jour le rapport avec le nombre d'éléments trouvés
+                report.TotalArtworks = parsingResult.Artworks.Count;
+                report.TotalArtists = parsingResult.Artists.Count;
+                report.TotalMuseums = parsingResult.Museums.Count;
+                report.TotalDomains = parsingResult.Domains.Count;
+                report.TotalTechniques = parsingResult.Techniques.Count;
+                report.TotalPeriods = parsingResult.Periods.Count;
+                
+                // Importer les œuvres
+                report.ImportedArtworks = await ImportArtworksAsync(parsingResult.Artworks, cancellationToken);
+                
+                // Pour un rapport complet, il faudrait aussi suivre l'importation des autres entités
+                // Ce code simplifié se concentre uniquement sur les œuvres
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de l'importation depuis le fichier XML: {Message}", ex.Message);
+                report.Errors++;
+                report.Success = false;
+                report.ErrorMessage = ex.Message;
+            }
+            finally
+            {
+                stopwatch.Stop();
+                report.Duration = stopwatch.Elapsed;
+                _logger.LogInformation("Importation depuis le fichier XML terminée en {Duration}", report.Duration);
             }
             
             return report;
