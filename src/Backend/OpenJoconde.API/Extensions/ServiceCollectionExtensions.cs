@@ -32,7 +32,7 @@ namespace OpenJoconde.API.Extensions
                     provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ArtworkRelationsRepository>>()));
 
             // Services
-            services.AddScoped<IJocondeDataService, JocondeDataService>();
+            services.AddScoped<IJocondeDataService, JocondeDataServiceAlt>();
             services.AddScoped<IJocondeXmlParser, JocondeXmlParserService>();
             services.AddScoped<IDataImportService, AdvancedDataImportService>();
 
