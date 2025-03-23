@@ -46,7 +46,9 @@ cd openjoconde
 1. Créer une base de données PostgreSQL nommée `openjoconde`
 2. Exécuter le script de création dans `src/Backend/OpenJoconde.Infrastructure/Database/CreateDatabase.sql`
 3. Exécuter le script de migration initiale dans `src/Backend/OpenJoconde.Infrastructure/Database/Migrations/Initial_Migration.sql`
-4. Mettre à jour la chaîne de connexion dans `src/Backend/OpenJoconde.API/appsettings.json`
+4. Exécuter le script de mise à jour v1.1 dans `src/Backend/OpenJoconde.Infrastructure/Database/Migrations/Updates/UpdateSchema_v1.1.sql`
+5. (Optionnel) Ajouter des données de test avec `src/Backend/OpenJoconde.Infrastructure/Database/Migrations/Updates/InsertTestData_v1.1.sql`
+6. Mettre à jour la chaîne de connexion dans `src/Backend/OpenJoconde.API/appsettings.json`
 
 ### Backend (.NET)
 
@@ -82,6 +84,8 @@ openjoconde/
 │   │   │   ├── Services/                # Services d'infrastructure
 │   │   │   └── Database/                # Scripts de base de données
 │   │   │       ├── Migrations/          # Scripts de migration
+│   │   │       │   ├── Updates/         # Scripts de mise à jour
+│   │   │       │   └── Initial_Migration.sql   # Migration initiale
 │   │   │       └── CreateDatabase.sql   # Script initial
 │   │   └── OpenJoconde.Tests/           # Tests
 │   └── Frontend/               # Frontend Vue.js
@@ -103,6 +107,7 @@ openjoconde/
 - Visualisation détaillée des œuvres d'art
 - Navigation par musée, artiste, période ou technique
 - API REST pour accéder aux données
+- Statistiques d'utilisation et analyse des données
 
 ## Objectifs du projet
 
@@ -137,6 +142,8 @@ openjoconde/
    - Service de peuplement de la base de données ✅
    - API REST (implémentation complète) ✅
    - Documentation OpenAPI/Swagger ✅
+   - Optimisation de la base de données ✅
+   - Mise à jour du schéma v1.1 avec fonctionnalités avancées ✅
 
 2. **Phase 4 : Développement du frontend** 🔄 (40%)
    - Architecture et composants de base ✅
@@ -165,6 +172,21 @@ openjoconde/
    - Préparation des environnements de production
    - Documentation finale
    - Formation et transfert de connaissances
+
+## Dernières mises à jour (23/03/2025)
+
+### Améliorations de la base de données (v1.1)
+- Ajout de tables pour la gestion des métadonnées et synchronisation
+- Support pour les images multiples par œuvre
+- Système de tags/mots-clés
+- Optimisation des requêtes textuelles avec des index GIN
+- Schéma amélioré pour la collecte de statistiques d'utilisation
+
+### Prochains développements
+- Mise à jour des modèles C# pour refléter les nouvelles tables
+- Extension des API REST pour exploiter les nouvelles fonctionnalités
+- Interface frontend pour la visualisation des images multiples
+- Tableau de bord d'administration pour suivre les synchronisations
 
 ## Licence
 
