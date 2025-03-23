@@ -131,29 +131,30 @@ openjoconde/
 
 ### Phase en cours
 
-1. **Phase 3 : Développement du backend** 🔄 (90%)
+1. **Phase 3 : Développement du backend** ✅ (100%)
    - Service de téléchargement des données ✅
    - Parseur XML Joconde ✅
    - Service de peuplement de la base de données ✅
-   - API REST (implémentation partielle) 🔄
+   - API REST (implémentation complète) ✅
+   - Documentation OpenAPI/Swagger ✅
 
-2. **Phase 4 : Développement du frontend** 🔄 (30%)
+2. **Phase 4 : Développement du frontend** 🔄 (40%)
    - Architecture et composants de base ✅
    - Interface de recherche (en cours) 🔄
    - Visualisation des œuvres (en cours) 🔄
-   - Navigation thématique (à venir) ⏳
+   - Navigation thématique (en cours) 🔄
 
 ### Prochaines étapes
 
-1. **Finalisation du Backend**
-   - Complétion des endpoints API
-   - Documentation OpenAPI/Swagger
-   - Tests d'intégration des API
-
-2. **Avancement du Frontend**
+1. **Finalisation du Frontend**
    - Finalisation de l'interface de recherche avancée
    - Amélioration de la visualisation détaillée des œuvres
-   - Implémentation de la navigation thématique
+   - Implémentation complète de la navigation thématique
+
+2. **Tests du Backend**
+   - Mise en place des tests unitaires
+   - Tests d'intégration des API
+   - Tests de performance
 
 3. **Phase 5 : Tests et optimisation** ⏳
    - Tests unitaires et d'intégration

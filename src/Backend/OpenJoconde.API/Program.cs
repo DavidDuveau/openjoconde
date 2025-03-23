@@ -30,6 +30,11 @@ builder.Services.AddSwaggerGen(c =>
             Email = "contact@openjoconde.org"
         }
     });
+    
+    // Activation des commentaires XML pour la documentation Swagger
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = System.IO.Path.Combine(AppContext.BaseDirectory, xmlFile);
+    c.IncludeXmlComments(xmlPath);
 });
 
 // Database Configuration
