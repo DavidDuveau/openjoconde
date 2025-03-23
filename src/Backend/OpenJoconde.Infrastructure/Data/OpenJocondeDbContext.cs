@@ -20,6 +20,8 @@ namespace OpenJoconde.Infrastructure.Data
         public DbSet<Technique> Techniques { get; set; }
         public DbSet<Period> Periods { get; set; }
         public DbSet<Museum> Museums { get; set; }
+        public DbSet<JocondeMetadata> JocondeMetadata { get; set; }
+        public DbSet<DataSyncLog> DataSyncLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -109,6 +111,26 @@ namespace OpenJoconde.Infrastructure.Data
                 entity.Property(e => e.ZipCode).HasMaxLength(20);
                 entity.HasIndex(e => e.Name);
                 entity.HasIndex(e => e.City);
+            });
+
+            // Configure JocondeMetadata entity
+            modelBuilder.Entity<JocondeMetadata>(entity =>
+            {
+                entity.ToTable("JocondeMetadata");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).ValueGeneratedOnAdd();
+                entity.Property(e => e.SourceVersion).HasMaxLength(100);
+                entity.Property(e => e.SchemaVersion).HasMaxLength(50);
+            });
+
+            // Configure DataSyncLog entity
+            modelBuilder.Entity<DataSyncLog>(entity =>
+            {
+                entity.ToTable("DataSyncLog");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).ValueGeneratedOnAdd();
+                entity.Property(e => e.SyncType).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.Status).HasMaxLength(20).IsRequired();
             });
 
             // Configure many-to-many relationships
