@@ -28,23 +28,15 @@ namespace OpenJoconde.Infrastructure.Services
         /// </summary>
         public async Task<ParsingResult> ParseAsync(
             string xmlFilePath, 
-            Action<string, int, int>? progressCallback = null, 
+            Action<int, int> progressCallback = null, 
             CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Démarrage de l'analyse du fichier XML {FilePath}", xmlFilePath);
 
             try
             {
-                // Adapter le callback de progression pour le parser sous-jacent
-                Action<int, int>? innerCallback = null;
-                if (progressCallback != null)
-                {
-                    innerCallback = (current, total) => 
-                        progressCallback("Analyse XML", current, total);
-                }
-
                 // Utiliser le parser sous-jacent pour faire le travail
-                var result = await _parser.ParseAsync(xmlFilePath, innerCallback, cancellationToken);
+                var result = await _parser.ParseAsync(xmlFilePath, progressCallback, cancellationToken);
                 
                 _logger.LogInformation("Analyse terminée: {ArtworksCount} œuvres, {ArtistsCount} artistes, " +
                                      "{MuseumsCount} musées, {DomainsCount} domaines, " +
