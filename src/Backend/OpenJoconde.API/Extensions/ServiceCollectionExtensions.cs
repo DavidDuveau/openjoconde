@@ -25,7 +25,7 @@ namespace OpenJoconde.API.Extensions
             services.AddScoped<IPeriodRepository, PeriodRepository>();
             
             // Configuration de la chaîne de connexion pour le repository des relations
-            var connectionString = configuration.GetConnectionString("DefaultConnection");
+            var connectionString = configuration.GetConnectionString("DefaultConnection") ?? throw new System.InvalidOperationException("La chaîne de connexion 'DefaultConnection' n'est pas configurée");
             services.AddScoped<IArtworkRelationsRepository>(provider => 
                 new ArtworkRelationsRepository(
                     connectionString, 

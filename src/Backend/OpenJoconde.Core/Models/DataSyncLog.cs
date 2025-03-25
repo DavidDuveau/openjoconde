@@ -15,12 +15,17 @@ namespace OpenJoconde.Core.Models
         /// <summary>
         /// Type de synchronisation ('Full' ou 'Incremental')
         /// </summary>
-        public string SyncType { get; set; }
+        public string SyncType { get; set; } = string.Empty;
         
         /// <summary>
         /// Date et heure de début de la synchronisation
         /// </summary>
         public DateTime StartedAt { get; set; }
+        
+        /// <summary>
+        /// Date et heure de création du log
+        /// </summary>
+        public DateTime CreatedAt { get; set; }
         
         /// <summary>
         /// Date et heure de début (alias pour compatibilité avec AutoSyncService)
@@ -46,6 +51,11 @@ namespace OpenJoconde.Core.Models
         /// Nombre d'artistes traités pendant la synchronisation
         /// </summary>
         public int ArtistsProcessed { get; set; }
+        
+        /// <summary>
+        /// Nombre total d'items traités pendant la synchronisation
+        /// </summary>
+        public int ItemsProcessed { get => ArtworksProcessed + ArtistsProcessed; }
         
         /// <summary>
         /// Indique si la synchronisation s'est terminée avec succès

@@ -34,7 +34,7 @@ namespace OpenJoconde.API.Controllers
         public async Task<ActionResult<PaginatedResult<Artwork>>> GetArtworks(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10,
-            [FromQuery] string search = null)
+            [FromQuery] string? search = null)
         {
             try
             {
@@ -130,7 +130,7 @@ namespace OpenJoconde.API.Controllers
         /// <summary>
         /// Éléments de la page courante
         /// </summary>
-        public IEnumerable<T> Items { get; set; }
+        public required IEnumerable<T> Items { get; set; }
 
         /// <summary>
         /// Nombre total d'éléments (toutes pages confondues)

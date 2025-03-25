@@ -98,7 +98,8 @@ namespace OpenJoconde.API.Controllers
                     SyncType = "Manual",
                     StartedAt = DateTime.UtcNow,
                     Status = "Running",
-                    ItemsProcessed = 0,
+                    ArtworksProcessed = 0,
+                    ArtistsProcessed = 0,
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -116,7 +117,7 @@ namespace OpenJoconde.API.Controllers
                     try
                     {
                         // Configuration
-                        var dataSourceUrl = _configuration["JocondeData:SourceUrl"];
+                        var dataSourceUrl = _configuration["JocondeData:SourceUrl"] ?? throw new InvalidOperationException("L'URL source des données Joconde n'est pas configurée");
                         var tempDirectory = _configuration["JocondeData:TempDirectory"] ?? Path.Combine(Path.GetTempPath(), "openjoconde");
 
                         // Créer le répertoire temporaire s'il n'existe pas
@@ -146,15 +147,15 @@ namespace OpenJoconde.API.Controllers
                         {
                             syncToUpdate.CompletedAt = DateTime.UtcNow;
                             syncToUpdate.Status = importReport.Success ? "Completed" : "Failed";
-                            syncToUpdate.ItemsProcessed = importReport.ImportedArtworks;
+                            syncToUpdate.ArtworksProcessed = importReport.ImportedArtworks;
                             syncToUpdate.ErrorMessage = importReport.ErrorMessage;
                             await dbContext.SaveChangesAsync();
                         }
 
                         // Nettoyer les fichiers temporaires
-                        if (File.Exists(tempFilePath))
+                        if (System.IO.File.Exists(tempFilePath))
                         {
-                            File.Delete(tempFilePath);
+                            System.IO.File.Delete(tempFilePath);
                         }
 
                         _logger.LogInformation("Synchronisation manuelle terminée avec succès");
