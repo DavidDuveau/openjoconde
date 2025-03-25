@@ -143,6 +143,7 @@ openjoconde/
    - Documentation OpenAPI/Swagger ✅
    - Optimisation de la base de données ✅
    - Mise à jour du schéma v1.1 avec fonctionnalités avancées ✅
+   - Correction des bugs de compilation dans AutoSyncService et DataSyncLog ✅
 
 2. **Phase 4 : Développement du frontend** 🔄 (40%)
    - Architecture et composants de base ✅
@@ -197,7 +198,8 @@ openjoconde/
 - Correction des problèmes de compilation dans les contrôleurs
 - Amélioration de la robustesse du code avec utilisation systématique des types nullables (nullable reference types)
 - Préparation à la mise à jour vers .NET 8 (actuellement en .NET 7)
-- Correction d'un bug de compilation dans DataSyncLog.cs (accolade fermante manquante)
+- Correction des bugs dans la classe `DataSyncLog` avec ajout des propriétés manquantes
+- Correction de l'erreur de compilation dans `AutoSyncService` avec ajout de la référence à Microsoft.Extensions.Configuration.Binder
 
 ### Problèmes techniques identifiés
 - La version de .NET 7.0 utilisée n'est plus prise en charge et ne reçoit plus de mises à jour de sécurité
