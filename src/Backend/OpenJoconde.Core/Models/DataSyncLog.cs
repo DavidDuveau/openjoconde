@@ -23,28 +23,18 @@ namespace OpenJoconde.Core.Models
         public DateTime StartedAt { get; set; }
         
         /// <summary>
+        /// Date et heure de début (alias pour compatibilité avec AutoSyncService)
+        /// </summary>
+        public DateTime StartTime { get => StartedAt; set => StartedAt = value; }
+        
+        /// <summary>
         /// Date et heure de fin de la synchronisation
         /// </summary>
         public DateTime? CompletedAt { get; set; }
         
         /// <summary>
-        /// Statut de la synchronisation ('Running', 'Completed', 'Failed')
+        /// Date et heure de fin (alias pour compatibilité avec AutoSyncService)
         /// </summary>
-        public string Status { get; set; }
-        
-        /// <summary>
-        /// Nombre d'éléments traités
-        /// </summary>
-        public int ItemsProcessed { get; set; }
-        
-        /// <summary>
-        /// Message d'erreur en cas d'échec
-        /// </summary>
-        public string ErrorMessage { get; set; }
-        
-        /// <summary>
-        /// Date de création de l'enregistrement
-        /// </summary>
-        public DateTime CreatedAt { get; set; }
+        public DateTime? EndTime { get => CompletedAt; set => CompletedAt = value; }
     }
 }
