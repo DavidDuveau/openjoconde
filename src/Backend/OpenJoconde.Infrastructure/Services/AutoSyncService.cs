@@ -1,13 +1,8 @@
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Configuration.Binder;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Core.Models;
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace OpenJoconde.Infrastructure.Services
 {
