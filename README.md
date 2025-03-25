@@ -173,7 +173,7 @@ openjoconde/
    - Documentation finale
    - Formation et transfert de connaissances
 
-## Dernières mises à jour (23/03/2025)
+## Dernières mises à jour (25/03/2025)
 
 ### Support du format JSON
 - Migration du format XML vers JSON pour l'importation des données
@@ -198,8 +198,17 @@ openjoconde/
 - Correction des problèmes de compilation dans les contrôleurs
 - Amélioration de la robustesse du code avec utilisation systématique des types nullables (nullable reference types)
 - Préparation à la mise à jour vers .NET 8 (actuellement en .NET 7)
+- Correction d'un bug de compilation dans DataSyncLog.cs (accolade fermante manquante)
+
+### Problèmes techniques identifiés
+- La version de .NET 7.0 utilisée n'est plus prise en charge et ne reçoit plus de mises à jour de sécurité
+- Vulnérabilités identifiées dans les packages :
+  - Npgsql 7.0.6 présente une vulnérabilité de gravité élevée (GHSA-x9vc-6hfv-hg8c)
+  - System.Text.Json 7.0.0 présente une vulnérabilité de gravité élevée (GHSA-hh2w-p6rv-4g7w)
 
 ### Prochains développements
+- Migration vers .NET 8 pour améliorer la sécurité et les performances
+- Mise à jour des packages Npgsql et System.Text.Json pour corriger les vulnérabilités de sécurité
 - Mise à jour des modèles C# pour refléter les nouvelles tables
 - Extension des API REST pour exploiter les nouvelles fonctionnalités
 - Interface frontend pour la visualisation des images multiples
