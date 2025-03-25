@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.Binder; // Ajouté pour résoudre le problème avec GetValue
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OpenJoconde.Core.Interfaces;
@@ -97,11 +98,13 @@ namespace OpenJoconde.Infrastructure.Services
                     var syncLog = new DataSyncLog
                     {
                         Id = Guid.NewGuid(),
+                        SyncType = "Full", // Définir le type de synchronisation
                         StartTime = DateTime.UtcNow.Subtract(importResult.Duration),
                         EndTime = DateTime.UtcNow,
                         ArtworksProcessed = importResult.ArtworksImported,
                         ArtistsProcessed = importResult.ArtistsImported,
-                        Success = true
+                        Success = true,
+                        Status = "Completed" // Définir le statut
                     };
 
                     // TODO: Sauvegarder le log dans la base de données
@@ -116,10 +119,12 @@ namespace OpenJoconde.Infrastructure.Services
                     var errorLog = new DataSyncLog
                     {
                         Id = Guid.NewGuid(),
+                        SyncType = "Full", // Définir le type de synchronisation
                         StartTime = DateTime.UtcNow.Subtract(TimeSpan.FromMinutes(5)), // Estimation
                         EndTime = DateTime.UtcNow,
                         Success = false,
-                        ErrorMessage = ex.Message
+                        ErrorMessage = ex.Message,
+                        Status = "Failed" // Définir le statut
                     };
 
                     // TODO: Sauvegarder le log d'erreur dans la base de données

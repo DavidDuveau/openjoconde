@@ -36,5 +36,30 @@ namespace OpenJoconde.Core.Models
         /// Date et heure de fin (alias pour compatibilité avec AutoSyncService)
         /// </summary>
         public DateTime? EndTime { get => CompletedAt; set => CompletedAt = value; }
+        
+        /// <summary>
+        /// Nombre d'œuvres traitées pendant la synchronisation
+        /// </summary>
+        public int ArtworksProcessed { get; set; }
+        
+        /// <summary>
+        /// Nombre d'artistes traités pendant la synchronisation
+        /// </summary>
+        public int ArtistsProcessed { get; set; }
+        
+        /// <summary>
+        /// Indique si la synchronisation s'est terminée avec succès
+        /// </summary>
+        public bool Success { get; set; }
+        
+        /// <summary>
+        /// Message d'erreur en cas d'échec
+        /// </summary>
+        public string? ErrorMessage { get; set; }
+        
+        /// <summary>
+        /// Statut de la synchronisation (par exemple: 'Pending', 'Running', 'Completed', 'Failed')
+        /// </summary>
+        public string Status { get; set; } = "Pending";
     }
 }
