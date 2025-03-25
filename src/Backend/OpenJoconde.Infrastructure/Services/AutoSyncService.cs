@@ -19,6 +19,7 @@ namespace OpenJoconde.Infrastructure.Services
         private readonly TimeSpan _syncInterval;
         private readonly string _dataSourceUrl;
         private readonly string _tempDirectory;
+        private readonly bool _useBatchProcessing;
 
         public AutoSyncService(
             ILogger<AutoSyncService> logger,
@@ -34,10 +35,11 @@ namespace OpenJoconde.Infrastructure.Services
                 configuration.GetValue<double>("JocondeSync:IntervalHours", 24));
             _dataSourceUrl = configuration.GetValue<string>(
                 "JocondeSync:DataSourceUrl", 
-                "https://data.culture.gouv.fr/api/datasets/1.0/joconde-catalogue-collectif-des-collections-des-musees-de-france/attachments/base_joconde_extrait_xml_zip");
+                "https://data.culture.gouv.fr/api/explore/v2.1/catalog/datasets/base-joconde-extrait/exports/json");
             _tempDirectory = configuration.GetValue<string>(
                 "JocondeSync:TempDirectory", 
                 Path.Combine(Path.GetTempPath(), "OpenJoconde"));
+            _useBatchProcessing = configuration.GetValue<bool>("JocondeSync:UseBatchProcessing", true);
 
             // Créer le répertoire temporaire s'il n'existe pas
             if (!Directory.Exists(_tempDirectory))
@@ -59,49 +61,62 @@ namespace OpenJoconde.Infrastructure.Services
                 {
                     _logger.LogInformation("Démarrage de la synchronisation automatique des données Joconde");
 
-                    // Générer un timestamp pour les fichiers temporaires
-                    var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                    var tempFilePath = Path.Combine(_tempDirectory, $"joconde_{timestamp}.xml");
-
                     // Utiliser un scope pour accéder aux services scoped
                     using (var scope = _serviceScopeFactory.CreateScope())
                     {
-                        var jocondeDataService = scope.ServiceProvider.GetRequiredService<IJocondeDataService>();
-                        var dataImportService = scope.ServiceProvider.GetRequiredService<IDataImportService>();
-                        var xmlParser = scope.ServiceProvider.GetRequiredService<IJocondeXmlParser>();
+                        ImportReport importResult;
 
-                        // Télécharger les données
-                        await jocondeDataService.DownloadJocondeDataAsync(_dataSourceUrl, tempFilePath, stoppingToken);
-                        _logger.LogInformation("Fichier téléchargé avec succès: {FilePath}", tempFilePath);
-
-                        // Analyser les données
-                        var xmlParseResult = await xmlParser.ParseAsync(tempFilePath, progressCallback: null, stoppingToken);
-                        _logger.LogInformation("Fichier XML analysé: {ArtworksCount} œuvres, {ArtistsCount} artistes extraits",
-                            xmlParseResult.Artworks.Count, xmlParseResult.Artists.Count);
-
-                        // Importer les données
-                        var importResult = await dataImportService.ImportDataAsync(xmlParseResult, progressCallback: null, stoppingToken);
-                        _logger.LogInformation("Importation terminée: {ArtworksCount} œuvres, {ArtistsCount} artistes importés",
-                            importResult.ArtworksImported, importResult.ArtistsImported);
-
-                        // Nettoyer les fichiers temporaires
-                        if (File.Exists(tempFilePath))
+                        if (_useBatchProcessing)
                         {
-                            File.Delete(tempFilePath);
-                            _logger.LogInformation("Fichier temporaire supprimé: {FilePath}", tempFilePath);
+                            // Utiliser le traitement par lots pour les données volumineuses
+                            _logger.LogInformation("Utilisation du traitement par lots pour la synchronisation");
+                            
+                            var batchProcessor = scope.ServiceProvider.GetRequiredService<BatchProcessingService>();
+                            importResult = await batchProcessor.ProcessDataInBatchesAsync(stoppingToken);
+                            
+                            _logger.LogInformation("Traitement par lots terminé: {ArtworksCount} œuvres importées en {Duration}",
+                                importResult.ImportedArtworks, importResult.Duration);
+                        }
+                        else
+                        {
+                            // Méthode traditionnelle avec téléchargement unique
+                            _logger.LogInformation("Utilisation du téléchargement standard pour la synchronisation");
+                            
+                            // Générer un timestamp pour les fichiers temporaires
+                            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                            var tempFilePath = Path.Combine(_tempDirectory, $"joconde_{timestamp}.json");
+
+                            var jocondeDataService = scope.ServiceProvider.GetRequiredService<IJocondeDataService>();
+                            
+                            // Télécharger les données
+                            await jocondeDataService.DownloadJocondeDataAsync(_dataSourceUrl, tempFilePath, stoppingToken);
+                            _logger.LogInformation("Fichier téléchargé avec succès: {FilePath}", tempFilePath);
+
+                            // Importer les données JSON
+                            importResult = await jocondeDataService.ImportFromJsonFileAsync(tempFilePath, stoppingToken);
+                            _logger.LogInformation("Importation terminée: {ArtworksCount} œuvres importées",
+                                importResult.ImportedArtworks);
+
+                            // Nettoyer les fichiers temporaires
+                            if (File.Exists(tempFilePath))
+                            {
+                                File.Delete(tempFilePath);
+                                _logger.LogInformation("Fichier temporaire supprimé: {FilePath}", tempFilePath);
+                            }
                         }
 
                         // Enregistrer le log de synchronisation
                         var syncLog = new DataSyncLog
                         {
                             Id = Guid.NewGuid(),
-                            SyncType = "Full", // Définir le type de synchronisation
+                            SyncType = _useBatchProcessing ? "BatchSync" : "FullSync",
                             StartTime = DateTime.UtcNow.Subtract(importResult.Duration),
                             EndTime = DateTime.UtcNow,
-                            ArtworksProcessed = importResult.ArtworksImported,
-                            ArtistsProcessed = importResult.ArtistsImported,
-                            Success = true,
-                            Status = "Completed" // Définir le statut
+                            ArtworksProcessed = importResult.ImportedArtworks,
+                            ArtistsProcessed = importResult.ImportedArtists,
+                            Success = importResult.Success,
+                            Status = importResult.Success ? "Completed" : "CompletedWithErrors",
+                            ErrorMessage = importResult.ErrorMessage
                         };
 
                         // TODO: Sauvegarder le log dans la base de données

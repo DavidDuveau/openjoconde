@@ -53,9 +53,13 @@ builder.Services.AddDbContext<OpenJocondeDbContext>(options =>
     );
 });
 
-// Register HTTP client
-builder.Services.AddHttpClient<IJocondeDataService, JocondeDataService>();
-builder.Services.AddHttpClient<AutoSyncService>();
+// Register HTTP client with extended timeout for large downloads
+builder.Services.AddJocondeHttpClient();
+builder.Services.AddHttpClient<AutoSyncService>(client =>
+{
+    // Timeout étendu à 10 minutes pour les téléchargements volumineux
+    client.Timeout = TimeSpan.FromMinutes(10);
+});
 
 // Register infrastructure services
 builder.Services.AddInfrastructureServices(builder.Configuration);
