@@ -88,6 +88,13 @@ if (!string.IsNullOrEmpty(tempDir) && !Directory.Exists(tempDir))
     Directory.CreateDirectory(tempDir);
 }
 
+// Appliquer les migrations au démarrage (décommenté)
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<OpenJocondeDbContext>();
+    dbContext.Database.Migrate();
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
