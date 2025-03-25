@@ -38,7 +38,7 @@ namespace OpenJoconde.API.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<IEnumerable<Museum>>> SearchMuseums(
-            [FromQuery] string name = null,
+            [FromQuery] string? name = null,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10)
         {
