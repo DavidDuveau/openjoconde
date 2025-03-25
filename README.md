@@ -14,16 +14,15 @@ L'application se compose de trois composants principaux :
 
 3. **Frontend (Vue.js TypeScript)** : Interface utilisateur intuitive permettant de visualiser et explorer les collections.
 
-## Contexte de développement
+## À propos de ce projet
 
-Ce projet est développé avec l'assistance de Claude AI (Anthropic), un modèle de langage avancé qui aide à la génération de code, la résolution de problèmes, et la conception d'architecture. Cette approche permet :
+Ce projet OpenJoconde est doublement expérimental :
+1. Il vise à créer une application exploitant les données ouvertes des musées français (base Joconde)
+2. Il s'agit également d'une expérience de développement entièrement piloté par intelligence artificielle
 
-- Une analyse approfondie des spécifications du projet
-- La génération rapide de code de haute qualité suivant les bonnes pratiques
-- Une résolution proactive des problèmes potentiels de développement
-- Une documentation claire et complète
+L'intégralité du code, de la documentation et de la structure du projet est développée par Claude (Anthropic), faisant de ce projet un cas d'étude sur les capacités actuelles des grands modèles de langage dans le développement logiciel complet.
 
-Les fichiers de documentation interne (roadmap et charte de développement) sont utilisés comme référence pour Claude AI et ne sont pas versionnés dans le dépôt public.
+Les fichiers de documentation interne (roadmap et charte de développement) sont utilisés comme référence et guides pour le développement par IA.
 
 ## Prérequis
 
