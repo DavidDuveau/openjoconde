@@ -14,7 +14,7 @@ L'application se compose de trois composants principaux :
 
 3. **Frontend (Vue.js TypeScript)** : Interface utilisateur intuitive permettant de visualiser et explorer les collections.
 
-## À propos de ce projet
+## À propos de ce projet et objectifs
 
 Ce projet OpenJoconde est doublement expérimental :
 1. Il vise à créer une application exploitant les données ouvertes des musées français (base Joconde)
@@ -22,15 +22,15 @@ Ce projet OpenJoconde est doublement expérimental :
 
 L'intégralité du code, de la documentation et de la structure du projet est développée par Claude (Anthropic), faisant de ce projet un cas d'étude sur les capacités actuelles des grands modèles de langage dans le développement logiciel complet.
 
-Les fichiers de documentation interne (roadmap et charte de développement) sont utilisés comme référence et guides pour le développement par IA.
-
-## Objectifs du projet
-
+### Objectifs du projet
 1. **Éducatif et culturel** : Faciliter l'accès au patrimoine artistique français pour le grand public et les chercheurs
 2. **Technique** : Démontrer l'exploitation efficace des données ouvertes avec des technologies modernes
 3. **Communautaire** : Encourager l'utilisation et la contribution au code open source
 4. **Exploration des données** : Permettre une recherche multicritères complète (artiste, époque, technique, musée, etc.)
 5. **Visualisation** : Offrir une interface moderne pour consulter les œuvres et leurs détails
+6. **Expérimentation IA** : Tester les capacités des modèles de langage avancés dans le développement logiciel complet
+
+Les fichiers de documentation interne (roadmap et charte de développement) sont utilisés comme référence et guides pour le développement piloté par IA.
 
 ## Sources de données
 
