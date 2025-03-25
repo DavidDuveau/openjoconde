@@ -144,6 +144,7 @@ openjoconde/
    - Optimisation de la base de données ✅
    - Mise à jour du schéma v1.1 avec fonctionnalités avancées ✅
    - Correction des bugs de compilation dans AutoSyncService et DataSyncLog ✅
+   - Résolution des warnings de nullabilité dans les contrôleurs ✅
 
 2. **Phase 4 : Développement du frontend** 🔄 (40%)
    - Architecture et composants de base ✅
@@ -198,8 +199,10 @@ openjoconde/
 - Correction des problèmes de compilation dans les contrôleurs
 - Amélioration de la robustesse du code avec utilisation systématique des types nullables (nullable reference types)
 - Préparation à la mise à jour vers .NET 8 (actuellement en .NET 7)
-- Correction des bugs dans la classe `DataSyncLog` avec ajout des propriétés manquantes
+- Correction des bugs dans la classe `DataSyncLog` avec ajout des propriétés manquantes (ItemsProcessed, CreatedAt)
 - Correction de l'erreur de compilation dans `AutoSyncService` avec ajout de la référence à Microsoft.Extensions.Configuration.Binder
+- Résolution des warnings de nullabilité sur plusieurs contrôleurs (ArtworksController, ArtistsController, MuseumsController)
+- Amélioration des messages d'erreur pour les configurations obligatoires (URL source, chaîne de connexion)
 
 ### Problèmes techniques identifiés
 - La version de .NET 7.0 utilisée n'est plus prise en charge et ne reçoit plus de mises à jour de sécurité
