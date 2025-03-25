@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OpenJoconde.Core.Interfaces;
@@ -14,9 +15,7 @@ namespace OpenJoconde.Infrastructure.Services
     {
         private readonly ILogger<AutoSyncService> _logger;
         private readonly IConfiguration _configuration;
-        private readonly IJocondeDataService _jocondeDataService;
-        private readonly IDataImportService _dataImportService;
-        private readonly IJocondeXmlParser _xmlParser;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly TimeSpan _syncInterval;
         private readonly string _dataSourceUrl;
         private readonly string _tempDirectory;
@@ -24,15 +23,11 @@ namespace OpenJoconde.Infrastructure.Services
         public AutoSyncService(
             ILogger<AutoSyncService> logger,
             IConfiguration configuration,
-            IJocondeDataService jocondeDataService,
-            IDataImportService dataImportService,
-            IJocondeXmlParser xmlParser)
+            IServiceScopeFactory serviceScopeFactory)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _jocondeDataService = jocondeDataService ?? throw new ArgumentNullException(nameof(jocondeDataService));
-            _dataImportService = dataImportService ?? throw new ArgumentNullException(nameof(dataImportService));
-            _xmlParser = xmlParser ?? throw new ArgumentNullException(nameof(xmlParser));
+            _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
 
             // Configuration
             _syncInterval = TimeSpan.FromHours(
@@ -68,41 +63,49 @@ namespace OpenJoconde.Infrastructure.Services
                     var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
                     var tempFilePath = Path.Combine(_tempDirectory, $"joconde_{timestamp}.xml");
 
-                    // Télécharger les données
-                    await _jocondeDataService.DownloadJocondeDataAsync(_dataSourceUrl, tempFilePath, stoppingToken);
-                    _logger.LogInformation("Fichier téléchargé avec succès: {FilePath}", tempFilePath);
-
-                    // Analyser les données
-                    var xmlParseResult = await _xmlParser.ParseAsync(tempFilePath, progressCallback: null, stoppingToken);
-                    _logger.LogInformation("Fichier XML analysé: {ArtworksCount} œuvres, {ArtistsCount} artistes extraits",
-                        xmlParseResult.Artworks.Count, xmlParseResult.Artists.Count);
-
-                    // Importer les données
-                    var importResult = await _dataImportService.ImportDataAsync(xmlParseResult, progressCallback: null, stoppingToken);
-                    _logger.LogInformation("Importation terminée: {ArtworksCount} œuvres, {ArtistsCount} artistes importés",
-                        importResult.ArtworksImported, importResult.ArtistsImported);
-
-                    // Nettoyer les fichiers temporaires
-                    if (File.Exists(tempFilePath))
+                    // Utiliser un scope pour accéder aux services scoped
+                    using (var scope = _serviceScopeFactory.CreateScope())
                     {
-                        File.Delete(tempFilePath);
-                        _logger.LogInformation("Fichier temporaire supprimé: {FilePath}", tempFilePath);
+                        var jocondeDataService = scope.ServiceProvider.GetRequiredService<IJocondeDataService>();
+                        var dataImportService = scope.ServiceProvider.GetRequiredService<IDataImportService>();
+                        var xmlParser = scope.ServiceProvider.GetRequiredService<IJocondeXmlParser>();
+
+                        // Télécharger les données
+                        await jocondeDataService.DownloadJocondeDataAsync(_dataSourceUrl, tempFilePath, stoppingToken);
+                        _logger.LogInformation("Fichier téléchargé avec succès: {FilePath}", tempFilePath);
+
+                        // Analyser les données
+                        var xmlParseResult = await xmlParser.ParseAsync(tempFilePath, progressCallback: null, stoppingToken);
+                        _logger.LogInformation("Fichier XML analysé: {ArtworksCount} œuvres, {ArtistsCount} artistes extraits",
+                            xmlParseResult.Artworks.Count, xmlParseResult.Artists.Count);
+
+                        // Importer les données
+                        var importResult = await dataImportService.ImportDataAsync(xmlParseResult, progressCallback: null, stoppingToken);
+                        _logger.LogInformation("Importation terminée: {ArtworksCount} œuvres, {ArtistsCount} artistes importés",
+                            importResult.ArtworksImported, importResult.ArtistsImported);
+
+                        // Nettoyer les fichiers temporaires
+                        if (File.Exists(tempFilePath))
+                        {
+                            File.Delete(tempFilePath);
+                            _logger.LogInformation("Fichier temporaire supprimé: {FilePath}", tempFilePath);
+                        }
+
+                        // Enregistrer le log de synchronisation
+                        var syncLog = new DataSyncLog
+                        {
+                            Id = Guid.NewGuid(),
+                            SyncType = "Full", // Définir le type de synchronisation
+                            StartTime = DateTime.UtcNow.Subtract(importResult.Duration),
+                            EndTime = DateTime.UtcNow,
+                            ArtworksProcessed = importResult.ArtworksImported,
+                            ArtistsProcessed = importResult.ArtistsImported,
+                            Success = true,
+                            Status = "Completed" // Définir le statut
+                        };
+
+                        // TODO: Sauvegarder le log dans la base de données
                     }
-
-                    // Enregistrer le log de synchronisation
-                    var syncLog = new DataSyncLog
-                    {
-                        Id = Guid.NewGuid(),
-                        SyncType = "Full", // Définir le type de synchronisation
-                        StartTime = DateTime.UtcNow.Subtract(importResult.Duration),
-                        EndTime = DateTime.UtcNow,
-                        ArtworksProcessed = importResult.ArtworksImported,
-                        ArtistsProcessed = importResult.ArtistsImported,
-                        Success = true,
-                        Status = "Completed" // Définir le statut
-                    };
-
-                    // TODO: Sauvegarder le log dans la base de données
 
                     _logger.LogInformation("Synchronisation automatique terminée avec succès");
                 }
