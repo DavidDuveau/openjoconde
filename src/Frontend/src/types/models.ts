@@ -79,6 +79,7 @@ export interface SearchParams {
   museumId?: string;
   page: number;
   pageSize: number;
+  sortBy?: string;
 }
 
 export interface PaginatedResult<T> {

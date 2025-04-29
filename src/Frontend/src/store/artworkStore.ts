@@ -24,7 +24,8 @@ export const useArtworkStore = defineStore('artwork', {
     pageSize: 10,
     searchParams: {
       page: 1,
-      pageSize: 10
+      pageSize: 10,
+      sortBy: 'relevance'
     }
   }),
   
