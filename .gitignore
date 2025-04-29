@@ -81,6 +81,10 @@ pnpm-debug.log*
 # Documentation interne non versionnée
 docs/roadmap.md
 docs/charte-developpement.md
+dev_briefing.md
+epics/
+product_docs/
+user_stories/
 
 # Scripts Git locaux (non versionnés)
 git-init.bat
