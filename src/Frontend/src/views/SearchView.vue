@@ -1,13 +1,32 @@
 <template>
   <div class="search">
-    <h1>Recherche d'œuvres</h1>
+    <div class="search-header">
+      <h1>Résultats de recherche</h1>
+      <div v-if="searchParams.searchText" class="search-query">
+        pour "<span>{{ searchParams.searchText }}</span>"
+      </div>
+    </div>
 
     <div class="search-container">
       <div class="search-filters">
+        <h2>Filtres</h2>
         <div class="search-form">
           <div class="form-group">
             <label>Recherche par mot-clé</label>
-            <input type="text" v-model="searchParams.searchText" placeholder="Titre, artiste, description..." />
+            <div class="inline-search">
+              <input 
+                type="text" 
+                v-model="searchParams.searchText" 
+                placeholder="Titre, artiste, description..." 
+                @keyup.enter="search"
+              />
+              <button class="secondary-button" @click="search">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </button>
+            </div>
           </div>
 
           <div class="form-group">
@@ -50,66 +69,107 @@
             </select>
           </div>
 
-          <button class="search-button" @click="search">Rechercher</button>
-          <button class="reset-button" @click="resetFilters">Réinitialiser</button>
+          <div class="filter-buttons">
+            <button class="search-button" @click="search">Appliquer les filtres</button>
+            <button class="reset-button" @click="resetFilters">Réinitialiser</button>
+          </div>
         </div>
       </div>
 
       <div class="search-results">
         <div v-if="artworkStore.loading" class="loading-container">
-          Chargement des résultats...
+          <div class="loader"></div>
+          <p>Recherche en cours...</p>
         </div>
+        
         <div v-else-if="artworkStore.error" class="error-container">
-          {{ artworkStore.error }}
+          <div class="error-icon">⚠️</div>
+          <div class="error-message">
+            <h3>Une erreur est survenue</h3>
+            <p>{{ artworkStore.error }}</p>
+            <button class="search-button" @click="search">Réessayer</button>
+          </div>
         </div>
+        
         <div v-else-if="artworkStore.artworks.length === 0" class="no-results">
-          Aucun résultat trouvé pour votre recherche.
+          <div class="no-results-icon">🔍</div>
+          <h3>Aucun résultat trouvé</h3>
+          <p>Essayez avec d'autres termes de recherche ou filtres moins restrictifs.</p>
+          <div class="suggestions" v-if="searchParams.searchText">
+            <h4>Suggestions :</h4>
+            <ul>
+              <li>Vérifiez l'orthographe de votre recherche</li>
+              <li>Utilisez des termes plus généraux</li>
+              <li>Réduisez le nombre de filtres</li>
+              <li><a href="#" @click.prevent="searchSimilar('peinture')">Rechercher "peinture"</a></li>
+              <li><a href="#" @click.prevent="searchSimilar('portrait')">Rechercher "portrait"</a></li>
+              <li><a href="#" @click.prevent="resetFilters">Effacer tous les filtres</a></li>
+            </ul>
+          </div>
         </div>
-        <div v-else>
+        
+        <div v-else class="results-content">
           <div class="results-header">
             <div class="results-count">
-              {{ artworkStore.totalCount }} résultat(s) trouvé(s)
+              {{ artworkStore.totalCount }} résultat{{ artworkStore.totalCount > 1 ? 's' : '' }} trouvé{{ artworkStore.totalCount > 1 ? 's' : '' }}
             </div>
             <div class="results-sort">
-              <label>Trier par:</label>
-              <select v-model="sortBy">
-                <option value="title">Titre</option>
-                <option value="creationDate">Date de création</option>
-                <option value="artist">Artiste</option>
+              <label>Trier par :</label>
+              <select v-model="sortBy" @change="search">
+                <option value="relevance">Pertinence</option>
+                <option value="title">Titre (A-Z)</option>
+                <option value="title_desc">Titre (Z-A)</option>
+                <option value="date">Date (ancienne → récente)</option>
+                <option value="date_desc">Date (récente → ancienne)</option>
+                <option value="artist">Artiste (A-Z)</option>
               </select>
             </div>
           </div>
 
           <div class="artwork-grid">
-            <ArtworkCard 
+            <div 
               v-for="artwork in artworkStore.artworks" 
-              :key="artwork.id" 
-              :artwork="artwork" 
-            />
+              :key="artwork.id"
+              class="artwork-card-container"
+            >
+              <ArtworkCard 
+                :id="artwork.id"
+                :title="artwork.title"
+                :imageUrl="artwork.imageUrl"
+                :date="artwork.creationDate"
+                :artists="artwork.artists"
+                @click="navigateToArtwork(artwork.id)"
+              />
+            </div>
           </div>
 
-          <div class="pagination" v-if="artworkStore.totalPages > 1">
+          <div class="pagination" v-if="artworkStore.totalCount > searchParams.pageSize">
             <button 
+              class="pagination-button"
               :disabled="artworkStore.currentPage === 1"
               @click="goToPage(artworkStore.currentPage - 1)"
             >
-              Précédent
+              &laquo; Précédent
             </button>
+            
             <div class="page-numbers">
               <button 
                 v-for="page in pageNumbers" 
                 :key="page"
+                class="pagination-number"
                 :class="{ 'active': page === artworkStore.currentPage }"
                 @click="goToPage(page)"
               >
                 {{ page }}
               </button>
             </div>
+            
             <button 
+              class="pagination-button"
               :disabled="artworkStore.currentPage === artworkStore.totalPages"
               @click="goToPage(artworkStore.currentPage + 1)"
             >
-              Suivant
+              Suivant &raquo;
             </button>
           </div>
         </div>
@@ -140,7 +200,7 @@ export default defineComponent({
     const domains = ref<Domain[]>([]);
     const techniques = ref<Technique[]>([]);
     const periods = ref<Period[]>([]);
-    const sortBy = ref('title');
+    const sortBy = ref('relevance');
     
     const searchParams = reactive<SearchParams>({
       searchText: '',
@@ -150,19 +210,45 @@ export default defineComponent({
       periodId: '',
       museumId: '',
       page: 1,
-      pageSize: 12
+      pageSize: 12,
+      sortBy: 'relevance'
     });
+
+    // Observer les changements dans les paramètres d'URL
+    watch(() => route.query, (newQuery) => {
+      if (typeof newQuery.searchText === 'string') {
+        searchParams.searchText = newQuery.searchText;
+      }
+      if (typeof newQuery.artistId === 'string') {
+        searchParams.artistId = newQuery.artistId;
+      }
+      if (typeof newQuery.domainId === 'string') {
+        searchParams.domainId = newQuery.domainId;
+      }
+      if (typeof newQuery.techniqueId === 'string') {
+        searchParams.techniqueId = newQuery.techniqueId;
+      }
+      if (typeof newQuery.periodId === 'string') {
+        searchParams.periodId = newQuery.periodId;
+      }
+      if (typeof newQuery.museumId === 'string') {
+        searchParams.museumId = newQuery.museumId;
+      }
+      if (typeof newQuery.page === 'string') {
+        searchParams.page = parseInt(newQuery.page, 10);
+      }
+      if (typeof newQuery.sortBy === 'string') {
+        sortBy.value = newQuery.sortBy;
+        searchParams.sortBy = newQuery.sortBy;
+      }
+      
+      // Effectuer la recherche uniquement si nous venons d'arriver sur la page
+      // ou si le terme de recherche a changé
+      search();
+    }, { immediate: true });
 
     // Initialize from route query params
     onMounted(async () => {
-      if (route.query.searchText) searchParams.searchText = route.query.searchText as string;
-      if (route.query.artistId) searchParams.artistId = route.query.artistId as string;
-      if (route.query.domainId) searchParams.domainId = route.query.domainId as string;
-      if (route.query.techniqueId) searchParams.techniqueId = route.query.techniqueId as string;
-      if (route.query.periodId) searchParams.periodId = route.query.periodId as string;
-      if (route.query.museumId) searchParams.museumId = route.query.museumId as string;
-      if (route.query.page) searchParams.page = parseInt(route.query.page as string, 10);
-      
       // Load filter options
       await Promise.all([
         loadArtists(),
@@ -170,9 +256,6 @@ export default defineComponent({
         loadTechniques(),
         loadPeriods()
       ]);
-      
-      // Perform initial search
-      search();
     });
     
     // Methods to load filter options
@@ -211,6 +294,9 @@ export default defineComponent({
     
     // Search function
     const search = () => {
+      // Mettre à jour les paramètres de tri
+      searchParams.sortBy = sortBy.value;
+      
       // Update route query params
       router.push({ 
         query: {
@@ -221,7 +307,8 @@ export default defineComponent({
           techniqueId: searchParams.techniqueId || undefined,
           periodId: searchParams.periodId || undefined,
           museumId: searchParams.museumId || undefined,
-          page: searchParams.page.toString()
+          page: searchParams.page.toString(),
+          sortBy: searchParams.sortBy
         }
       });
       
@@ -231,15 +318,22 @@ export default defineComponent({
     
     // Reset filters
     const resetFilters = () => {
-      searchParams.searchText = '';
       searchParams.artistId = '';
       searchParams.domainId = '';
       searchParams.techniqueId = '';
       searchParams.periodId = '';
       searchParams.museumId = '';
       searchParams.page = 1;
+      sortBy.value = 'relevance';
+      searchParams.sortBy = 'relevance';
       
       search();
+    };
+    
+    // Search for similar terms
+    const searchSimilar = (term: string) => {
+      searchParams.searchText = term;
+      resetFilters();
     };
     
     // Pagination
@@ -248,6 +342,11 @@ export default defineComponent({
       search();
       // Scroll to top
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    
+    // Navigate to artwork detail
+    const navigateToArtwork = (id: string) => {
+      router.push(`/artworks/${id}`);
     };
     
     // Computed page numbers
@@ -270,12 +369,6 @@ export default defineComponent({
       return pages;
     });
     
-    // Watch for sort changes
-    watch(sortBy, () => {
-      // In a real app, you'd update the sort param and call search
-      search();
-    });
-    
     return {
       artworkStore,
       searchParams,
@@ -286,8 +379,10 @@ export default defineComponent({
       sortBy,
       search,
       resetFilters,
+      searchSimilar,
       goToPage,
-      pageNumbers
+      pageNumbers,
+      navigateToArtwork
     };
   }
 });
@@ -295,12 +390,26 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 .search {
-  padding: 20px;
+  padding: 0 0 30px 0;
 }
 
-h1 {
+.search-header {
   margin-bottom: 30px;
   text-align: center;
+  
+  h1 {
+    margin-bottom: 5px;
+  }
+  
+  .search-query {
+    font-size: 1.1rem;
+    color: #666;
+    
+    span {
+      font-weight: bold;
+      color: var(--secondary-color);
+    }
+  }
 }
 
 .search-container {
@@ -313,6 +422,15 @@ h1 {
   background-color: #f8f9fa;
   border-radius: 8px;
   padding: 20px;
+  align-self: flex-start;
+  position: sticky;
+  top: 20px;
+  
+  h2 {
+    margin-bottom: 20px;
+    font-size: 1.2rem;
+    color: var(--primary-color);
+  }
 }
 
 .search-results {
@@ -326,6 +444,7 @@ h1 {
     display: block;
     margin-bottom: 5px;
     font-weight: bold;
+    font-size: 0.9rem;
   }
   
   input, select {
@@ -333,7 +452,36 @@ h1 {
     padding: 8px;
     border: 1px solid #ddd;
     border-radius: 4px;
+    font-size: 0.9rem;
+    
+    &:focus {
+      outline: none;
+      border-color: var(--secondary-color);
+      box-shadow: 0 0 0 2px rgba(66, 185, 131, 0.2);
+    }
   }
+  
+  .inline-search {
+    display: flex;
+    gap: 5px;
+    
+    input {
+      flex: 1;
+    }
+    
+    button {
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
 }
 
 button {
@@ -342,15 +490,24 @@ button {
   border-radius: 4px;
   cursor: pointer;
   font-weight: bold;
-  margin-right: 10px;
+  transition: background-color 0.2s, transform 0.1s;
+  
+  &:active {
+    transform: translateY(1px);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 .search-button {
-  background-color: #42b983;
+  background-color: var(--secondary-color);
   color: white;
   
   &:hover {
-    background-color: #3aa876;
+    background-color: darken(#42b983, 5%);
   }
 }
 
@@ -363,11 +520,27 @@ button {
   }
 }
 
+.secondary-button {
+  background-color: #e9ecef;
+  color: #666;
+  
+  &:hover {
+    background-color: darken(#e9ecef, 5%);
+  }
+}
+
 .results-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.results-count {
+  font-weight: bold;
+  color: #555;
 }
 
 .results-sort {
@@ -379,6 +552,7 @@ button {
     padding: 5px 10px;
     border: 1px solid #ddd;
     border-radius: 4px;
+    font-size: 0.9rem;
   }
 }
 
@@ -389,14 +563,112 @@ button {
   margin-bottom: 30px;
 }
 
-.loading-container, .error-container, .no-results {
-  text-align: center;
+.artwork-card-container {
+  height: 100%;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   padding: 50px;
   color: #666;
+  
+  .loader {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(66, 185, 131, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--secondary-color);
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+  }
+  
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 }
 
 .error-container {
-  color: #dc3545;
+  background-color: #fff8f8;
+  border: 1px solid #ffd2d2;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  display: flex;
+  gap: 15px;
+  
+  .error-icon {
+    font-size: 2rem;
+  }
+  
+  .error-message {
+    flex: 1;
+    
+    h3 {
+      color: #dc3545;
+      margin-bottom: 10px;
+    }
+    
+    p {
+      margin-bottom: 15px;
+    }
+  }
+}
+
+.no-results {
+  background-color: #f8faff;
+  border: 1px solid #e6f0ff;
+  border-radius: 8px;
+  padding: 30px;
+  margin: 20px 0;
+  text-align: center;
+  
+  .no-results-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+  }
+  
+  h3 {
+    margin-bottom: 10px;
+    color: #333;
+  }
+  
+  p {
+    margin-bottom: 15px;
+    color: #666;
+  }
+  
+  .suggestions {
+    text-align: left;
+    max-width: 500px;
+    margin: 0 auto;
+    
+    h4 {
+      margin-bottom: 10px;
+    }
+    
+    ul {
+      list-style-type: disc;
+      padding-left: 20px;
+      
+      li {
+        margin-bottom: 5px;
+        
+        a {
+          color: var(--secondary-color);
+          text-decoration: none;
+          
+          &:hover {
+            text-decoration: underline;
+          }
+        }
+      }
+    }
+  }
 }
 
 .pagination {
@@ -405,7 +677,7 @@ button {
   align-items: center;
   margin-top: 30px;
   
-  button {
+  .pagination-button {
     background-color: #f8f9fa;
     border: 1px solid #ddd;
     padding: 8px 15px;
@@ -413,25 +685,31 @@ button {
     &:hover:not(:disabled) {
       background-color: #e9ecef;
     }
-    
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    
-    &.active {
-      background-color: #42b983;
-      color: white;
-      border-color: #42b983;
-    }
   }
   
   .page-numbers {
     display: flex;
     margin: 0 10px;
     
-    button {
-      margin: 0 5px;
+    .pagination-number {
+      margin: 0 3px;
+      min-width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #f8f9fa;
+      border: 1px solid #ddd;
+      
+      &:hover:not(.active) {
+        background-color: #e9ecef;
+      }
+      
+      &.active {
+        background-color: var(--secondary-color);
+        color: white;
+        border-color: var(--secondary-color);
+      }
     }
   }
 }
@@ -442,8 +720,43 @@ button {
   }
   
   .search-filters {
-    flex: none;
+    position: static;
     width: 100%;
+    margin-bottom: 20px;
+  }
+  
+  .filter-buttons {
+    flex-direction: column;
+    
+    button {
+      width: 100%;
+    }
+  }
+  
+  .results-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  
+  .artwork-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+  
+  .pagination {
+    flex-wrap: wrap;
+    gap: 10px;
+    
+    .pagination-button {
+      flex: 1;
+      text-align: center;
+    }
+    
+    .page-numbers {
+      width: 100%;
+      justify-content: center;
+      margin: 0;
+    }
   }
 }
 </style>
