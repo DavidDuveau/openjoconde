@@ -242,6 +242,8 @@ namespace OpenJoconde.Infrastructure.Services
             _logger.LogInformation("Importation de {Count} oeuvres dans la base de données", artworks.Count());
             
             int importedCount = 0;
+            int skippedCount = 0;
+            var processedReferences = new HashSet<string>(); // Pour suivre les références déjà traitées dans ce lot
             
             foreach (var artwork in artworks)
             {
@@ -250,7 +252,24 @@ namespace OpenJoconde.Infrastructure.Services
                 
                 try
                 {
-                    // Vérifier si l'oeuvre existe déjà (par référence)
+                    // Si la référence est vide ou null, générer une référence unique
+                    if (string.IsNullOrWhiteSpace(artwork.Reference))
+                    {
+                        artwork.Reference = $"GEN-{Guid.NewGuid()}";
+                    }
+                    
+                    // Vérifier si cette référence a déjà été traitée dans ce lot
+                    if (processedReferences.Contains(artwork.Reference))
+                    {
+                        _logger.LogWarning("Référence dupliquée ignorée dans le lot actuel: {Reference}", artwork.Reference);
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    // Ajouter la référence au suivi
+                    processedReferences.Add(artwork.Reference);
+                    
+                    // Vérifier si l'oeuvre existe déjà dans la base de données (par référence)
                     var existingArtwork = _dbContext.Artworks.SingleOrDefault(a => a.Reference == artwork.Reference);
                     
                     if (existingArtwork == null)
@@ -272,15 +291,34 @@ namespace OpenJoconde.Infrastructure.Services
                         existingArtwork.ImageUrl = artwork.ImageUrl;
                         existingArtwork.UpdatedAt = DateTime.UtcNow;
                         existingArtwork.IsDeleted = false;
+                        
+                        // S'assurer que la dénomination est définie
+                        if (string.IsNullOrEmpty(existingArtwork.Denomination))
+                        {
+                            existingArtwork.Denomination = artwork.Denomination ?? "Œuvre sans dénomination";
+                        }
                     }
                     
                     importedCount++;
                     
                     // Sauvegarder régulièrement pour éviter des transactions trop volumineuses
-                    if (importedCount % 100 == 0)
+                    // Et gérer les erreurs potentielles par lots plus petits
+                    if (importedCount % 50 == 0)
                     {
-                        await _dbContext.SaveChangesAsync(cancellationToken);
-                        _logger.LogInformation("Progression: {Count} oeuvres importées", importedCount);
+                        try
+                        {
+                            await _dbContext.SaveChangesAsync(cancellationToken);
+                            _logger.LogInformation("Progression: {Count} oeuvres importées, {Skipped} ignorées", importedCount, skippedCount);
+                            
+                            // Vider le contexte pour libérer la mémoire
+                            _dbContext.ChangeTracker.Clear();
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Erreur lors de la sauvegarde du lot. Poursuite de l'importation.");
+                            // Continuer malgré l'erreur pour traiter le lot suivant
+                            _dbContext.ChangeTracker.Clear();
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -291,9 +329,16 @@ namespace OpenJoconde.Infrastructure.Services
             }
             
             // Sauvegarder les dernières modifications
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la sauvegarde finale: {Message}", ex.Message);
+            }
             
-            _logger.LogInformation("Importation terminée: {Count} oeuvres importées avec succès", importedCount);
+            _logger.LogInformation("Importation terminée: {Count} oeuvres importées avec succès, {Skipped} ignorées", importedCount, skippedCount);
             return importedCount;
         }
 
@@ -374,7 +419,8 @@ namespace OpenJoconde.Infrastructure.Services
             {
                 _logger.LogInformation("Téléchargement du dernier fichier Joconde disponible");
                 
-                // URL mis à jour pour les données Joconde au format JSON
+                // URL mise à jour pour les données Joconde au format JSON sans pagination
+                // L'API semble ne plus accepter les paramètres de pagination, utiliser l'export complet
                 var url = "https://data.culture.gouv.fr/api/explore/v2.1/catalog/datasets/base-joconde-extrait/exports/json?lang=fr&timezone=Europe%2FBerlin";
                 
                 // Créer le répertoire de destination s'il n'existe pas

@@ -50,23 +50,38 @@ namespace OpenJoconde.Infrastructure.Services
 
             try
             {
-                _logger.LogInformation("Lecture du fichier JSON: {FilePath}", jsonFilePath);
+                _logger.LogInformation("Lecture du fichier JSON par flux: {FilePath}", jsonFilePath);
                 
-                // Lecture du fichier JSON
-                string jsonContent = await File.ReadAllTextAsync(jsonFilePath, cancellationToken);
+                // Créer les options du JsonDocumentOptions pour une meilleure performance
+                var options = new JsonDocumentOptions
+                {
+                    AllowTrailingCommas = true,
+                    CommentHandling = JsonCommentHandling.Skip,
+                    MaxDepth = 64 // Augmenter si nécessaire
+                };
                 
-                // Désérialisation du JSON
-                using JsonDocument jsonDocument = JsonDocument.Parse(jsonContent);
+                // Ouvrir un flux de fichier pour éviter de charger tout le fichier en mémoire
+                using var fileStream = new FileStream(jsonFilePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
+                
+                // Créer un JsonDocument à partir du flux
+                using JsonDocument jsonDocument = await JsonDocument.ParseAsync(fileStream, options, cancellationToken);
                 
                 // Récupérer l'élément racine
                 JsonElement root = jsonDocument.RootElement;
                 
-                // Récupérer les œuvres (tableau à la racine)
-                int totalItems = root.GetArrayLength();
+                // Longueur du tableau, si disponible (ou estimation)
+                int totalItems = 0;
+                try {
+                    totalItems = root.GetArrayLength();
+                    _logger.LogInformation("Nombre total d'éléments trouvés: {Count}", totalItems);
+                } catch {
+                    _logger.LogWarning("Impossible de déterminer le nombre total d'éléments. Estimation utilisée.");
+                    totalItems = 100000; // Estimation par défaut
+                }
+                
                 int processedItems = 0;
                 
-                _logger.LogInformation("Nombre total d'éléments trouvés: {Count}", totalItems);
-
+                // Traiter les éléments un par un
                 foreach (JsonElement artworkElement in root.EnumerateArray())
                 {
                     if (cancellationToken.IsCancellationRequested)
@@ -77,8 +92,14 @@ namespace OpenJoconde.Infrastructure.Services
 
                     try
                     {
-                        // Extraction de l'œuvre
+                        // Extraction de l'œuvre avec vérification de la dénomination
                         var artwork = ExtractArtwork(artworkElement);
+                        
+                        // Vérifier que la dénomination n'est pas nulle
+                        if (string.IsNullOrEmpty(artwork.Denomination))
+                        {
+                            artwork.Denomination = "Œuvre sans dénomination";
+                        }
                         
                         // Extraction des entités liées
                         ExtractRelatedEntities(artworkElement, artwork, artists, domains, techniques, periods, museums);
@@ -88,7 +109,7 @@ namespace OpenJoconde.Infrastructure.Services
                         
                         // Mise à jour de la progression
                         processedItems++;
-                        if (processedItems % 100 == 0 || processedItems == totalItems)
+                        if (processedItems % 1000 == 0 || processedItems == totalItems)
                         {
                             _logger.LogInformation("Progression: {Current}/{Total} œuvres traitées", processedItems, totalItems);
                             progressCallback?.Invoke(processedItems, totalItems);
@@ -134,12 +155,21 @@ namespace OpenJoconde.Infrastructure.Services
         /// </summary>
         private Artwork ExtractArtwork(JsonElement artworkElement)
         {
+            // Extraire explicitement la dénomination
+            string denomination = GetStringValue(artworkElement, "DENO");
+            
+            // Si la dénomination est vide, utiliser une valeur par défaut
+            if (string.IsNullOrEmpty(denomination))
+            {
+                denomination = "Œuvre sans dénomination";
+            }
+            
             return new Artwork
             {
                 Id = Guid.NewGuid(),
-                // Adapter les champs selon la structure JSON réelle
                 Reference = GetStringValue(artworkElement, "REF"),
                 InventoryNumber = GetStringValue(artworkElement, "INV"),
+                Denomination = denomination, // Utiliser la valeur extraite ou par défaut
                 Title = GetStringValue(artworkElement, "TITR"),
                 Description = GetStringValue(artworkElement, "DESC"),
                 Dimensions = GetStringValue(artworkElement, "DIMS"),

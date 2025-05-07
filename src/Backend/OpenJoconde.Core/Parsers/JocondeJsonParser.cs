@@ -105,12 +105,21 @@ namespace OpenJoconde.Core.Parsers
         /// </summary>
         private Artwork ExtractArtwork(JsonElement artworkElement)
         {
+            // Extraire explicitement la dénomination
+            string denomination = GetStringValue(artworkElement, "DENO");
+            
+            // Si la dénomination est vide, utiliser une valeur par défaut
+            if (string.IsNullOrEmpty(denomination))
+            {
+                denomination = "Œuvre sans dénomination";
+            }
+            
             return new Artwork
             {
                 Id = Guid.NewGuid(),
-                // Adapter les champs selon la structure JSON réelle
                 Reference = GetStringValue(artworkElement, "REF"),
                 InventoryNumber = GetStringValue(artworkElement, "INV"),
+                Denomination = denomination, // Utiliser la valeur extraite ou par défaut
                 Title = GetStringValue(artworkElement, "TITR"),
                 Description = GetStringValue(artworkElement, "DESC"),
                 Dimensions = GetStringValue(artworkElement, "DIMS"),
