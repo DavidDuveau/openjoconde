@@ -57,5 +57,25 @@ namespace OpenJoconde.Core.Models
         /// Description of the museum
         /// </summary>
         public string Description { get; set; }
+
+        /// <summary>
+        /// Region where the museum is located
+        /// </summary>
+        public string Region { get; set; }
+
+        /// <summary>
+        /// Museofile code
+        /// </summary>
+        public string Code { get; set; }
+
+        /// <summary>
+        /// Longitude of the museum location
+        /// </summary>
+        public double? Longitude { get; set; }
+
+        /// <summary>
+        /// Latitude of the museum location
+        /// </summary>
+        public double? Latitude { get; set; }
     }
 }
