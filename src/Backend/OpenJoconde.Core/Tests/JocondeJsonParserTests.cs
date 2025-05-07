@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Xunit;
 using OpenJoconde.Core.Models;
 using OpenJoconde.Core.Parsers;
 using System;
@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 
 namespace OpenJoconde.Core.Tests
 {
-    [TestClass]
     public class JocondeJsonParserTests
     {
         private string CreateTestJsonFile()
@@ -100,7 +99,7 @@ namespace OpenJoconde.Core.Tests
             return tempPath;
         }
 
-        [TestMethod]
+        [Fact]
         public async Task ParseAsync_ValidFile_ReturnsCorrectData()
         {
             // Arrange
@@ -115,44 +114,44 @@ namespace OpenJoconde.Core.Tests
                 var result = await parser.ParseAsync(testFile, progressCallback);
 
                 // Assert
-                Assert.IsNotNull(result);
-                Assert.AreEqual(1, result.Artworks.Count);
+                Assert.NotNull(result);
+                Assert.Equal(1, result.Artworks.Count);
                 
                 // Vérification de l'œuvre
                 var artwork = result.Artworks[0];
-                Assert.AreEqual("50510016755", artwork.Reference);
-                Assert.AreEqual("PM 454", artwork.InventoryNumber);
-                Assert.AreEqual("recto verso", artwork.Denomination);
-                Assert.AreEqual("Grotesques ; Grotesques (verso)", artwork.Title);
-                Assert.AreEqual("plume et encre, lavis brun, tracé préparatoire à la sanguine", artwork.Description);
-                Assert.AreEqual("H. 28.9 ; L. 41.5", artwork.Dimensions);
-                Assert.AreEqual("2e moitié 16e siècle", artwork.CreationDate);
-                Assert.AreEqual("Paris ; musée de l'Ecole nationale supérieure des beaux-arts", artwork.ConservationPlace);
+                Assert.Equal("50510016755", artwork.Reference);
+                Assert.Equal("PM 454", artwork.InventoryNumber);
+                Assert.Equal("recto verso", artwork.Denomination);
+                Assert.Equal("Grotesques ; Grotesques (verso)", artwork.Title);
+                Assert.Equal("plume et encre, lavis brun, tracé préparatoire à la sanguine", artwork.Description);
+                Assert.Equal("H. 28.9 ; L. 41.5", artwork.Dimensions);
+                Assert.Equal("2e moitié 16e siècle", artwork.CreationDate);
+                Assert.Equal("Paris ; musée de l'Ecole nationale supérieure des beaux-arts", artwork.ConservationPlace);
                 
                 // Vérification des artistes
-                Assert.AreEqual(1, result.Artists.Count);
+                Assert.Equal(1, result.Artists.Count);
                 var artist = result.Artists[0];
-                Assert.AreEqual("DUBREUIL Toussaint", artist.LastName);
+                Assert.Equal("DUBREUIL Toussaint", artist.LastName);
                 
                 // Vérification des domaines
-                Assert.AreEqual(1, result.Domains.Count);
+                Assert.Equal(1, result.Domains.Count);
                 var domain = result.Domains[0];
-                Assert.AreEqual("dessin", domain.Name);
+                Assert.Equal("dessin", domain.Name);
                 
                 // Vérification des techniques
-                Assert.IsTrue(result.Techniques.Count > 0);
+                Assert.True(result.Techniques.Count > 0);
                 
                 // Vérification des musées
-                Assert.AreEqual(1, result.Museums.Count);
+                Assert.Equal(1, result.Museums.Count);
                 var museum = result.Museums[0];
-                Assert.AreEqual("musée de l'Ecole nationale supérieure des beaux-arts", museum.Name);
-                Assert.AreEqual("Paris", museum.City);
-                Assert.AreEqual("M5051", museum.Code);
-                Assert.AreEqual(2.33167, museum.Longitude);
-                Assert.AreEqual(48.845748, museum.Latitude);
+                Assert.Equal("musée de l'Ecole nationale supérieure des beaux-arts", museum.Name);
+                Assert.Equal("Paris", museum.City);
+                Assert.Equal("M5051", museum.Code);
+                Assert.Equal(2.33167, museum.Longitude);
+                Assert.Equal(48.845748, museum.Latitude);
                 
                 // Vérification du callback de progression
-                Assert.AreEqual(1, progressCalls);
+                Assert.Equal(1, progressCalls);
             }
             finally
             {
