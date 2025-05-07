@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OpenJoconde.Infrastructure.Data;
@@ -11,9 +12,11 @@ using OpenJoconde.Infrastructure.Data;
 namespace OpenJoconde.Infrastructure.Migrations
 {
     [DbContext(typeof(OpenJocondeDbContext))]
-    partial class OpenJocondeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250507201441_AddMuseumGeolocation")]
+    partial class AddMuseumGeolocation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
