@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OpenJoconde.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using OpenJoconde.Infrastructure.Data;
 namespace OpenJoconde.Infrastructure.Migrations
 {
     [DbContext(typeof(OpenJocondeDbContext))]
-    partial class OpenJocondeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250509100000_InitialSqlServerMigration")]
+    partial class InitialSqlServerMigration
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
