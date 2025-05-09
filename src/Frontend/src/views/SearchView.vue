@@ -94,16 +94,18 @@
         <div v-else-if="artworkStore.artworks.length === 0" class="no-results">
           <div class="no-results-icon">🔍</div>
           <h3>Aucun résultat trouvé</h3>
+          <p v-if="searchParams.searchText">Aucune œuvre ne correspond à "<strong>{{ searchParams.searchText }}</strong>".</p>
           <p>Essayez avec d'autres termes de recherche ou filtres moins restrictifs.</p>
-          <div class="suggestions" v-if="searchParams.searchText">
+          <div class="suggestions">
             <h4>Suggestions :</h4>
             <ul>
               <li>Vérifiez l'orthographe de votre recherche</li>
               <li>Utilisez des termes plus généraux</li>
               <li>Réduisez le nombre de filtres</li>
-              <li><a href="#" @click.prevent="searchSimilar('peinture')">Rechercher "peinture"</a></li>
-              <li><a href="#" @click.prevent="searchSimilar('portrait')">Rechercher "portrait"</a></li>
-              <li><a href="#" @click.prevent="resetFilters">Effacer tous les filtres</a></li>
+              <li v-if="hasFiltersEnabled"><a href="#" @click.prevent="resetFilters">Effacer tous les filtres</a></li>
+              <li v-if="searchParams.searchText"><a href="#" @click.prevent="searchSimilar('peinture')">Rechercher "peinture"</a></li>
+              <li v-if="searchParams.searchText"><a href="#" @click.prevent="searchSimilar('portrait')">Rechercher "portrait"</a></li>
+              <li v-if="searchParams.searchText"><a href="#" @click.prevent="searchSimilar('sculpture')">Rechercher "sculpture"</a></li>
             </ul>
           </div>
         </div>
@@ -111,7 +113,8 @@
         <div v-else class="results-content">
           <div class="results-header">
             <div class="results-count">
-              {{ artworkStore.totalCount }} résultat{{ artworkStore.totalCount > 1 ? 's' : '' }} trouvé{{ artworkStore.totalCount > 1 ? 's' : '' }}
+              <strong>{{ artworkStore.totalCount }}</strong> résultat{{ artworkStore.totalCount > 1 ? 's' : '' }} trouvé{{ artworkStore.totalCount > 1 ? 's' : '' }}
+              <span v-if="searchParams.searchText" class="search-terms">pour "<em>{{ searchParams.searchText }}</em>"</span>
             </div>
             <div class="results-sort">
               <label>Trier par :</label>
@@ -214,32 +217,65 @@ export default defineComponent({
       sortBy: 'relevance'
     });
 
+    // Vérifier si des filtres sont activés
+    const hasFiltersEnabled = computed(() => {
+      return searchParams.artistId !== '' || 
+             searchParams.domainId !== '' || 
+             searchParams.techniqueId !== '' || 
+             searchParams.periodId !== '' || 
+             searchParams.museumId !== '';
+    });
+
     // Observer les changements dans les paramètres d'URL
     watch(() => route.query, (newQuery) => {
       if (typeof newQuery.searchText === 'string') {
         searchParams.searchText = newQuery.searchText;
+      } else if (newQuery.searchText === undefined) {
+        searchParams.searchText = '';
       }
+      
       if (typeof newQuery.artistId === 'string') {
         searchParams.artistId = newQuery.artistId;
+      } else if (newQuery.artistId === undefined) {
+        searchParams.artistId = '';
       }
+      
       if (typeof newQuery.domainId === 'string') {
         searchParams.domainId = newQuery.domainId;
+      } else if (newQuery.domainId === undefined) {
+        searchParams.domainId = '';
       }
+      
       if (typeof newQuery.techniqueId === 'string') {
         searchParams.techniqueId = newQuery.techniqueId;
+      } else if (newQuery.techniqueId === undefined) {
+        searchParams.techniqueId = '';
       }
+      
       if (typeof newQuery.periodId === 'string') {
         searchParams.periodId = newQuery.periodId;
+      } else if (newQuery.periodId === undefined) {
+        searchParams.periodId = '';
       }
+      
       if (typeof newQuery.museumId === 'string') {
         searchParams.museumId = newQuery.museumId;
+      } else if (newQuery.museumId === undefined) {
+        searchParams.museumId = '';
       }
+      
       if (typeof newQuery.page === 'string') {
         searchParams.page = parseInt(newQuery.page, 10);
+      } else {
+        searchParams.page = 1;
       }
+      
       if (typeof newQuery.sortBy === 'string') {
         sortBy.value = newQuery.sortBy;
         searchParams.sortBy = newQuery.sortBy;
+      } else {
+        sortBy.value = 'relevance';
+        searchParams.sortBy = 'relevance';
       }
       
       // Effectuer la recherche uniquement si nous venons d'arriver sur la page
@@ -300,15 +336,14 @@ export default defineComponent({
       // Update route query params
       router.push({ 
         query: {
-          ...route.query,
           searchText: searchParams.searchText || undefined,
           artistId: searchParams.artistId || undefined,
           domainId: searchParams.domainId || undefined,
           techniqueId: searchParams.techniqueId || undefined,
           periodId: searchParams.periodId || undefined,
           museumId: searchParams.museumId || undefined,
-          page: searchParams.page.toString(),
-          sortBy: searchParams.sortBy
+          page: searchParams.page > 1 ? searchParams.page.toString() : undefined,
+          sortBy: searchParams.sortBy !== 'relevance' ? searchParams.sortBy : undefined
         }
       });
       
@@ -377,6 +412,7 @@ export default defineComponent({
       techniques,
       periods,
       sortBy,
+      hasFiltersEnabled,
       search,
       resetFilters,
       searchSimilar,
@@ -541,6 +577,17 @@ button {
 .results-count {
   font-weight: bold;
   color: #555;
+  
+  .search-terms {
+    font-weight: normal;
+    margin-left: 5px;
+    
+    em {
+      color: var(--secondary-color);
+      font-style: normal;
+      font-weight: bold;
+    }
+  }
 }
 
 .results-sort {
