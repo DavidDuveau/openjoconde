@@ -1,5 +1,5 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-using Npgsql;
 using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Core.Models;
 using System;
@@ -38,13 +38,13 @@ namespace OpenJoconde.Infrastructure.Data
 
                 // Ensuite, insérer les nouvelles relations
                 var count = 0;
-                using (var connection = new NpgsqlConnection(_connectionString))
+                using (var connection = new SqlConnection(_connectionString))
                 {
                     await connection.OpenAsync();
 
                     foreach (var relation in relations)
                     {
-                        using (var command = new NpgsqlCommand(
+                        using (var command = new SqlCommand(
                             "INSERT INTO ArtworkArtist (ArtworkId, ArtistId, Role) VALUES (@ArtworkId, @ArtistId, @Role)",
                             connection))
                         {
@@ -145,13 +145,13 @@ namespace OpenJoconde.Infrastructure.Data
 
             // Ensuite, insérer les nouvelles relations
             var count = 0;
-            using (var connection = new NpgsqlConnection(_connectionString))
+            using (var connection = new SqlConnection(_connectionString))
             {
                 await connection.OpenAsync();
 
                 foreach (var foreignKey in foreignKeys)
                 {
-                    using (var command = new NpgsqlCommand(
+                    using (var command = new SqlCommand(
                         $"INSERT INTO {tableName} (ArtworkId, {foreignKeyName}) VALUES (@ArtworkId, @ForeignKey)",
                         connection))
                     {
@@ -172,11 +172,11 @@ namespace OpenJoconde.Infrastructure.Data
         /// </summary>
         private async Task DeleteRelationsAsync(string tableName, Guid artworkId)
         {
-            using (var connection = new NpgsqlConnection(_connectionString))
+            using (var connection = new SqlConnection(_connectionString))
             {
                 await connection.OpenAsync();
                 
-                using (var command = new NpgsqlCommand($"DELETE FROM {tableName} WHERE ArtworkId = @ArtworkId", connection))
+                using (var command = new SqlCommand($"DELETE FROM {tableName} WHERE ArtworkId = @ArtworkId", connection))
                 {
                     command.Parameters.AddWithValue("@ArtworkId", artworkId);
                     await command.ExecuteNonQueryAsync();

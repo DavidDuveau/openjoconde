@@ -41,6 +41,15 @@ msbuild.wrn
 *.db-shm
 *.db-wal
 
+# Data files
+src/Backend/OpenJoconde.API/Data/Temp/
+*.json
+!appsettings.json
+!appsettings.*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+
 # NodeJS
 node_modules/
 npm-debug.log
