@@ -4,13 +4,11 @@
       <h1>OpenJoconde</h1>
       <p class="subtitle">Explorez les collections des musées de France</p>
       <div class="search-container">
-        <input 
-          type="text" 
-          v-model="searchQuery" 
+        <SearchBar 
           placeholder="Rechercher une œuvre, un artiste, un musée..." 
-          @keyup.enter="searchArtworks"
+          buttonText="Rechercher" 
+          @search="searchArtworks" 
         />
-        <button @click="searchArtworks">Rechercher</button>
       </div>
     </div>
 
@@ -47,16 +45,20 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import SearchBar from '@/components/SearchBar.vue';
 
 export default defineComponent({
   name: 'HomeView',
+  components: {
+    SearchBar
+  },
   setup() {
     const router = useRouter();
     const searchQuery = ref('');
 
-    const searchArtworks = () => {
-      if (searchQuery.value.trim()) {
-        router.push({ path: '/artworks', query: { search: searchQuery.value } });
+    const searchArtworks = (searchText: string) => {
+      if (searchText.trim()) {
+        router.push({ name: 'search', query: { searchText } });
       }
     };
 
@@ -97,33 +99,26 @@ export default defineComponent({
     .search-container {
       max-width: 600px;
       margin: 0 auto;
-      display: flex;
-
-      input {
-        flex: 1;
-        padding: 12px 16px;
-        font-size: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 4px 0 0 4px;
-        outline: none;
-
-        &:focus {
-          border-color: var(--secondary-color);
-        }
-      }
-
-      button {
-        padding: 12px 24px;
-        background-color: var(--secondary-color);
-        color: white;
-        border: none;
-        border-radius: 0 4px 4px 0;
-        cursor: pointer;
-        font-weight: bold;
-        transition: background-color 0.3s;
-
-        &:hover {
-          background-color: darken(#42b983, 10%);
+      
+      :deep(.search-bar) {
+        width: 100%;
+        
+        .search-form {
+          padding: 0;
+          
+          .search-input {
+            padding: 12px 16px;
+            font-size: 1rem;
+            border-radius: 4px 0 0 4px;
+            height: auto;
+          }
+          
+          .search-button {
+            padding: 12px 24px;
+            border-radius: 0 4px 4px 0;
+            font-weight: bold;
+            font-size: 1rem;
+          }
         }
       }
     }
