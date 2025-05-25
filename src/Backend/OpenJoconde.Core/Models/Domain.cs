@@ -24,6 +24,16 @@ namespace OpenJoconde.Core.Models
         public string Description { get; set; }
 
         /// <summary>
+        /// Creation timestamp
+        /// </summary>
+        public DateTime CreatedAt { get; set; }
+
+        /// <summary>
+        /// Last update timestamp
+        /// </summary>
+        public DateTime UpdatedAt { get; set; }
+
+        /// <summary>
         /// Artworks in this domain
         /// </summary>
         public List<Artwork> Artworks { get; set; } = new List<Artwork>();

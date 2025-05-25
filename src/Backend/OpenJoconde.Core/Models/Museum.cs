@@ -77,5 +77,15 @@ namespace OpenJoconde.Core.Models
         /// Latitude of the museum location
         /// </summary>
         public double? Latitude { get; set; }
+
+        /// <summary>
+        /// Creation timestamp
+        /// </summary>
+        public DateTime CreatedAt { get; set; }
+
+        /// <summary>
+        /// Last update timestamp
+        /// </summary>
+        public DateTime UpdatedAt { get; set; }
     }
 }

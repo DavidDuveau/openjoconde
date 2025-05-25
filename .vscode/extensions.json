@@ -1,0 +1,31 @@
+{
+    "recommendations": [
+        // C# et .NET
+        "ms-dotnettools.csharp",
+        "ms-dotnettools.vscode-dotnet-runtime",
+        
+        // Vue.js et TypeScript
+        "Vue.volar",
+        "Vue.vscode-typescript-vue-plugin",
+        "dbaeumer.vscode-eslint",
+        
+        // Base de données
+        "ms-mssql.mssql",
+        
+        // Git
+        "eamodio.gitlens",
+        
+        // Utilitaires
+        "esbenp.prettier-vscode",
+        "streetsidesoftware.code-spell-checker",
+        "streetsidesoftware.code-spell-checker-french",
+        "yzhang.markdown-all-in-one",
+        "christian-kohler.path-intellisense",
+        
+        // API Testing
+        "humao.rest-client",
+        
+        // Docker (optionnel)
+        "ms-azuretools.vscode-docker"
+    ]
+}
