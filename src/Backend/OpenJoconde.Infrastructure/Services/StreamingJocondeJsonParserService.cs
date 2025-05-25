@@ -67,8 +67,9 @@ namespace OpenJoconde.Infrastructure.Services
                 using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                 {
                     // Vérifier que le fichier commence par un tableau '['
-                    int firstChar = await streamReader.ReadAsync();
-                    if (firstChar != '[')
+                    char[] firstCharBuffer = new char[1];
+                    await streamReader.ReadAsync(firstCharBuffer, 0, 1);
+                    if (firstCharBuffer[0] != '[')
                     {
                         throw new FormatException("Le fichier JSON ne commence pas par un tableau '['");
                     }

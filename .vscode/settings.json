@@ -1,0 +1,89 @@
+{
+    // Éditeur
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": true
+    },
+    
+    // C# et .NET
+    "[csharp]": {
+        "editor.defaultFormatter": "ms-dotnettools.csharp"
+    },
+    
+    // Vue et TypeScript
+    "[vue]": {
+        "editor.defaultFormatter": "Vue.volar"
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    
+    // Fichiers
+    "files.exclude": {
+        "**/bin": true,
+        "**/obj": true,
+        "**/node_modules": true,
+        "**/.vs": true
+    },
+    
+    // Recherche
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/bin": true,
+        "**/obj": true,
+        "**/.git": true,
+        "**/dist": true
+    },
+    
+    // ESLint
+    "eslint.validate": [
+        "javascript",
+        "typescript",
+        "vue"
+    ],
+    
+    // Emmet
+    "emmet.includeLanguages": {
+        "vue-html": "html",
+        "vue": "html"
+    },
+    
+    // Terminal
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    
+    // Git
+    "git.autofetch": true,
+    "git.confirmSync": false,
+    
+    // Spell Checker
+    "cSpell.language": "en,fr",
+    "cSpell.words": [
+        "OpenJoconde",
+        "Joconde",
+        "appsettings",
+        "ASPNETCORE",
+        "Swashbuckle",
+        "Serilog",
+        "artworks",
+        "dbcontext",
+        "entityframework",
+        "musée",
+        "œuvre",
+        "œuvres",
+        "deno",
+        "domn",
+        "peri",
+        "tech",
+        "titr",
+        "autr",
+        "loca",
+        "imgs",
+        "dapt",
+        "Pinia",
+        "composables",
+        "vueuse"
+    ]
+}
