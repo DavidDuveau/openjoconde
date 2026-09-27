@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Infrastructure.Data;
+using OpenJoconde.Infrastructure.Data.Repositories;
 using OpenJoconde.Infrastructure.Services;
 
 namespace OpenJoconde.API.Extensions

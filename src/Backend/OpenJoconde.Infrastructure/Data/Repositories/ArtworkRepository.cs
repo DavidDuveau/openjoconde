@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace OpenJoconde.Infrastructure.Data
+namespace OpenJoconde.Infrastructure.Data.Repositories
 {
     /// <summary>
     /// Repository implementation for artwork entities
@@ -34,7 +34,7 @@ namespace OpenJoconde.Infrastructure.Data
         public async Task<IEnumerable<Artwork>> GetAllAsync(int page = 1, int pageSize = 10)
         {
             return await _context.Artworks
-                .Where(a => !a.IsDeleted)
+                .Where(a => true)
                 .OrderBy(a => a.Title)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -55,7 +55,7 @@ namespace OpenJoconde.Infrastructure.Data
         public async Task<Artwork> GetByIdAsync(Guid id)
         {
             return await _context.Artworks
-                .Where(a => a.Id == id && !a.IsDeleted)
+                .Where(a => a.Id == id)
                 .Include(a => a.Artists)
                     .ThenInclude(aa => aa.Artist)
                 .Include(a => a.Domains)
@@ -73,7 +73,7 @@ namespace OpenJoconde.Infrastructure.Data
         public async Task<Artwork> GetByReferenceAsync(string reference)
         {
             return await _context.Artworks
-                .Where(a => a.Reference == reference && !a.IsDeleted)
+                .Where(a => a.Reference == reference)
                 .Include(a => a.Artists)
                     .ThenInclude(aa => aa.Artist)
                 .Include(a => a.Domains)
@@ -105,17 +105,17 @@ namespace OpenJoconde.Infrastructure.Data
             int page = 1,
             int pageSize = 10)
         {
-            var query = _context.Artworks.Where(a => !a.IsDeleted);
+            var query = _context.Artworks.AsQueryable();
 
             // Apply search text filter
             if (!string.IsNullOrWhiteSpace(searchText))
             {
                 query = query.Where(a =>
-                    a.Title.Contains(searchText) ||
+                    (a.Title != null && a.Title.Contains(searchText)) ||
                     a.Reference.Contains(searchText) ||
-                    a.InventoryNumber.Contains(searchText) ||
-                    a.Description.Contains(searchText) ||
-                    a.Denomination.Contains(searchText)
+                    (a.InventoryNumber != null && a.InventoryNumber.Contains(searchText)) ||
+                    (a.Description != null && a.Description.Contains(searchText)) ||
+                    (a.Denomination != null && a.Denomination.Contains(searchText))
                 );
             }
 
@@ -220,10 +220,8 @@ namespace OpenJoconde.Infrastructure.Data
                     return false;
                 }
 
-                // Soft delete
-                artwork.IsDeleted = true;
-                artwork.UpdatedAt = DateTime.UtcNow;
-
+                // Hard delete
+                _context.Artworks.Remove(artwork);
                 await _context.SaveChangesAsync();
                 return true;
             }
@@ -240,7 +238,7 @@ namespace OpenJoconde.Infrastructure.Data
         /// <returns>Number of artworks</returns>
         public async Task<int> GetCountAsync()
         {
-            return await _context.Artworks.CountAsync(a => !a.IsDeleted);
+            return await _context.Artworks.CountAsync();
         }
 
         /// <summary>

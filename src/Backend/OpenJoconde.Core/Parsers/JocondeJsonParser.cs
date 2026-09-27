@@ -156,8 +156,7 @@ namespace OpenJoconde.Core.Parsers
                 ConservationPlace = GetMappedStringValue(artworkElement, fieldMappings["localisation"], "localisation"),
                 Copyright = GetMappedStringValue(artworkElement, fieldMappings["copyright"], "copyright"),
                 ImageUrl = GetMappedStringValue(artworkElement, fieldMappings["image"], "image"),
-                UpdatedAt = DateTime.UtcNow,
-                IsDeleted = false
+                UpdatedAt = DateTime.UtcNow
             };
             
             // Journalisation pour vérifier l'extraction

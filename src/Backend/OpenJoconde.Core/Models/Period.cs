@@ -16,7 +16,7 @@ namespace OpenJoconde.Core.Models
         /// <summary>
         /// Name of the period
         /// </summary>
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>
         /// Start year of the period
@@ -31,7 +31,7 @@ namespace OpenJoconde.Core.Models
         /// <summary>
         /// Description of the period
         /// </summary>
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         /// <summary>
         /// Creation timestamp

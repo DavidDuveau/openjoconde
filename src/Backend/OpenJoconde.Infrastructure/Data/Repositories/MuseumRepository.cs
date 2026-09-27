@@ -130,16 +130,20 @@ namespace OpenJoconde.Infrastructure.Data
         }
         
         /// <summary>
-        /// Bulk upsert museums (insert or update)
+        /// Bulk upsert museums (insert or update) with individual fallback
         /// </summary>
         public async Task<int> BulkUpsertAsync(IEnumerable<Museum> museums)
         {
-            try
+            var museumList = museums.ToList();
+            _logger.LogInformation("Starting bulk upsert of {Count} museums", museumList.Count);
+            
+            int successCount = 0;
+            int errorCount = 0;
+            var pendingMuseums = new List<Museum>();
+            
+            foreach (var museum in museumList)
             {
-                // This is a simple implementation. For production, consider using a library like EFCore.BulkExtensions
-                int count = 0;
-                
-                foreach (var museum in museums)
+                try
                 {
                     var existingMuseum = await _context.Museums
                         .FirstOrDefaultAsync(m => 
@@ -156,8 +160,10 @@ namespace OpenJoconde.Infrastructure.Data
                         existingMuseum.Email = museum.Email;
                         existingMuseum.Website = museum.Website;
                         existingMuseum.Description = museum.Description;
+                        existingMuseum.UpdatedAt = DateTime.UtcNow;
                         
                         _context.Museums.Update(existingMuseum);
+                        pendingMuseums.Add(existingMuseum);
                     }
                     else
                     {
@@ -167,31 +173,144 @@ namespace OpenJoconde.Infrastructure.Data
                             museum.Id = Guid.NewGuid();
                         }
                         
+                        museum.CreatedAt = DateTime.UtcNow;
+                        museum.UpdatedAt = DateTime.UtcNow;
+                        
                         _context.Museums.Add(museum);
+                        pendingMuseums.Add(museum);
                     }
                     
-                    count++;
+                    successCount++;
                     
                     // Save in batches of 100 to avoid memory issues
-                    if (count % 100 == 0)
+                    if (pendingMuseums.Count >= 100)
                     {
+                        var batchResult = await SaveBatchWithIndividualFallback(pendingMuseums);
+                        errorCount += batchResult.ErrorCount;
+                        
+                        if (batchResult.ErrorCount > 0)
+                        {
+                            _logger.LogWarning("Batch had {ErrorCount} errors out of {BatchSize} museums", 
+                                batchResult.ErrorCount, pendingMuseums.Count);
+                        }
+                        
+                        pendingMuseums.Clear();
+                        _context.ChangeTracker.Clear();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error processing museum {Name}, {City}: {Message}", 
+                        museum.Name, museum.City, ex.Message);
+                    errorCount++;
+                }
+            }
+            
+            // Save any remaining changes
+            if (pendingMuseums.Count > 0)
+            {
+                var batchResult = await SaveBatchWithIndividualFallback(pendingMuseums);
+                errorCount += batchResult.ErrorCount;
+            }
+            
+            var finalSuccessCount = successCount - errorCount;
+            _logger.LogInformation("Bulk upsert completed: {Success}/{Total} museums processed successfully, {Errors} errors", 
+                finalSuccessCount, successCount, errorCount);
+            
+            return finalSuccessCount;
+        }
+        
+        /// <summary>
+        /// Saves a batch of museums with individual fallback on failure
+        /// </summary>
+        private async Task<(int ErrorCount, int SkippedCount)> SaveBatchWithIndividualFallback(List<Museum> museums)
+        {
+            int errorCount = 0;
+            int skippedCount = 0;
+            
+            try
+            {
+                // Attempt batch save
+                await _context.SaveChangesAsync();
+                return (0, 0); // Success
+            }
+            catch (Exception batchEx)
+            {
+                _logger.LogWarning(batchEx, "Batch save failed for {Count} museums. Attempting individual saves.", museums.Count);
+                
+                // Clear context and retry individually
+                _context.ChangeTracker.Clear();
+                
+                foreach (var museum in museums)
+                {
+                    try
+                    {
+                        // Re-attach and process individual museum
+                        var existingMuseum = await _context.Museums
+                            .FirstOrDefaultAsync(m => m.Id == museum.Id || 
+                                (m.Name == museum.Name && m.City == museum.City));
+
+                        if (existingMuseum != null)
+                        {
+                            // Update existing
+                            existingMuseum.Department = TruncateString(museum.Department, 100);
+                            existingMuseum.Address = museum.Address;
+                            existingMuseum.ZipCode = TruncateString(museum.ZipCode, 20);
+                            existingMuseum.Phone = TruncateString(museum.Phone, 20);
+                            existingMuseum.Email = TruncateString(museum.Email, 100);
+                            existingMuseum.Website = museum.Website;
+                            existingMuseum.Description = museum.Description;
+                            existingMuseum.UpdatedAt = DateTime.UtcNow;
+                        }
+                        else
+                        {
+                            // Insert new with data validation
+                            var newMuseum = new Museum
+                            {
+                                Id = museum.Id != Guid.Empty ? museum.Id : Guid.NewGuid(),
+                                Name = TruncateString(museum.Name ?? "Unknown Museum", 200),
+                                City = TruncateString(museum.City, 100),
+                                Department = TruncateString(museum.Department, 100),
+                                Address = museum.Address,
+                                ZipCode = TruncateString(museum.ZipCode, 20),
+                                Phone = TruncateString(museum.Phone, 20),
+                                Email = TruncateString(museum.Email, 100),
+                                Website = museum.Website,
+                                Description = museum.Description,
+                                CreatedAt = DateTime.UtcNow,
+                                UpdatedAt = DateTime.UtcNow
+                            };
+                            _context.Museums.Add(newMuseum);
+                        }
+                        
                         await _context.SaveChangesAsync();
+                        _context.ChangeTracker.Clear();
+                    }
+                    catch (Exception individualEx)
+                    {
+                        _logger.LogError(individualEx, "Failed to save museum {Name}, {City}: {Message}", 
+                            museum.Name, museum.City, individualEx.Message);
+                        errorCount++;
+                        _context.ChangeTracker.Clear();
                     }
                 }
                 
-                // Save any remaining changes
-                if (count % 100 != 0)
-                {
-                    await _context.SaveChangesAsync();
-                }
+                return (errorCount, skippedCount);
+            }
+        }
+        
+        /// <summary>
+        /// Truncates a string to the specified maximum length
+        /// </summary>
+        private string TruncateString(string value, int maxLength)
+        {
+            if (string.IsNullOrEmpty(value))
+                return value;
                 
-                return count;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error bulk upserting museums");
-                throw;
-            }
+            if (value.Length <= maxLength)
+                return value;
+                
+            return value.Substring(0, maxLength);
         }
     }
 }

@@ -112,26 +112,32 @@ namespace OpenJoconde.Infrastructure.Data
         }
         
         /// <summary>
-        /// Bulk upsert domains (insert or update)
+        /// Bulk upsert domains (insert or update) with individual fallback
         /// </summary>
         public async Task<int> BulkUpsertAsync(IEnumerable<Domain> domains)
         {
-            try
+            var domainList = domains.ToList();
+            _logger.LogInformation("Starting bulk upsert of {Count} domains", domainList.Count);
+            
+            int successCount = 0;
+            int errorCount = 0;
+            var pendingDomains = new List<Domain>();
+            
+            foreach (var domain in domainList)
             {
-                // This is a simple implementation. For production, consider using a library like EFCore.BulkExtensions
-                int count = 0;
-                
-                foreach (var domain in domains)
+                try
                 {
                     var existingDomain = await _context.Domains
                         .FirstOrDefaultAsync(d => d.Name == domain.Name);
 
                     if (existingDomain != null)
                     {
-                        // Update existing domain if necessary
+                        // Update existing domain
                         existingDomain.Description = domain.Description;
+                        existingDomain.UpdatedAt = DateTime.UtcNow;
                         
                         _context.Domains.Update(existingDomain);
+                        pendingDomains.Add(existingDomain);
                     }
                     else
                     {
@@ -141,31 +147,168 @@ namespace OpenJoconde.Infrastructure.Data
                             domain.Id = Guid.NewGuid();
                         }
                         
+                        domain.CreatedAt = DateTime.UtcNow;
+                        domain.UpdatedAt = DateTime.UtcNow;
+                        
                         _context.Domains.Add(domain);
+                        pendingDomains.Add(domain);
                     }
                     
-                    count++;
+                    successCount++;
                     
                     // Save in batches of 100 to avoid memory issues
-                    if (count % 100 == 0)
+                    if (pendingDomains.Count >= 100)
                     {
+                        var batchResult = await SaveBatchWithIndividualFallback(pendingDomains);
+                        errorCount += batchResult.ErrorCount;
+                        
+                        if (batchResult.ErrorCount > 0)
+                        {
+                            _logger.LogWarning("Batch had {ErrorCount} errors out of {BatchSize} domains", 
+                                batchResult.ErrorCount, pendingDomains.Count);
+                        }
+                        
+                        pendingDomains.Clear();
+                        _context.ChangeTracker.Clear();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error processing domain {Name}: {Message}", 
+                        domain.Name, ex.Message);
+                    errorCount++;
+                }
+            }
+            
+            // Save any remaining changes
+            if (pendingDomains.Count > 0)
+            {
+                var batchResult = await SaveBatchWithIndividualFallback(pendingDomains);
+                errorCount += batchResult.ErrorCount;
+            }
+            
+            var finalSuccessCount = successCount - errorCount;
+            _logger.LogInformation("Bulk upsert completed: {Success}/{Total} domains processed successfully, {Errors} errors", 
+                finalSuccessCount, successCount, errorCount);
+            
+            return finalSuccessCount;
+        }
+        
+        /// <summary>
+        /// Saves a batch of domains with individual fallback on failure
+        /// </summary>
+        private async Task<(int ErrorCount, int SkippedCount)> SaveBatchWithIndividualFallback(List<Domain> domains)
+        {
+            int errorCount = 0;
+            int skippedCount = 0;
+            
+            try
+            {
+                // Attempt batch save
+                await _context.SaveChangesAsync();
+                return (0, 0); // Success
+            }
+            catch (Exception batchEx)
+            {
+                _logger.LogWarning(batchEx, "Batch save failed for {Count} domains. Attempting individual saves.", domains.Count);
+                
+                // Clear context and retry individually
+                _context.ChangeTracker.Clear();
+                
+                foreach (var domain in domains)
+                {
+                    try
+                    {
+                        // Re-attach and process individual domain
+                        var existingDomain = await _context.Domains
+                            .FirstOrDefaultAsync(d => d.Id == domain.Id || d.Name == domain.Name);
+
+                        if (existingDomain != null)
+                        {
+                            // Update existing
+                            existingDomain.Description = domain.Description;
+                            existingDomain.UpdatedAt = DateTime.UtcNow;
+                        }
+                        else
+                        {
+                            // Insert new with data validation
+                            var truncatedName = TruncateString(domain.Name ?? "Unknown Domain", 200);
+                            var uniqueName = await EnsureUniqueName(truncatedName);
+                            
+                            var newDomain = new Domain
+                            {
+                                Id = domain.Id != Guid.Empty ? domain.Id : Guid.NewGuid(),
+                                Name = uniqueName,
+                                Description = domain.Description,
+                                CreatedAt = DateTime.UtcNow,
+                                UpdatedAt = DateTime.UtcNow
+                            };
+                            _context.Domains.Add(newDomain);
+                        }
+                        
                         await _context.SaveChangesAsync();
+                        _context.ChangeTracker.Clear();
+                    }
+                    catch (Exception individualEx)
+                    {
+                        _logger.LogError(individualEx, "Failed to save domain {Name}: {Message}", 
+                            domain.Name, individualEx.Message);
+                        errorCount++;
+                        _context.ChangeTracker.Clear();
                     }
                 }
                 
-                // Save any remaining changes
-                if (count % 100 != 0)
+                return (errorCount, skippedCount);
+            }
+        }
+        
+        /// <summary>
+        /// Truncates a string to the specified maximum length
+        /// </summary>
+        private string TruncateString(string value, int maxLength)
+        {
+            if (string.IsNullOrEmpty(value))
+                return value;
+                
+            if (value.Length <= maxLength)
+                return value;
+                
+            return value.Substring(0, maxLength);
+        }
+        
+        /// <summary>
+        /// Ensures a domain name is unique by appending a number if needed
+        /// </summary>
+        private async Task<string> EnsureUniqueName(string baseName)
+        {
+            var candidateName = baseName;
+            var counter = 1;
+            
+            while (await _context.Domains.AnyAsync(d => d.Name == candidateName))
+            {
+                var suffix = $" ({counter})";
+                var maxBaseLength = 200 - suffix.Length;
+                
+                if (baseName.Length > maxBaseLength)
                 {
-                    await _context.SaveChangesAsync();
+                    candidateName = baseName.Substring(0, maxBaseLength) + suffix;
+                }
+                else
+                {
+                    candidateName = baseName + suffix;
                 }
                 
-                return count;
+                counter++;
+                
+                // Safety check to avoid infinite loop
+                if (counter > 1000)
+                {
+                    candidateName = Guid.NewGuid().ToString();
+                    break;
+                }
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error bulk upserting domains");
-                throw;
-            }
+            
+            return candidateName;
         }
     }
 }

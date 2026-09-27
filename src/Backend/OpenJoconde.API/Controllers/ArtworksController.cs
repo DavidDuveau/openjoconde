@@ -47,7 +47,6 @@ namespace OpenJoconde.API.Controllers
 
                 // Query de base
                 IQueryable<Artwork> query = _context.Artworks
-                    .Where(a => !a.IsDeleted)
                     .OrderBy(a => a.Title);
 
                 // Appliquer la recherche si nécessaire
@@ -55,10 +54,10 @@ namespace OpenJoconde.API.Controllers
                 {
                     search = search.Trim().ToLower();
                     query = query.Where(a =>
-                        a.Title.ToLower().Contains(search) ||
+                        (a.Title != null && a.Title.ToLower().Contains(search)) ||
                         a.Reference.ToLower().Contains(search) ||
-                        a.InventoryNumber.ToLower().Contains(search) ||
-                        a.Description.ToLower().Contains(search));
+                        (a.InventoryNumber != null && a.InventoryNumber.ToLower().Contains(search)) ||
+                        (a.Description != null && a.Description.ToLower().Contains(search)));
                 }
 
                 // Calculer le nombre total d'éléments
@@ -102,7 +101,7 @@ namespace OpenJoconde.API.Controllers
                 _logger.LogInformation("Récupération de l'oeuvre d'art avec l'identifiant {Id}", id);
 
                 var artwork = await _context.Artworks
-                    .Where(a => a.Id == id && !a.IsDeleted)
+                    .Where(a => a.Id == id)
                     .FirstOrDefaultAsync();
 
                 if (artwork == null)
