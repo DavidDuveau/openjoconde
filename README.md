@@ -70,7 +70,10 @@ VUE_APP_API_URL=https://localhost:5001/api
 
 ### Tout lancer
 
-`start-openjoconde.ps1` (ou `start-openjoconde.bat`) démarre le backend et le frontend dans deux fenêtres.
+Depuis VS Code :
+
+- **Run Task → `start-all`** : lance le backend et le frontend en parallèle.
+- **F5 → Full Stack** : même chose avec le débogueur attaché au backend et au navigateur.
 
 ## API
 
