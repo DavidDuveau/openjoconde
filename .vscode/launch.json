@@ -38,7 +38,7 @@
         {
             "name": "Full Stack",
             "configurations": ["Launch Backend", "Launch Frontend"],
-            "preLaunchTask": "start-all",
+            "preLaunchTask": "run-frontend",
             "stopAll": true
         }
     ]
