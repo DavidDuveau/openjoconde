@@ -51,9 +51,24 @@ namespace OpenJoconde.API.Controllers
 
                 // Créer un répertoire temporaire pour le téléchargement
                 var tempDirectory = Path.Combine(Path.GetTempPath(), "OpenJoconde");
+                System.IO.Directory.CreateDirectory(tempDirectory);
                 
-                // Lancer la mise à jour des données
-                var report = await _jocondeDataService.UpdateJocondeDataAsync(jocondeUrl, tempDirectory, cancellationToken);
+                // Générer un nom de fichier temporaire
+                var tempFilePath = Path.Combine(tempDirectory, $"joconde_{DateTime.Now:yyyyMMdd_HHmmss}.xml");
+                
+                // Télécharger les données
+                await _jocondeDataService.DownloadJocondeDataAsync(jocondeUrl, tempFilePath, cancellationToken);
+                _logger.LogInformation("Fichier téléchargé avec succès: {FilePath}", tempFilePath);
+                
+                // Importer les données
+                var report = await _dataImportService.ImportFromXmlFileAsync(tempFilePath, null, cancellationToken);
+                
+                // Nettoyer le fichier temporaire
+                if (System.IO.File.Exists(tempFilePath))
+                {
+                    System.IO.File.Delete(tempFilePath);
+                    _logger.LogInformation("Fichier temporaire supprimé: {FilePath}", tempFilePath);
+                }
 
                 _logger.LogInformation("Importation des données Joconde terminée");
                 return Ok(report);
@@ -86,7 +101,7 @@ namespace OpenJoconde.API.Controllers
 
                 // Créer un répertoire temporaire pour le téléchargement
                 var tempDirectory = Path.Combine(Path.GetTempPath(), "OpenJoconde");
-                Directory.CreateDirectory(tempDirectory);
+                System.IO.Directory.CreateDirectory(tempDirectory);
                 
                 // Télécharger le fichier XML
                 var tempFilePath = await _dataImportService.DownloadJocondeDataAsync(jocondeUrl, Path.Combine(tempDirectory, $"joconde_{DateTime.Now:yyyyMMdd_HHmmss}.xml"), cancellationToken);

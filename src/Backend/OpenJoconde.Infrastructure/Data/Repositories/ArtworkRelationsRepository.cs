@@ -8,7 +8,7 @@ using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace OpenJoconde.Infrastructure.Data
+namespace OpenJoconde.Infrastructure.Data.Repositories
 {
     /// <summary>
     /// Implémentation du repository pour la gestion des relations entre les œuvres et les autres entités
@@ -33,6 +33,13 @@ namespace OpenJoconde.Infrastructure.Data
         {
             try
             {
+                // Vérifier que les relations ne sont pas null
+                if (relations == null)
+                {
+                    _logger.LogWarning("Relations collection is null for artwork {ArtworkId}", artworkId);
+                    return 0;
+                }
+                
                 // D'abord, supprimer les relations existantes
                 await DeleteRelationsAsync("ArtworkArtist", artworkId);
 
@@ -44,6 +51,13 @@ namespace OpenJoconde.Infrastructure.Data
 
                     foreach (var relation in relations)
                     {
+                        // Skip relations with null artist
+                        if (relation?.Artist == null)
+                        {
+                            _logger.LogWarning("Skipping artwork-artist relation with null artist for artwork {ArtworkId}", artworkId);
+                            continue;
+                        }
+                        
                         using (var command = new SqlCommand(
                             "INSERT INTO ArtworkArtist (ArtworkId, ArtistId, Role) VALUES (@ArtworkId, @ArtistId, @Role)",
                             connection))

@@ -16,32 +16,32 @@ namespace OpenJoconde.Core.Models
         /// <summary>
         /// Last name of the artist
         /// </summary>
-        public string LastName { get; set; }
+        public string LastName { get; set; } = string.Empty;
 
         /// <summary>
         /// First name of the artist
         /// </summary>
-        public string FirstName { get; set; }
+        public string? FirstName { get; set; }
 
         /// <summary>
         /// Birth date of the artist
         /// </summary>
-        public string BirthDate { get; set; }
+        public string? BirthDate { get; set; }
 
         /// <summary>
         /// Death date of the artist
         /// </summary>
-        public string DeathDate { get; set; }
+        public string? DeathDate { get; set; }
 
         /// <summary>
         /// Nationality of the artist
         /// </summary>
-        public string Nationality { get; set; }
+        public string? Nationality { get; set; }
 
         /// <summary>
         /// Biography of the artist
         /// </summary>
-        public string Biography { get; set; }
+        public string? Biography { get; set; }
 
         /// <summary>
         /// Creation timestamp

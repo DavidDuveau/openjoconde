@@ -39,7 +39,16 @@ namespace OpenJoconde.Core.Interfaces
         /// <param name="progressCallback">Callback pour suivre la progression</param>
         /// <param name="cancellationToken">Token d'annulation</param>
         /// <returns>Rapport d'importation</returns>
-        Task<ImportReport> ImportFromXmlFileAsync(string xmlFilePath, Action<string, int, int> progressCallback = null, CancellationToken cancellationToken = default);
+        Task<ImportReport> ImportFromXmlFileAsync(string xmlFilePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Importe les données depuis un fichier JSON
+        /// </summary>
+        /// <param name="jsonFilePath">Chemin du fichier JSON à importer</param>
+        /// <param name="progressCallback">Callback pour suivre la progression</param>
+        /// <param name="cancellationToken">Token d'annulation</param>
+        /// <returns>Rapport d'importation</returns>
+        Task<ImportReport> ImportFromJsonFileAsync(string jsonFilePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default);
     }
 
     /// <summary>

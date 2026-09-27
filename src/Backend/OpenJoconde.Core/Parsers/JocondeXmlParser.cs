@@ -122,8 +122,7 @@ namespace OpenJoconde.Core.Parsers
                     ConservationPlace = GetElementValue(record, "LOCA2", ns),
                     Copyright = GetElementValue(record, "COPY", ns),
                     ImageUrl = GetElementValue(record, "IMG", ns),
-                    UpdatedAt = DateTime.UtcNow,
-                    IsDeleted = false
+                    UpdatedAt = DateTime.UtcNow
                 };
 
                 // Vérifier si l'œuvre a un minimum de données requises

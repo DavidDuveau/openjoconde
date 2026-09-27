@@ -34,9 +34,9 @@ namespace OpenJoconde.Infrastructure.Data
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
                 entity.Property(e => e.Reference).HasMaxLength(100).IsRequired();
-                entity.Property(e => e.InventoryNumber).HasMaxLength(100);
-                entity.Property(e => e.Title).HasMaxLength(250);
-                entity.Property(e => e.Description).HasMaxLength(2000);
+                entity.Property(e => e.InventoryNumber).HasMaxLength(500);
+                entity.Property(e => e.Title).HasMaxLength(500);
+                entity.Property(e => e.Description).HasColumnType("NVARCHAR(MAX)");
                 entity.HasIndex(e => e.Reference).IsUnique();
                 entity.HasIndex(e => e.InventoryNumber);
                 entity.HasIndex(e => e.Title);
@@ -48,8 +48,12 @@ namespace OpenJoconde.Infrastructure.Data
                 entity.ToTable("Artist");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
-                entity.Property(e => e.LastName).HasMaxLength(100).IsRequired();
-                entity.Property(e => e.FirstName).HasMaxLength(100);
+                entity.Property(e => e.LastName).HasMaxLength(500).IsRequired();
+                entity.Property(e => e.FirstName).HasMaxLength(500);
+                entity.Property(e => e.BirthDate).HasMaxLength(100);
+                entity.Property(e => e.DeathDate).HasMaxLength(100);
+                entity.Property(e => e.Nationality).HasMaxLength(200);
+                entity.Property(e => e.Biography).HasColumnType("NVARCHAR(MAX)");
                 entity.HasIndex(e => e.LastName);
             });
 
@@ -76,7 +80,8 @@ namespace OpenJoconde.Infrastructure.Data
                 entity.ToTable("Domain");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
-                entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+                entity.Property(e => e.Description).HasColumnType("NVARCHAR(MAX)");
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 
@@ -86,7 +91,8 @@ namespace OpenJoconde.Infrastructure.Data
                 entity.ToTable("Technique");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
-                entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+                entity.Property(e => e.Description).HasColumnType("NVARCHAR(MAX)");
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 
@@ -96,7 +102,8 @@ namespace OpenJoconde.Infrastructure.Data
                 entity.ToTable("Period");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
-                entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+                entity.Property(e => e.Description).HasColumnType("NVARCHAR(MAX)");
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 
@@ -106,9 +113,15 @@ namespace OpenJoconde.Infrastructure.Data
                 entity.ToTable("Museum");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
-                entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
-                entity.Property(e => e.City).HasMaxLength(100);
+                entity.Property(e => e.Name).HasMaxLength(500).IsRequired();
+                entity.Property(e => e.City).HasMaxLength(200);
+                entity.Property(e => e.Department).HasMaxLength(200);
                 entity.Property(e => e.ZipCode).HasMaxLength(20);
+                entity.Property(e => e.Phone).HasMaxLength(50);
+                entity.Property(e => e.Email).HasMaxLength(200);
+                entity.Property(e => e.Website).HasMaxLength(500);
+                entity.Property(e => e.Address).HasColumnType("NVARCHAR(MAX)");
+                entity.Property(e => e.Description).HasColumnType("NVARCHAR(MAX)");
                 entity.HasIndex(e => e.Name);
                 entity.HasIndex(e => e.City);
             });

@@ -16,57 +16,57 @@ namespace OpenJoconde.Core.Models
         /// <summary>
         /// Reference in the Joconde database (REF in XML)
         /// </summary>
-        public string Reference { get; set; }
+        public string Reference { get; set; } = string.Empty;
 
         /// <summary>
         /// Inventory number of the artwork (INV in XML)
         /// </summary>
-        public string InventoryNumber { get; set; }
+        public string? InventoryNumber { get; set; }
 
         /// <summary>
         /// Denomination of the artwork
         /// </summary>
-        public string Denomination { get; set; }
+        public string? Denomination { get; set; }
 
         /// <summary>
         /// Title of the artwork
         /// </summary>
-        public string Title { get; set; }
+        public string? Title { get; set; }
 
         /// <summary>
         /// Description of the artwork
         /// </summary>
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         /// <summary>
         /// Dimensions of the artwork
         /// </summary>
-        public string Dimensions { get; set; }
+        public string? Dimensions { get; set; }
 
         /// <summary>
         /// Creation date of the artwork
         /// </summary>
-        public string CreationDate { get; set; }
+        public string? CreationDate { get; set; }
 
         /// <summary>
         /// Place where the artwork was created
         /// </summary>
-        public string CreationPlace { get; set; }
+        public string? CreationPlace { get; set; }
 
         /// <summary>
         /// Place where the artwork is conserved
         /// </summary>
-        public string ConservationPlace { get; set; }
+        public string? ConservationPlace { get; set; }
 
         /// <summary>
         /// Copyright information
         /// </summary>
-        public string Copyright { get; set; }
+        public string? Copyright { get; set; }
 
         /// <summary>
         /// URL to the image of the artwork
         /// </summary>
-        public string ImageUrl { get; set; }
+        public string? ImageUrl { get; set; }
 
         /// <summary>
         /// Creation timestamp
@@ -78,10 +78,6 @@ namespace OpenJoconde.Core.Models
         /// </summary>
         public DateTime UpdatedAt { get; set; }
 
-        /// <summary>
-        /// Flag indicating if the artwork is deleted
-        /// </summary>
-        public bool IsDeleted { get; set; }
 
         /// <summary>
         /// Artists associated with this artwork

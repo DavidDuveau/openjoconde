@@ -28,6 +28,7 @@ namespace OpenJoconde.Infrastructure.Services
         private readonly IPeriodRepository _periodRepository;
         private readonly IArtworkRelationsRepository _artworkRelationsRepository;
         private readonly IJocondeXmlParser _xmlParser;
+        private readonly IJocondeJsonParser _jsonParser;
         private readonly HttpClient _httpClient;
 
         public AdvancedDataImportService(
@@ -40,6 +41,7 @@ namespace OpenJoconde.Infrastructure.Services
             IPeriodRepository periodRepository,
             IArtworkRelationsRepository artworkRelationsRepository,
             IJocondeXmlParser xmlParser,
+            IJocondeJsonParser jsonParser,
             HttpClient httpClient)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -51,6 +53,7 @@ namespace OpenJoconde.Infrastructure.Services
             _periodRepository = periodRepository ?? throw new ArgumentNullException(nameof(periodRepository));
             _artworkRelationsRepository = artworkRelationsRepository ?? throw new ArgumentNullException(nameof(artworkRelationsRepository));
             _xmlParser = xmlParser ?? throw new ArgumentNullException(nameof(xmlParser));
+            _jsonParser = jsonParser ?? throw new ArgumentNullException(nameof(jsonParser));
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         }
 
@@ -198,8 +201,7 @@ namespace OpenJoconde.Infrastructure.Services
                     ConservationPlace = artwork.ConservationPlace,
                     Copyright = artwork.Copyright,
                     ImageUrl = artwork.ImageUrl,
-                    UpdatedAt = DateTime.UtcNow,
-                    IsDeleted = false
+                    UpdatedAt = DateTime.UtcNow
                 }).ToList();
 
                 await _artworkRepository.BulkUpsertAsync(artworksToImport);
@@ -207,32 +209,75 @@ namespace OpenJoconde.Infrastructure.Services
                 // 2. Ensuite, traiter les relations pour chaque œuvre
                 foreach (var artwork in batch)
                 {
-                    // Relations avec les artistes
-                    if (artwork.Artists.Any())
+                    try
                     {
-                        await _artworkRelationsRepository.SaveArtworkArtistRelationsAsync(
-                            artwork.Id, artwork.Artists);
-                    }
+                        // Vérifier que l'œuvre existe avant de créer les relations
+                        var existingArtwork = await _artworkRepository.GetByIdAsync(artwork.Id);
+                        if (existingArtwork == null)
+                        {
+                            _logger.LogWarning("Skipping relations for artwork {ArtworkId} - artwork not found in database", artwork.Id);
+                            continue;
+                        }
+                        
+                        // Relations avec les artistes
+                        if (artwork.Artists.Any())
+                        {
+                            try
+                            {
+                                await _artworkRelationsRepository.SaveArtworkArtistRelationsAsync(
+                                    artwork.Id, artwork.Artists);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Failed to save artist relations for artwork {ArtworkId}", artwork.Id);
+                            }
+                        }
 
-                    // Relations avec les domaines
-                    if (artwork.Domains.Any())
-                    {
-                        await _artworkRelationsRepository.SaveArtworkDomainRelationsAsync(
-                            artwork.Id, artwork.Domains.Select(d => d.Id));
-                    }
+                        // Relations avec les domaines
+                        if (artwork.Domains.Any())
+                        {
+                            try
+                            {
+                                await _artworkRelationsRepository.SaveArtworkDomainRelationsAsync(
+                                    artwork.Id, artwork.Domains.Select(d => d.Id));
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Failed to save domain relations for artwork {ArtworkId}", artwork.Id);
+                            }
+                        }
 
-                    // Relations avec les techniques
-                    if (artwork.Techniques.Any())
-                    {
-                        await _artworkRelationsRepository.SaveArtworkTechniqueRelationsAsync(
-                            artwork.Id, artwork.Techniques.Select(t => t.Id));
-                    }
+                        // Relations avec les techniques
+                        if (artwork.Techniques.Any())
+                        {
+                            try
+                            {
+                                await _artworkRelationsRepository.SaveArtworkTechniqueRelationsAsync(
+                                    artwork.Id, artwork.Techniques.Select(t => t.Id));
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Failed to save technique relations for artwork {ArtworkId}", artwork.Id);
+                            }
+                        }
 
-                    // Relations avec les périodes
-                    if (artwork.Periods.Any())
+                        // Relations avec les périodes
+                        if (artwork.Periods.Any())
+                        {
+                            try
+                            {
+                                await _artworkRelationsRepository.SaveArtworkPeriodRelationsAsync(
+                                    artwork.Id, artwork.Periods.Select(p => p.Id));
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Failed to save period relations for artwork {ArtworkId}", artwork.Id);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
                     {
-                        await _artworkRelationsRepository.SaveArtworkPeriodRelationsAsync(
-                            artwork.Id, artwork.Periods.Select(p => p.Id));
+                        _logger.LogError(ex, "Failed to process relations for artwork {ArtworkId}", artwork.Id);
                     }
                 }
 
@@ -290,7 +335,7 @@ namespace OpenJoconde.Infrastructure.Services
         /// <summary>
         /// Importe les données depuis un fichier XML
         /// </summary>
-        public async Task<ImportReport> ImportFromXmlFileAsync(string xmlFilePath, Action<string, int, int> progressCallback = null, CancellationToken cancellationToken = default)
+        public async Task<ImportReport> ImportFromXmlFileAsync(string xmlFilePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Démarrage de l'importation depuis le fichier XML {FilePath}", xmlFilePath);
             
@@ -347,6 +392,78 @@ namespace OpenJoconde.Infrastructure.Services
                 stopwatch.Stop();
                 report.Duration = stopwatch.Elapsed;
                 _logger.LogInformation("Importation depuis le fichier XML terminée en {Duration}", report.Duration);
+            }
+            
+            return report;
+        }
+
+        /// <summary>
+        /// Importe les données depuis un fichier JSON
+        /// </summary>
+        public async Task<ImportReport> ImportFromJsonFileAsync(string jsonFilePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default)
+        {
+            _logger.LogInformation("Démarrage de l'importation depuis le fichier JSON {FilePath}", jsonFilePath);
+            
+            var report = new ImportReport
+            {
+                ImportDate = DateTime.UtcNow,
+                Success = true
+            };
+            
+            var stopwatch = Stopwatch.StartNew();
+            
+            try
+            {
+                // Vérifier l'existence du fichier
+                if (!File.Exists(jsonFilePath))
+                {
+                    throw new FileNotFoundException("Le fichier JSON Joconde n'existe pas", jsonFilePath);
+                }
+                
+                // Analyser le fichier JSON avec le parser dédié
+                progressCallback?.Invoke("Parsing", 0, 1);
+                var parsingResult = await _jsonParser.ParseAsync(jsonFilePath, (current, total) => 
+                {
+                    if (current % 100 == 0 || current == total)
+                    {
+                        _logger.LogInformation("Progression du parsing JSON: {Current}/{Total}", current, total);
+                        progressCallback?.Invoke("Parsing", current, total);
+                    }
+                }, cancellationToken);
+                
+                progressCallback?.Invoke("Parsing", 1, 1);
+                
+                // Mettre à jour le rapport avec le nombre d'éléments trouvés
+                report.TotalArtworks = parsingResult.Artworks.Count;
+                report.TotalArtists = parsingResult.Artists.Count;
+                report.TotalMuseums = parsingResult.Museums.Count;
+                report.TotalDomains = parsingResult.Domains.Count;
+                report.TotalTechniques = parsingResult.Techniques.Count;
+                report.TotalPeriods = parsingResult.Periods.Count;
+                
+                // Importer les données avec le service d'importation
+                var importStats = await ImportDataAsync(parsingResult, progressCallback, cancellationToken);
+                
+                // Mettre à jour le rapport avec les statistiques d'importation
+                report.ImportedArtworks = importStats.ArtworksImported;
+                report.ImportedArtists = importStats.ArtistsImported;
+                report.ImportedMuseums = importStats.MuseumsImported;
+                report.ImportedDomains = importStats.DomainsImported;
+                report.ImportedTechniques = importStats.TechniquesImported;
+                report.ImportedPeriods = importStats.PeriodsImported;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de l'importation depuis le fichier JSON: {Message}", ex.Message);
+                report.Errors++;
+                report.Success = false;
+                report.ErrorMessage = ex.Message;
+            }
+            finally
+            {
+                stopwatch.Stop();
+                report.Duration = stopwatch.Elapsed;
+                _logger.LogInformation("Importation depuis le fichier JSON terminée en {Duration}", report.Duration);
             }
             
             return report;

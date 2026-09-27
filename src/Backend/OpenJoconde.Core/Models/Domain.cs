@@ -16,12 +16,12 @@ namespace OpenJoconde.Core.Models
         /// <summary>
         /// Name of the domain
         /// </summary>
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>
         /// Description of the domain
         /// </summary>
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         /// <summary>
         /// Creation timestamp

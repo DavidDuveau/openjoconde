@@ -108,8 +108,8 @@ namespace OpenJoconde.Infrastructure.Services
                     // Télécharger le jeu de données complet
                     await _jocondeDataService.DownloadJocondeDataAsync(fullDataUrl, dataFilePath, cancellationToken);
                     
-                    // Analyser et importer le lot
-                    var importReport = await _jocondeDataService.ImportFromJsonFileAsync(dataFilePath, cancellationToken);
+                    // Analyser et importer le lot avec le service complet
+                    var importReport = await _dataImportService.ImportFromJsonFileAsync(dataFilePath, null, cancellationToken);
                     
                     // Mise à jour du rapport global
                     report.ImportedArtworks = importReport.ImportedArtworks;

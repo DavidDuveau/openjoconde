@@ -156,7 +156,7 @@ namespace OpenJoconde.Infrastructure.Services
         private Artwork ExtractArtwork(JsonElement artworkElement)
         {
             // Extraire explicitement la dénomination
-            string denomination = GetStringValue(artworkElement, "DENO");
+            string denomination = GetStringValue(artworkElement, "denomination");
             
             // Si la dénomination est vide, utiliser une valeur par défaut
             if (string.IsNullOrEmpty(denomination))
@@ -167,19 +167,19 @@ namespace OpenJoconde.Infrastructure.Services
             return new Artwork
             {
                 Id = Guid.NewGuid(),
-                Reference = GetStringValue(artworkElement, "REF"),
-                InventoryNumber = GetStringValue(artworkElement, "INV"),
-                Denomination = denomination, // Utiliser la valeur extraite ou par défaut
-                Title = GetStringValue(artworkElement, "TITR"),
-                Description = GetStringValue(artworkElement, "DESC"),
-                Dimensions = GetStringValue(artworkElement, "DIMS"),
-                CreationDate = GetStringValue(artworkElement, "DAPT"),
-                CreationPlace = GetStringValue(artworkElement, "LOCA"),
-                ConservationPlace = GetStringValue(artworkElement, "LOCA2"),
-                Copyright = GetStringValue(artworkElement, "COPY"),
-                ImageUrl = GetStringValue(artworkElement, "IMG"),
-                UpdatedAt = DateTime.UtcNow,
-                IsDeleted = false
+                Reference = GetStringValue(artworkElement, "reference"),
+                InventoryNumber = GetStringValue(artworkElement, "numero_inventaire"),
+                Denomination = denomination,
+                Title = GetStringValue(artworkElement, "titre"), // Use 'titre' if available, otherwise fall back to denomination
+                Description = GetStringValue(artworkElement, "description"),
+                Dimensions = GetStringValue(artworkElement, "mesures"),
+                CreationDate = GetStringValue(artworkElement, "date_sujet_represente") ?? GetStringValue(artworkElement, "epoque"),
+                CreationPlace = GetStringValue(artworkElement, "lieu_creation") ?? GetStringValue(artworkElement, "ecole_pays"),
+                ConservationPlace = GetStringValue(artworkElement, "lieu_conservation") ?? GetStringValue(artworkElement, "lieu_de_depot"),
+                Copyright = GetStringValue(artworkElement, "droits"), 
+                ImageUrl = GetStringValue(artworkElement, "image_url") ?? GetStringValue(artworkElement, "lien_image"),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
         }
 
@@ -196,88 +196,96 @@ namespace OpenJoconde.Infrastructure.Services
             Dictionary<string, Museum> museums)
         {
             // Extraction des artistes
-            var artistName = GetStringValue(artworkElement, "AUTR");
+            var artistName = GetStringValue(artworkElement, "auteur");
             if (!string.IsNullOrEmpty(artistName))
             {
-                // Utiliser le nom comme clé
+                // Parse artist name (e.g., "Charnay Armand (1844-1915)")
+                var artist = ParseArtistName(artistName);
                 string artistKey = artistName.ToLower();
                 
-                if (!artists.TryGetValue(artistKey, out var artist))
+                if (!artists.TryGetValue(artistKey, out var existingArtist))
                 {
-                    artist = new Artist
-                    {
-                        Id = Guid.NewGuid(),
-                        LastName = artistName,
-                        // D'autres champs peuvent être extraits selon la structure JSON
-                    };
-                    
-                    artists[artistKey] = artist;
+                    existingArtist = artist;
+                    artists[artistKey] = existingArtist;
                 }
                 
                 // Lier l'artiste à l'œuvre
                 artwork.Artists.Add(new ArtworkArtist
                 {
-                    ArtistId = artist.Id,
+                    ArtistId = existingArtist.Id,
                     ArtworkId = artwork.Id,
-                    Role = "Créateur" // À adapter selon les données
+                    Role = "Créateur"
                 });
             }
             
-            // Extraction des domaines
-            var domainName = GetStringValue(artworkElement, "DOMN");
-            if (!string.IsNullOrEmpty(domainName))
+            // Extraction des domaines (array field)
+            if (artworkElement.TryGetProperty("domaine", out JsonElement domaineArray) && domaineArray.ValueKind == JsonValueKind.Array)
             {
-                // Utiliser le nom comme clé
-                string domainKey = domainName.ToLower();
-                
-                if (!domains.TryGetValue(domainKey, out var domain))
+                foreach (JsonElement domainElement in domaineArray.EnumerateArray())
                 {
-                    domain = new Domain
+                    var domainName = domainElement.GetString();
+                    if (!string.IsNullOrEmpty(domainName))
                     {
-                        Id = Guid.NewGuid(),
-                        Name = domainName
-                    };
-                    
-                    domains[domainKey] = domain;
+                        string domainKey = domainName.ToLower();
+                        
+                        if (!domains.TryGetValue(domainKey, out var domain))
+                        {
+                            domain = new Domain
+                            {
+                                Id = Guid.NewGuid(),
+                                Name = domainName,
+                                CreatedAt = DateTime.UtcNow,
+                                UpdatedAt = DateTime.UtcNow
+                            };
+                            
+                            domains[domainKey] = domain;
+                        }
+                        
+                        artwork.Domains.Add(domain);
+                    }
                 }
-                
-                artwork.Domains.Add(domain);
             }
             
-            // Extraction des techniques
-            var techniqueName = GetStringValue(artworkElement, "TECH");
-            if (!string.IsNullOrEmpty(techniqueName))
+            // Extraction des techniques depuis description
+            var description = GetStringValue(artworkElement, "description");
+            if (!string.IsNullOrEmpty(description))
             {
-                // Utiliser le nom comme clé
-                string techniqueKey = techniqueName.ToLower();
-                
-                if (!techniques.TryGetValue(techniqueKey, out var technique))
+                var technique = ExtractTechniqueFromDescription(description);
+                if (!string.IsNullOrEmpty(technique))
                 {
-                    technique = new Technique
-                    {
-                        Id = Guid.NewGuid(),
-                        Name = techniqueName
-                    };
+                    string techniqueKey = technique.ToLower();
                     
-                    techniques[techniqueKey] = technique;
+                    if (!techniques.TryGetValue(techniqueKey, out var techniqueObj))
+                    {
+                        techniqueObj = new Technique
+                        {
+                            Id = Guid.NewGuid(),
+                            Name = technique,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+                        
+                        techniques[techniqueKey] = techniqueObj;
+                    }
+                    
+                    artwork.Techniques.Add(techniqueObj);
                 }
-                
-                artwork.Techniques.Add(technique);
             }
             
             // Extraction des périodes
-            var periodName = GetStringValue(artworkElement, "PERI");
-            if (!string.IsNullOrEmpty(periodName))
+            var epochName = GetStringValue(artworkElement, "epoque");
+            if (!string.IsNullOrEmpty(epochName))
             {
-                // Utiliser le nom comme clé
-                string periodKey = periodName.ToLower();
+                string periodKey = epochName.ToLower();
                 
                 if (!periods.TryGetValue(periodKey, out var period))
                 {
                     period = new Period
                     {
                         Id = Guid.NewGuid(),
-                        Name = periodName
+                        Name = epochName,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
                     };
                     
                     periods[periodKey] = period;
@@ -287,10 +295,9 @@ namespace OpenJoconde.Infrastructure.Services
             }
             
             // Extraction du musée
-            var museumName = GetStringValue(artworkElement, "LOCA2");
+            var museumName = GetStringValue(artworkElement, "musee") ?? GetStringValue(artworkElement, "lieu_conservation");
             if (!string.IsNullOrEmpty(museumName))
             {
-                // Utiliser le nom comme clé
                 string museumKey = museumName.ToLower();
                 
                 if (!museums.TryGetValue(museumKey, out var museum))
@@ -298,14 +305,84 @@ namespace OpenJoconde.Infrastructure.Services
                     museum = new Museum
                     {
                         Id = Guid.NewGuid(),
-                        Name = museumName
+                        Name = museumName,
+                        City = GetStringValue(artworkElement, "ville") ?? GetStringValue(artworkElement, "region"),
+                        Department = GetStringValue(artworkElement, "departement"),
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
                     };
                     
                     museums[museumKey] = museum;
                 }
-                
-                // La relation entre œuvre et musée peut être gérée ici
             }
+        }
+        
+        /// <summary>
+        /// Parse artist name from Joconde format (e.g., "Charnay Armand (1844-1915)")
+        /// </summary>
+        private Artist ParseArtistName(string fullName)
+        {
+            var artist = new Artist
+            {
+                Id = Guid.NewGuid(),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            
+            // Extract birth/death dates from parentheses
+            var dateMatch = System.Text.RegularExpressions.Regex.Match(fullName, @"\(([^)]+)\)");
+            if (dateMatch.Success)
+            {
+                var dates = dateMatch.Groups[1].Value;
+                if (dates.Contains("-"))
+                {
+                    var dateParts = dates.Split('-');
+                    if (dateParts.Length == 2)
+                    {
+                        artist.BirthDate = dateParts[0].Trim();
+                        artist.DeathDate = dateParts[1].Trim();
+                    }
+                }
+                
+                // Remove dates from name
+                fullName = fullName.Replace(dateMatch.Value, "").Trim();
+            }
+            
+            // Split name into parts
+            var nameParts = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (nameParts.Length >= 2)
+            {
+                artist.LastName = nameParts[0];
+                artist.FirstName = string.Join(" ", nameParts.Skip(1));
+            }
+            else
+            {
+                artist.LastName = fullName.Trim();
+            }
+            
+            return artist;
+        }
+        
+        /// <summary>
+        /// Extract technique from description field
+        /// </summary>
+        private string ExtractTechniqueFromDescription(string description)
+        {
+            if (string.IsNullOrEmpty(description)) return null;
+            
+            // Common technique keywords
+            var techniques = new[] { "huile", "aquarelle", "crayon", "encre", "pastel", "gouache", "acrylique", "tempera", "fusain" };
+            
+            var lowerDesc = description.ToLower();
+            foreach (var technique in techniques)
+            {
+                if (lowerDesc.Contains(technique))
+                {
+                    return technique;
+                }
+            }
+            
+            return description; // Return full description as technique if no specific technique found
         }
 
         /// <summary>

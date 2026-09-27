@@ -87,13 +87,14 @@ namespace OpenJoconde.Infrastructure.Services
                             var tempFilePath = Path.Combine(_tempDirectory, $"joconde_{timestamp}.json");
 
                             var jocondeDataService = scope.ServiceProvider.GetRequiredService<IJocondeDataService>();
+                            var dataImportService = scope.ServiceProvider.GetRequiredService<IDataImportService>();
                             
                             // Télécharger les données
                             await jocondeDataService.DownloadJocondeDataAsync(_dataSourceUrl, tempFilePath, stoppingToken);
                             _logger.LogInformation("Fichier téléchargé avec succès: {FilePath}", tempFilePath);
 
                             // Importer les données JSON
-                            importResult = await jocondeDataService.ImportFromJsonFileAsync(tempFilePath, stoppingToken);
+                            importResult = await dataImportService.ImportFromJsonFileAsync(tempFilePath, null, stoppingToken);
                             _logger.LogInformation("Importation terminée: {ArtworksCount} œuvres importées",
                                 importResult.ImportedArtworks);
 
