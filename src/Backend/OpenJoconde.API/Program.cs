@@ -79,8 +79,10 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowVueApp", builder =>
     {
         builder.WithOrigins(
-                "http://localhost:8080",
-                "http://localhost:5173")
+                "http://localhost:8080",  // Vue CLI serve
+                "http://localhost:5173",  // Vite
+                "http://localhost:3000",  // Additional common port
+                "http://localhost:4200")  // Angular CLI (if needed)
                 .AllowAnyHeader()
                 .AllowAnyMethod();
     });
