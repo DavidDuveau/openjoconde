@@ -84,7 +84,7 @@ export interface SearchParams {
 
 export interface PaginatedResult<T> {
   items: T[];
-  totalCount: number;
+  totalItems: number;
   page: number;
   pageSize: number;
   totalPages: number;

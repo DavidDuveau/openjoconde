@@ -7,7 +7,7 @@ interface ArtworkState {
   currentArtwork: Artwork | null;
   loading: boolean;
   error: string | null;
-  totalCount: number;
+  totalItems: number;
   currentPage: number;
   pageSize: number;
   searchParams: SearchParams;
@@ -19,7 +19,7 @@ export const useArtworkStore = defineStore('artwork', {
     currentArtwork: null,
     loading: false,
     error: null,
-    totalCount: 0,
+    totalItems: 0,
     currentPage: 1,
     pageSize: 10,
     searchParams: {
@@ -34,7 +34,7 @@ export const useArtworkStore = defineStore('artwork', {
       return state.artworks.find(artwork => artwork.id === id);
     },
     totalPages: (state) => {
-      return Math.ceil(state.totalCount / state.pageSize);
+      return Math.ceil(state.totalItems / state.pageSize);
     }
   },
   
@@ -44,7 +44,7 @@ export const useArtworkStore = defineStore('artwork', {
       try {
         const result = await ApiService.getArtworks(page, pageSize);
         this.artworks = result.items;
-        this.totalCount = result.totalCount;
+        this.totalItems = result.totalItems;
         this.currentPage = result.page;
         this.pageSize = result.pageSize;
         this.error = null;
@@ -74,9 +74,14 @@ export const useArtworkStore = defineStore('artwork', {
     async searchArtworks(params: SearchParams) {
       this.loading = true;
       try {
-        const result = await ApiService.searchArtworks(params);
+        const searchParams = {
+          page: params.page || 1,
+          pageSize: params.pageSize || 10,
+          search: params.searchText || undefined
+        };
+        const result = await ApiService.searchArtworks(searchParams);
         this.artworks = result.items;
-        this.totalCount = result.totalCount;
+        this.totalItems = result.totalItems;
         this.currentPage = result.page;
         this.pageSize = result.pageSize;
         this.searchParams = params;

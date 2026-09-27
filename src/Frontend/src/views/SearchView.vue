@@ -113,7 +113,7 @@
         <div v-else class="results-content">
           <div class="results-header">
             <div class="results-count">
-              <strong>{{ artworkStore.totalCount }}</strong> résultat{{ artworkStore.totalCount > 1 ? 's' : '' }} trouvé{{ artworkStore.totalCount > 1 ? 's' : '' }}
+              <strong>{{ artworkStore.totalItems }}</strong> résultat{{ artworkStore.totalItems > 1 ? 's' : '' }} trouvé{{ artworkStore.totalItems > 1 ? 's' : '' }}
               <span v-if="searchParams.searchText" class="search-terms">pour "<em>{{ searchParams.searchText }}</em>"</span>
             </div>
             <div class="results-sort">
@@ -146,7 +146,7 @@
             </div>
           </div>
 
-          <div class="pagination" v-if="artworkStore.totalCount > searchParams.pageSize">
+          <div class="pagination" v-if="artworkStore.totalItems > searchParams.pageSize">
             <button 
               class="pagination-button"
               :disabled="artworkStore.currentPage === 1"
@@ -285,13 +285,14 @@ export default defineComponent({
 
     // Initialize from route query params
     onMounted(async () => {
-      // Load filter options
-      await Promise.all([
-        loadArtists(),
-        loadDomains(),
-        loadTechniques(),
-        loadPeriods()
-      ]);
+      // Note: Filter options loading is commented out as the backend APIs are not implemented yet
+      // TODO: Uncomment when backend APIs are ready
+      // await Promise.all([
+      //   loadArtists(),
+      //   loadDomains(),
+      //   loadTechniques(),
+      //   loadPeriods()
+      // ]);
     });
     
     // Methods to load filter options

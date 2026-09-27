@@ -35,7 +35,7 @@ api.getArtwork = async (id) => {
 };
 
 api.searchArtworks = async (params) => {
-  const response = await api.get('/artworks/search', { params });
+  const response = await api.get('/artworks', { params });
   return response.data;
 };
 

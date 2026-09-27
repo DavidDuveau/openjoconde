@@ -62,23 +62,16 @@
     </div>
 
     <div v-else class="artworks-grid">
-      <div 
+      <ArtworkCard
         v-for="artwork in artworks" 
-        :key="artwork.id" 
-        class="artwork-card"
+        :key="artwork.id"
+        :id="artwork.id"
+        :title="artwork.title"
+        :imageUrl="artwork.imageUrl"
+        :date="artwork.creationDate"
+        :artists="artwork.artists"
         @click="viewArtworkDetails(artwork.id)"
-      >
-        <div class="artwork-image">
-          <img :src="artwork.imageUrl || '/placeholder-image.jpg'" :alt="artwork.title" />
-        </div>
-        <div class="artwork-info">
-          <h3>{{ artwork.title || 'Sans titre' }}</h3>
-          <p v-if="artwork.artists && artwork.artists.length">
-            {{ artwork.artists.map(a => `${a.firstName} ${a.lastName}`).join(', ') }}
-          </p>
-          <p>{{ artwork.creationDate || 'Date inconnue' }}</p>
-        </div>
-      </div>
+      />
     </div>
 
     <div class="pagination" v-if="totalPages > 1">
@@ -102,9 +95,10 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted, watch } from 'vue';
+import { defineComponent, ref, onMounted, watch, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-// Dans une implémentation complète, on importerait ici un service pour l'API
+import { useArtworkStore } from '@/store/artworkStore';
+import ArtworkCard from '@/components/ArtworkCard.vue';
 
 // Type pour les œuvres d'art
 interface Artwork {
@@ -128,21 +122,25 @@ interface PaginatedResult<T> {
 
 export default defineComponent({
   name: 'ArtworksView',
+  components: {
+    ArtworkCard
+  },
   setup() {
     const route = useRoute();
     const router = useRouter();
+    const artworkStore = useArtworkStore();
     
     // État
-    const artworks = ref<Artwork[]>([]);
-    const loading = ref(false);
-    const error = ref(false);
+    const loading = computed(() => artworkStore.loading);
+    const error = computed(() => artworkStore.error);
+    const artworks = computed(() => artworkStore.artworks);
     const searchQuery = ref('');
     const selectedDomain = ref('');
     const selectedPeriod = ref('');
     const selectedMuseum = ref('');
     const currentPage = ref(1);
     const pageSize = ref(12);
-    const totalPages = ref(0);
+    const totalPages = computed(() => artworkStore.totalPages);
     
     // Initialisation depuis les paramètres d'URL
     onMounted(() => {
@@ -196,55 +194,23 @@ export default defineComponent({
     
     // Méthodes
     const fetchArtworks = async () => {
-      loading.value = true;
-      error.value = false;
-      
       try {
-        // Dans une implémentation réelle, on ferait un appel API ici
-        // Exemple: const response = await artworkService.getArtworks({ ... });
-        
-        // Simulation d'une réponse d'API pour le moment
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // Données factices pour le prototype
-        const mockResponse: PaginatedResult<Artwork> = {
-          items: [
-            {
-              id: '1',
-              title: 'La Joconde',
-              reference: 'INV779',
-              inventoryNumber: 'INV779',
-              imageUrl: 'https://via.placeholder.com/300x400',
-              creationDate: '1503-1519',
-              artists: [{ id: '1', firstName: 'Leonardo', lastName: 'da Vinci' }]
-            },
-            {
-              id: '2',
-              title: 'La Liberté guidant le peuple',
-              reference: 'INV7300',
-              inventoryNumber: 'INV7300',
-              imageUrl: 'https://via.placeholder.com/300x400',
-              creationDate: '1830',
-              artists: [{ id: '2', firstName: 'Eugène', lastName: 'Delacroix' }]
-            },
-            // Ajouter plus d'œuvres fictives pour le prototype
-          ],
-          totalItems: 120,
-          page: currentPage.value,
-          pageSize: pageSize.value,
-          totalPages: 10
-        };
-        
-        artworks.value = mockResponse.items;
-        totalPages.value = mockResponse.totalPages;
+        if (searchQuery.value) {
+          // Search with query
+          await artworkStore.searchArtworks({
+            searchText: searchQuery.value,
+            page: currentPage.value,
+            pageSize: pageSize.value
+          });
+        } else {
+          // Fetch all artworks
+          await artworkStore.fetchArtworks(currentPage.value, pageSize.value);
+        }
         
         // Mettre à jour l'URL avec les paramètres de recherche
         updateUrlParams();
       } catch (err) {
         console.error('Erreur lors du chargement des œuvres:', err);
-        error.value = true;
-      } finally {
-        loading.value = false;
       }
     };
     
