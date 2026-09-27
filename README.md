@@ -1,79 +1,60 @@
-# Projet OpenJoconde
+# OpenJoconde
 
-Application d'exploitation des données ouvertes des musées français de la base Joconde.
+Application web pour explorer la base Joconde, le catalogue collectif des collections des musées de France, publiée en données ouvertes par le ministère de la Culture.
 
-## Description
+Le backend télécharge et importe les données Joconde dans SQL Server, puis les expose via une API REST. Le frontend permet de parcourir et rechercher les œuvres.
 
-Le projet OpenJoconde vise à créer une application web permettant d'explorer les riches collections des musées français référencées dans la base Joconde. L'objectif est de rendre plus accessibles et exploitables les données publiques des œuvres d'art et objets patrimoniaux conservés dans les musées de France.
+## Stack
 
-L'application se compose de trois composants principaux :
+- **Backend** : .NET 9, ASP.NET Core, Entity Framework Core 9 (SQL Server)
+- **Frontend** : Vue 3, TypeScript, Pinia, Vue Router, Vue CLI 5
+- **Base de données** : SQL Server 2019 ou supérieur (Express suffit)
 
-1. **Backend (.NET)** : Service qui récupère, traite et stocke les données depuis data.gouv.fr, et expose une API REST pour le frontend.
+## Source des données
 
-2. **Base de données (PostgreSQL)** : Stockage relationnel optimisé pour les requêtes de recherche sur les différents attributs des œuvres.
+- [Base Joconde sur data.culture.gouv.fr](https://data.culture.gouv.fr/explore/dataset/base-joconde-extrait/)
+- Format utilisé : export JSON de l'API Opendatasoft (l'import XML reste supporté)
 
-3. **Frontend (Vue.js TypeScript)** : Interface utilisateur intuitive permettant de visualiser et explorer les collections.
-
-## À propos de ce projet et objectifs
-
-Ce projet OpenJoconde est doublement expérimental :
-1. Il vise à créer une application exploitant les données ouvertes des musées français (base Joconde)
-2. Il s'agit également d'une expérience de développement entièrement piloté par intelligence artificielle
-
-L'intégralité du code, de la documentation et de la structure du projet est développée par Claude (Anthropic), faisant de ce projet un cas d'étude sur les capacités actuelles des grands modèles de langage dans le développement logiciel complet.
-
-### Objectifs du projet
-1. **Éducatif et culturel** : Faciliter l'accès au patrimoine artistique français pour le grand public et les chercheurs
-2. **Technique** : Démontrer l'exploitation efficace des données ouvertes avec des technologies modernes
-3. **Communautaire** : Encourager l'utilisation et la contribution au code open source
-4. **Exploration des données** : Permettre une recherche multicritères complète (artiste, époque, technique, musée, etc.)
-5. **Visualisation** : Offrir une interface moderne pour consulter les œuvres et leurs détails
-6. **Expérimentation IA** : Tester les capacités des modèles de langage avancés dans le développement logiciel complet
-
-Les fichiers de documentation interne (roadmap et charte de développement) sont utilisés comme référence et guides pour le développement piloté par IA.
-
-## Sources de données
-
-- [Base Joconde sur data.gouv.fr](https://www.data.gouv.fr/fr/datasets/joconde-catalogue-collectif-des-collections-des-musees-de-france/)
-- [Documentation de la base Joconde](https://www.culture.gouv.fr/Espace-documentation/Bases-de-donnees/Fiches-bases-de-donnees/Joconde-catalogue-collectif-des-collections-des-musees-de-France)
-- Format privilégié : JSON via l'API officielle (avec support XML pour rétrocompatibilité)
+L'URL de la source se règle dans `JocondeData:SourceUrl` de `src/Backend/OpenJoconde.API/appsettings.json`.
 
 ## Prérequis
 
-- [.NET SDK 8.0](https://dotnet.microsoft.com/download/dotnet/8.0) ou supérieur
-- [Node.js](https://nodejs.org/) (v18 ou supérieur)
-- [npm](https://www.npmjs.com/) (v9 ou supérieur)
-- [PostgreSQL](https://www.postgresql.org/) (v15 ou supérieur)
+- [.NET SDK 9](https://dotnet.microsoft.com/download/dotnet/9.0)
+- [Node.js](https://nodejs.org/) 18 ou supérieur
+- SQL Server 2019 ou supérieur
+- L'outil EF Core : `dotnet tool install --global dotnet-ef`
 
 ## Installation
 
-### Cloner le dépôt
+### Base de données
 
-```bash
-git clone https://github.com/DavidDuveau/openjoconde.git
-cd openjoconde
-```
+1. Adapter la chaîne de connexion `DefaultConnection` dans `src/Backend/OpenJoconde.API/appsettings.json`. Par défaut : instance locale, base `OpenJoconde`, authentification Windows.
+2. Créer le schéma avec la migration EF Core :
 
-### Configurer la base de données
+   ```bash
+   cd src/Backend/OpenJoconde.API
+   dotnet ef database update --project ../OpenJoconde.Infrastructure
+   ```
 
-1. Créer une base de données PostgreSQL nommée `openjoconde`
-2. Exécuter le script de création dans `src/Backend/OpenJoconde.Infrastructure/Database/CreateDatabase.sql`
-3. Exécuter le script de migration initiale dans `src/Backend/OpenJoconde.Infrastructure/Database/Migrations/Initial_Migration.sql`
-4. Exécuter le script de mise à jour v1.1 dans `src/Backend/OpenJoconde.Infrastructure/Database/Migrations/Updates/UpdateSchema_v1.1.sql`
-5. Mettre à jour la chaîne de connexion dans `src/Backend/OpenJoconde.API/appsettings.json`
+3. Appliquer les scripts SQL Server complémentaires de `src/Backend/OpenJoconde.Infrastructure/Database/Migrations/`, dans l'ordre :
+   - `SqlServer_Initial_Migration.sql` (triggers `UpdatedAt`)
+   - `Updates/SqlServer_UpdateSchema_v1.1.sql`
+   - `Updates/AddTimestamps_v1.2.sql`
+   - `Updates/SqlServer_UpdateSchema_v1.2.sql`
+   - `Updates/SqlServer_UpdateSchema_v1.3.sql` (élargissement des colonnes)
 
-### Backend (.NET)
+### Backend
 
 ```bash
 cd src/Backend/OpenJoconde.API
-dotnet restore
-dotnet build
 dotnet run
 ```
 
-Le serveur backend sera accessible à l'adresse : `https://localhost:5001`
+L'API écoute sur `https://localhost:5001` et `http://localhost:5000`. Swagger est disponible sur `https://localhost:5001/swagger` en développement.
 
-### Frontend (Vue.js)
+Si `JocondeData:CheckForUpdatesOnStartup` vaut `true`, un service d'arrière-plan synchronise les données au démarrage puis toutes les `JocondeSync:IntervalHours` heures.
+
+### Frontend
 
 ```bash
 cd src/Frontend
@@ -81,88 +62,47 @@ npm install
 npm run serve
 ```
 
-L'application frontend sera accessible à l'adresse : `http://localhost:8080`
-
-## Structure du projet
+L'application est servie sur `http://localhost:8080`. L'URL de l'API vaut `https://localhost:5001/api` par défaut. Pour la changer, créer `src/Frontend/.env.local` :
 
 ```
-openjoconde/
-├── src/                        # Code source
-│   ├── Backend/                # Backend .NET
-│   │   ├── OpenJoconde.API/             # Couche API
-│   │   ├── OpenJoconde.Core/            # Domaine métier
-│   │   ├── OpenJoconde.Infrastructure/  # Infrastructure (accès aux données)
-│   │   │   ├── Data/                    # Accès aux données
-│   │   │   ├── Services/                # Services d'infrastructure
-│   │   │   └── Database/                # Scripts de base de données
-│   │   │       ├── Migrations/          # Scripts de migration
-│   │   │       │   ├── Updates/         # Scripts de mise à jour
-│   │   │       │   └── Initial_Migration.sql   # Migration initiale
-│   │   │       └── CreateDatabase.sql   # Script initial
-│   │   └── OpenJoconde.Tests/           # Tests
-│   └── Frontend/               # Frontend Vue.js
-│       ├── public/             # Fichiers statiques
-│       └── src/                # Sources TypeScript et Vue
-│           ├── assets/         # Ressources (images, etc.)
-│           ├── components/     # Composants réutilisables
-│           ├── views/          # Pages de l'application
-│           ├── store/          # Store Pinia (état global)
-│           ├── services/       # Services (API, etc.)
-│           └── types/          # Types TypeScript
-└── README.md                   # Documentation principale
+VUE_APP_API_URL=https://localhost:5001/api
 ```
 
-## État d'avancement du projet
+### Tout lancer
 
-### Phases terminées
+`start-openjoconde.ps1` (ou `start-openjoconde.bat`) démarre le backend et le frontend dans deux fenêtres.
 
-1. **Phase 1 : Analyse et conception** ✅
-   - Analyse complète des données Joconde
-   - Conception de l'architecture
+## API
 
-2. **Phase 2 : Mise en place de l'infrastructure** ✅
-   - Structure du projet .NET avec Clean Architecture
-   - Configuration de la base de données PostgreSQL
-   - Initialisation du projet frontend
+| Route | Rôle |
+|---|---|
+| `GET /api/artworks`, `GET /api/artworks/{id}` | Œuvres, paginées, avec recherche (`search`) |
+| `GET /api/artists`, `GET /api/museums` | Artistes et musées |
+| `POST /api/jocondedata/import` | Télécharge et importe les données Joconde |
+| `POST /api/jsonimport/from-file` | Importe un fichier JSON Joconde |
+| `GET /api/sync/status`, `POST /api/sync/start` | Suivi et lancement de la synchronisation |
+| `GET /api/health` | État de l'API et de la base |
 
-### Phase en cours
+La liste complète est dans Swagger.
 
-1. **Phase 3 : Développement du backend** ✅ (100%)
-   - Service de téléchargement des données
-   - Parseur XML et JSON Joconde
-   - Service de peuplement de la base de données
-   - API REST (implémentation complète)
-   - Documentation OpenAPI/Swagger
+## Structure
 
-2. **Phase 4 : Développement du frontend** 🔄 (40%)
-   - Architecture et composants de base
-   - Interface de recherche et visualisation (en cours)
-   - Navigation thématique (en cours)
-
-### Prochaines étapes
-
-1. **Finalisation du Frontend**
-   - Finalisation de l'interface de recherche avancée
-   - Amélioration de la visualisation détaillée des œuvres
-   - Implémentation complète de la navigation thématique
-
-2. **Tests et optimisation**
-   - Tests unitaires et d'intégration
-   - Optimisation des performances
-   - Mise en cache et optimisations
-
-3. **Déploiement et livraison**
-   - Préparation des environnements de production
-   - Documentation finale
-
-## Fonctionnalités principales
-
-- Importation et mise à jour automatique des données depuis data.gouv.fr
-- Interface de recherche multicritères (artiste, époque, technique, etc.)
-- Visualisation détaillée des œuvres d'art
-- Navigation par musée, artiste, période ou technique
-- API REST pour accéder aux données
-
-## Licence
-
-Ce projet est disponible sous licence MIT. Voir le fichier LICENSE pour plus de détails.
+```
+src/
+├── Backend/
+│   ├── OpenJoconde.API/             # Contrôleurs, configuration, point d'entrée
+│   ├── OpenJoconde.Core/            # Modèles, interfaces, parsers Joconde
+│   └── OpenJoconde.Infrastructure/  # DbContext, repositories, services d'import
+│       ├── Data/                    # DbContext et repositories
+│       ├── Database/Migrations/     # Scripts SQL Server complémentaires
+│       ├── Migrations/              # Migrations EF Core
+│       └── Services/                # Téléchargement, parsing, import, synchronisation
+└── Frontend/
+    └── src/
+        ├── components/
+        ├── router/
+        ├── services/                # Client HTTP de l'API
+        ├── store/                   # Stores Pinia
+        ├── types/
+        └── views/
+```
