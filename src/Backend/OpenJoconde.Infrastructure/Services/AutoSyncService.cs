@@ -35,7 +35,7 @@ namespace OpenJoconde.Infrastructure.Services
                 configuration.GetValue<double>("JocondeSync:IntervalHours", 24));
             _dataSourceUrl = configuration.GetValue<string>(
                 "JocondeSync:DataSourceUrl", 
-                "https://data.culture.gouv.fr/api/explore/v2.1/catalog/datasets/base-joconde-extrait/exports/json");
+                "https://ministere-culture.s3.sbg.io.cloud.ovh.net/POP/joconde.csv");
             _tempDirectory = configuration.GetValue<string>(
                 "JocondeSync:TempDirectory", 
                 Path.Combine(Path.GetTempPath(), "OpenJoconde"));
@@ -84,7 +84,7 @@ namespace OpenJoconde.Infrastructure.Services
                             
                             // Générer un timestamp pour les fichiers temporaires
                             var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                            var tempFilePath = Path.Combine(_tempDirectory, $"joconde_{timestamp}.json");
+                            var tempFilePath = Path.Combine(_tempDirectory, $"joconde_{timestamp}{JocondeSourceFile.ExtensionFor(_dataSourceUrl)}");
 
                             var jocondeDataService = scope.ServiceProvider.GetRequiredService<IJocondeDataService>();
                             var dataImportService = scope.ServiceProvider.GetRequiredService<IDataImportService>();
@@ -93,8 +93,8 @@ namespace OpenJoconde.Infrastructure.Services
                             await jocondeDataService.DownloadJocondeDataAsync(_dataSourceUrl, tempFilePath, stoppingToken);
                             _logger.LogInformation("Fichier téléchargé avec succès: {FilePath}", tempFilePath);
 
-                            // Importer les données JSON
-                            importResult = await dataImportService.ImportFromJsonFileAsync(tempFilePath, null, stoppingToken);
+                            // Importer les données (le format est déduit de l'extension du fichier)
+                            importResult = await dataImportService.ImportFromFileAsync(tempFilePath, null, stoppingToken);
                             _logger.LogInformation("Importation terminée: {ArtworksCount} œuvres importées",
                                 importResult.ImportedArtworks);
 

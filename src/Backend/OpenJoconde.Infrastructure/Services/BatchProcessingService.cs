@@ -92,14 +92,14 @@ namespace OpenJoconde.Infrastructure.Services
             };
             
             var tempDirectory = _configuration.GetValue<string>("JocondeSync:TempDirectory", Path.Combine(Path.GetTempPath(), "OpenJoconde"));
-            var baseUrl = _configuration.GetValue<string>("JocondeSync:DataSourceUrl", "https://data.culture.gouv.fr/api/explore/v2.1/catalog/datasets/base-joconde-extrait/exports/json");
+            var baseUrl = _configuration.GetValue<string>("JocondeSync:DataSourceUrl", "https://ministere-culture.s3.sbg.io.cloud.ovh.net/POP/joconde.csv");
             
             try
             {
                 // Au lieu d'utiliser des lots par offset, utiliser une seule requête pour tout télécharger
                 // L'API semble avoir changé et ne supporte plus bien les requêtes avec offset
-                string fullDataUrl = $"{baseUrl}?lang=fr&timezone=Europe%2FBerlin";
-                string dataFilePath = Path.Combine(tempDirectory, $"joconde_full_{DateTime.Now:yyyyMMdd_HHmmss}.json");
+                string fullDataUrl = baseUrl;
+                string dataFilePath = Path.Combine(tempDirectory, $"joconde_full_{DateTime.Now:yyyyMMdd_HHmmss}{JocondeSourceFile.ExtensionFor(fullDataUrl)}");
                 
                 _logger.LogInformation("Téléchargement complet des données Joconde depuis {Url}", fullDataUrl);
                 
@@ -109,7 +109,7 @@ namespace OpenJoconde.Infrastructure.Services
                     await _jocondeDataService.DownloadJocondeDataAsync(fullDataUrl, dataFilePath, cancellationToken);
                     
                     // Analyser et importer le lot avec le service complet
-                    var importReport = await _dataImportService.ImportFromJsonFileAsync(dataFilePath, null, cancellationToken);
+                    var importReport = await _dataImportService.ImportFromFileAsync(dataFilePath, null, cancellationToken);
                     
                     // Mise à jour du rapport global
                     report.ImportedArtworks = importReport.ImportedArtworks;

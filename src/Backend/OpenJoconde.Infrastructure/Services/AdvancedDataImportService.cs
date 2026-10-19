@@ -29,6 +29,7 @@ namespace OpenJoconde.Infrastructure.Services
         private readonly IArtworkRelationsRepository _artworkRelationsRepository;
         private readonly IJocondeXmlParser _xmlParser;
         private readonly IJocondeJsonParser _jsonParser;
+        private readonly IJocondeCsvParser _csvParser;
         private readonly HttpClient _httpClient;
 
         public AdvancedDataImportService(
@@ -42,6 +43,7 @@ namespace OpenJoconde.Infrastructure.Services
             IArtworkRelationsRepository artworkRelationsRepository,
             IJocondeXmlParser xmlParser,
             IJocondeJsonParser jsonParser,
+            IJocondeCsvParser csvParser,
             HttpClient httpClient)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -54,6 +56,7 @@ namespace OpenJoconde.Infrastructure.Services
             _artworkRelationsRepository = artworkRelationsRepository ?? throw new ArgumentNullException(nameof(artworkRelationsRepository));
             _xmlParser = xmlParser ?? throw new ArgumentNullException(nameof(xmlParser));
             _jsonParser = jsonParser ?? throw new ArgumentNullException(nameof(jsonParser));
+            _csvParser = csvParser ?? throw new ArgumentNullException(nameof(csvParser));
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         }
 
@@ -414,39 +417,63 @@ namespace OpenJoconde.Infrastructure.Services
         /// <summary>
         /// Importe les données depuis un fichier JSON
         /// </summary>
-        public async Task<ImportReport> ImportFromJsonFileAsync(string jsonFilePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default)
+        public Task<ImportReport> ImportFromJsonFileAsync(string jsonFilePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default) =>
+            ImportParsedFileAsync("JSON", jsonFilePath, _jsonParser.ParseAsync, progressCallback, cancellationToken);
+
+        /// <summary>
+        /// Importe les données depuis un fichier CSV (export data.gouv.fr de la base Joconde)
+        /// </summary>
+        public Task<ImportReport> ImportFromCsvFileAsync(string csvFilePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default) =>
+            ImportParsedFileAsync("CSV", csvFilePath, _csvParser.ParseAsync, progressCallback, cancellationToken);
+
+        /// <summary>
+        /// Importe un fichier en choisissant le parseur selon l'extension (.csv, .json ou .xml)
+        /// </summary>
+        public Task<ImportReport> ImportFromFileAsync(string filePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default) =>
+            Path.GetExtension(filePath).ToLowerInvariant() switch
+            {
+                ".csv" => ImportFromCsvFileAsync(filePath, progressCallback, cancellationToken),
+                ".json" => ImportFromJsonFileAsync(filePath, progressCallback, cancellationToken),
+                ".xml" => ImportFromXmlFileAsync(filePath, progressCallback, cancellationToken),
+                var extension => throw new NotSupportedException($"Format de fichier non pris en charge : '{extension}' (attendu : .csv, .json ou .xml)")
+            };
+
+        private async Task<ImportReport> ImportParsedFileAsync(
+            string format,
+            string filePath,
+            Func<string, Action<int, int>?, CancellationToken, Task<ParsingResult>> parse,
+            Action<string, int, int>? progressCallback,
+            CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Démarrage de l'importation depuis le fichier JSON {FilePath}", jsonFilePath);
-            
+            _logger.LogInformation("Démarrage de l'importation depuis le fichier {Format} {FilePath}", format, filePath);
+
             var report = new ImportReport
             {
                 ImportDate = DateTime.UtcNow,
                 Success = true
             };
-            
+
             var stopwatch = Stopwatch.StartNew();
-            
+
             try
             {
-                // Vérifier l'existence du fichier
-                if (!File.Exists(jsonFilePath))
+                if (!File.Exists(filePath))
                 {
-                    throw new FileNotFoundException("Le fichier JSON Joconde n'existe pas", jsonFilePath);
+                    throw new FileNotFoundException($"Le fichier {format} Joconde n'existe pas", filePath);
                 }
-                
-                // Analyser le fichier JSON avec le parser dédié
+
                 progressCallback?.Invoke("Parsing", 0, 1);
-                var parsingResult = await _jsonParser.ParseAsync(jsonFilePath, (current, total) => 
+                var parsingResult = await parse(filePath, (current, total) =>
                 {
                     if (current % 100 == 0 || current == total)
                     {
-                        _logger.LogInformation("Progression du parsing JSON: {Current}/{Total}", current, total);
+                        _logger.LogInformation("Progression du parsing {Format}: {Current}/{Total}", format, current, total);
                         progressCallback?.Invoke("Parsing", current, total);
                     }
                 }, cancellationToken);
-                
+
                 progressCallback?.Invoke("Parsing", 1, 1);
-                
+
                 // Mettre à jour le rapport avec le nombre d'éléments trouvés
                 report.TotalArtworks = parsingResult.Artworks.Count;
                 report.TotalArtists = parsingResult.Artists.Count;
@@ -454,11 +481,9 @@ namespace OpenJoconde.Infrastructure.Services
                 report.TotalDomains = parsingResult.Domains.Count;
                 report.TotalTechniques = parsingResult.Techniques.Count;
                 report.TotalPeriods = parsingResult.Periods.Count;
-                
-                // Importer les données avec le service d'importation
+
                 var importStats = await ImportDataAsync(parsingResult, progressCallback, cancellationToken);
-                
-                // Mettre à jour le rapport avec les statistiques d'importation
+
                 report.ImportedArtworks = importStats.ArtworksImported;
                 report.ImportedArtists = importStats.ArtistsImported;
                 report.ImportedMuseums = importStats.MuseumsImported;
@@ -468,7 +493,7 @@ namespace OpenJoconde.Infrastructure.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erreur lors de l'importation depuis le fichier JSON: {Message}", ex.Message);
+                _logger.LogError(ex, "Erreur lors de l'importation depuis le fichier {Format}: {Message}", format, ex.Message);
                 report.Errors++;
                 report.Success = false;
                 report.ErrorMessage = ex.Message;
@@ -477,9 +502,9 @@ namespace OpenJoconde.Infrastructure.Services
             {
                 stopwatch.Stop();
                 report.Duration = stopwatch.Elapsed;
-                _logger.LogInformation("Importation depuis le fichier JSON terminée en {Duration}", report.Duration);
+                _logger.LogInformation("Importation depuis le fichier {Format} terminée en {Duration}", format, report.Duration);
             }
-            
+
             return report;
         }
     }

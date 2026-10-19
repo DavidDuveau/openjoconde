@@ -12,10 +12,10 @@ Le backend télécharge et importe les données Joconde dans SQL Server, puis le
 
 ## Source des données
 
-- [Base Joconde sur data.culture.gouv.fr](https://data.culture.gouv.fr/explore/dataset/base-joconde-extrait/)
-- Format utilisé : export JSON de l'API Opendatasoft (l'import XML reste supporté)
+- [Collections des musées de France : base Joconde sur data.gouv.fr](https://www.data.gouv.fr/datasets/collections-des-musees-de-france-base-joconde)
+- Format utilisé : fichier CSV (environ 1,2 Go, plus d'un million de notices, séparateur `|`). L'ancien export JSON de l'API Opendatasoft n'existe plus ; l'import d'un fichier JSON ou XML reste supporté, le format est déduit de l'extension du fichier.
 
-L'URL de la source se règle dans `JocondeData:SourceUrl` de `src/Backend/OpenJoconde.API/appsettings.json`.
+L'URL de la source se règle dans `JocondeData:SourceUrl` (synchronisation manuelle) et `JocondeSync:DataSourceUrl` (synchronisation automatique) de `src/Backend/OpenJoconde.API/appsettings.json`. Le parsing du fichier complet prend environ une minute et occupe environ 1,4 Go de mémoire.
 
 ## Prérequis
 

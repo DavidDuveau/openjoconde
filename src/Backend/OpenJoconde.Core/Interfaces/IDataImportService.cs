@@ -49,6 +49,24 @@ namespace OpenJoconde.Core.Interfaces
         /// <param name="cancellationToken">Token d'annulation</param>
         /// <returns>Rapport d'importation</returns>
         Task<ImportReport> ImportFromJsonFileAsync(string jsonFilePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Importe les données depuis un fichier CSV (export data.gouv.fr de la base Joconde)
+        /// </summary>
+        /// <param name="csvFilePath">Chemin du fichier CSV à importer</param>
+        /// <param name="progressCallback">Callback pour suivre la progression</param>
+        /// <param name="cancellationToken">Token d'annulation</param>
+        /// <returns>Rapport d'importation</returns>
+        Task<ImportReport> ImportFromCsvFileAsync(string csvFilePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Importe un fichier en choisissant le parseur selon son extension (.csv, .json ou .xml)
+        /// </summary>
+        /// <param name="filePath">Chemin du fichier à importer</param>
+        /// <param name="progressCallback">Callback pour suivre la progression</param>
+        /// <param name="cancellationToken">Token d'annulation</param>
+        /// <returns>Rapport d'importation</returns>
+        Task<ImportReport> ImportFromFileAsync(string filePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default);
     }
 
     /// <summary>

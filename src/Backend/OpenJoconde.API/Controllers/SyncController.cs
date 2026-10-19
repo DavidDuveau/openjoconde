@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Core.Models;
 using OpenJoconde.Infrastructure.Data;
+using OpenJoconde.Infrastructure.Services;
 using System;
 using System.IO;
 using System.Linq;
@@ -127,10 +128,11 @@ namespace OpenJoconde.API.Controllers
                         }
 
                         // Télécharger le fichier
-                        var tempFilePath = await importService.DownloadJocondeDataAsync(dataSourceUrl, Path.Combine(tempDirectory, $"joconde_manual_{DateTime.Now:yyyyMMdd_HHmmss}.xml"));
+                        var dataService = scope.ServiceProvider.GetRequiredService<IJocondeDataService>();
+                        var tempFilePath = await dataService.DownloadJocondeDataAsync(dataSourceUrl, Path.Combine(tempDirectory, $"joconde_manual_{DateTime.Now:yyyyMMdd_HHmmss}{JocondeSourceFile.ExtensionFor(dataSourceUrl)}"));
 
                         // Importer les données
-                        var importReport = await importService.ImportFromXmlFileAsync(
+                        var importReport = await importService.ImportFromFileAsync(
                             tempFilePath,
                             (stage, current, total) =>
                             {

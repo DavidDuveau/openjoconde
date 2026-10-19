@@ -37,6 +37,7 @@ namespace OpenJoconde.API.Extensions
             services.AddScoped<IJocondeXmlParser, JocondeXmlParserService>();
             // Utiliser l'implémentation avec streaming pour éviter les OutOfMemoryException
             services.AddScoped<IJocondeJsonParser, StreamingJocondeJsonParserService>();
+            services.AddScoped<IJocondeCsvParser, StreamingJocondeCsvParserService>();
             services.AddScoped<IDataImportService, AdvancedDataImportService>();
             services.AddScoped<BatchProcessingService>();
 
