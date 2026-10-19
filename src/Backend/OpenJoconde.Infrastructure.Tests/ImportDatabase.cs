@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Infrastructure.Data;
 using OpenJoconde.Infrastructure.Data.Repositories;
 using OpenJoconde.Infrastructure.Services;
@@ -37,16 +38,19 @@ public sealed class ImportDatabase : IAsyncLifetime
     }
 
     /// <summary>Assemble le service d'import comme le fait l'injection de dépendances de l'API.</summary>
-    public AdvancedDataImportService CreateImportService(OpenJocondeDbContext context) =>
+    public AdvancedDataImportService CreateImportService(
+        OpenJocondeDbContext context,
+        IArtworkRepository? artworks = null,
+        IArtworkRelationsRepository? relations = null) =>
         new(
             NullLogger<AdvancedDataImportService>.Instance,
-            new ArtworkRepository(context, NullLogger<ArtworkRepository>.Instance),
+            artworks ?? new ArtworkRepository(context, NullLogger<ArtworkRepository>.Instance),
             new ArtistRepository(context, NullLogger<ArtistRepository>.Instance),
             new MuseumRepository(context, NullLogger<MuseumRepository>.Instance),
             new DomainRepository(context, NullLogger<DomainRepository>.Instance),
             new TechniqueRepository(context, NullLogger<TechniqueRepository>.Instance),
             new PeriodRepository(context, NullLogger<PeriodRepository>.Instance),
-            new ArtworkRelationsRepository(ConnectionString, NullLogger<ArtworkRelationsRepository>.Instance),
+            relations ?? new ArtworkRelationsRepository(ConnectionString, NullLogger<ArtworkRelationsRepository>.Instance),
             new JocondeXmlParserService(NullLogger<JocondeXmlParserService>.Instance),
             new StreamingJocondeJsonParserService(NullLogger<StreamingJocondeJsonParserService>.Instance),
             new StreamingJocondeCsvParserService(NullLogger<StreamingJocondeCsvParserService>.Instance),

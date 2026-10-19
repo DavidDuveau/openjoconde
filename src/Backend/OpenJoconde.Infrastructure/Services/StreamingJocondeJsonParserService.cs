@@ -85,6 +85,7 @@ namespace OpenJoconde.Infrastructure.Services
                 progressCallback?.Invoke(processedItems, processedItems);
 
                 var result = mapper.ToResult();
+                result.RejectedRecords = rejectedItems;
                 _logger.LogInformation(
                     "Parsing JSON terminé: {ArtworksCount} œuvres ({RejectedCount} notices rejetées), {ArtistsCount} artistes, {DomainsCount} domaines, {TechniquesCount} techniques, {PeriodsCount} périodes, {MuseumsCount} musées",
                     result.Artworks.Count,

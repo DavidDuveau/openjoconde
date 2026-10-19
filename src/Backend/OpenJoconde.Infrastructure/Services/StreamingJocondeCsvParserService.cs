@@ -90,6 +90,7 @@ namespace OpenJoconde.Infrastructure.Services
                 progressCallback?.Invoke(processedItems, processedItems);
 
                 var result = mapper.ToResult();
+                result.RejectedRecords = rejectedItems;
                 _logger.LogInformation(
                     "Parsing CSV terminé: {ArtworksCount} œuvres ({RejectedCount} lignes rejetées), {ArtistsCount} artistes, {DomainsCount} domaines, {TechniquesCount} techniques, {PeriodsCount} périodes, {MuseumsCount} musées",
                     result.Artworks.Count,

@@ -80,10 +80,10 @@ public class ImportCsvTests : IAsyncLifetime
     [Fact]
     public async Task Import_LigneTronquee_EstIgnoreeSansPerdreLesAutres()
     {
-        // La dernière ligne du fichier n'a que 2 valeurs sur 68 : elle est rejetée, le reste est importé
+        // La dernière ligne du fichier n'a que 2 valeurs sur 68 : elle est rejetée (et signalée), le reste est importé
         var report = await ImporterAsync("joconde_cas_particuliers.csv");
 
-        Assert.True(report.Success, report.ErrorMessage);
+        Assert.Equal(1, report.Errors);
         Assert.Equal(4, report.TotalArtworks);
         await using var context = _db.CreateContext();
         Assert.False(await context.Artworks.AnyAsync(a => a.Reference == "T4"));
@@ -95,7 +95,7 @@ public class ImportCsvTests : IAsyncLifetime
         // Dans l'export réel : titres > 500 (57 notices), n° d'inventaire > 500, techniques à 395 caractères, auteurs > 5 000
         var report = await ImporterAsync("joconde_cas_particuliers.csv");
 
-        Assert.True(report.Success, report.ErrorMessage);
+        Assert.Equal(1, report.Errors); // la ligne tronquée, pas les valeurs trop longues
         await using var context = _db.CreateContext();
         Assert.Equal(4, await context.Artworks.CountAsync());
 

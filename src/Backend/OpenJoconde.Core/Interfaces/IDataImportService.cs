@@ -1,6 +1,7 @@
 using OpenJoconde.Core.Models;
 using OpenJoconde.Core.Parsers;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -108,5 +109,15 @@ namespace OpenJoconde.Core.Interfaces
         /// Durée totale de l'importation
         /// </summary>
         public TimeSpan Duration { get; set; }
+
+        /// <summary>
+        /// Nombre d'éléments perdus : notices rejetées au parsing, entités ou relations non enregistrées
+        /// </summary>
+        public int Errors { get; set; }
+
+        /// <summary>
+        /// Quelques messages d'erreur, pour comprendre la cause sans lire les journaux
+        /// </summary>
+        public List<string> ErrorMessages { get; set; } = new List<string>();
     }
 }

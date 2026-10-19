@@ -299,5 +299,10 @@ namespace OpenJoconde.Core.Parsers
         public List<Technique> Techniques { get; set; } = new List<Technique>();
         public List<Period> Periods { get; set; } = new List<Period>();
         public List<Museum> Museums { get; set; } = new List<Museum>();
+
+        /// <summary>
+        /// Nombre de notices du fichier qui n'ont pas pu être lues (absentes des listes ci-dessus)
+        /// </summary>
+        public int RejectedRecords { get; set; }
     }
 }

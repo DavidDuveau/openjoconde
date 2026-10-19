@@ -61,58 +61,67 @@ namespace OpenJoconde.Infrastructure.Services
         }
 
         /// <summary>
-        /// Importe les données du résultat de parsing dans la base de données
+        /// Importe les données du résultat de parsing dans la base de données.
+        /// Les statistiques comptent ce qui a été écrit ; ce qui a été perdu est dans <see cref="ImportStatistics.Errors"/>.
         /// </summary>
         public async Task<ImportStatistics> ImportDataAsync(
-            ParsingResult parsingResult, 
-            Action<string, int, int>? progressCallback = null, 
+            ParsingResult parsingResult,
+            Action<string, int, int>? progressCallback = null,
             CancellationToken cancellationToken = default)
         {
-            var stopwatch = Stopwatch.StartNew();
             var stats = new ImportStatistics();
+            await ImportIntoAsync(parsingResult, stats, progressCallback, cancellationToken);
+            return stats;
+        }
+
+        /// <summary>
+        /// Importe dans les statistiques fournies, pour que les comptes déjà écrits restent disponibles si l'import est annulé
+        /// </summary>
+        private async Task ImportIntoAsync(
+            ParsingResult parsingResult,
+            ImportStatistics stats,
+            Action<string, int, int>? progressCallback,
+            CancellationToken cancellationToken)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var errors = new ImportErrors(stats);
 
             try
             {
                 _logger.LogInformation("Début de l'importation des données");
+
+                if (parsingResult.RejectedRecords > 0)
+                {
+                    errors.Add($"{parsingResult.RejectedRecords} notice(s) rejetée(s) au parsing", parsingResult.RejectedRecords);
+                }
 
                 // Les liens œuvre-artiste du parseur ne portent que l'Id d'origine de l'artiste :
                 // on le retient avant l'upsert, qui remplace l'Id par celui déjà en base.
                 var artistsByParsedId = parsingResult.Artists.ToDictionary(a => a.Id);
 
                 // 1. Importation des entités de référence
-                await ImportReferenceEntitiesAsync(parsingResult, progressCallback, cancellationToken);
+                await ImportReferenceEntitiesAsync(parsingResult, stats, errors, progressCallback, cancellationToken);
 
                 // 2. Importation des œuvres
-                await ImportArtworksAsync(parsingResult.Artworks, artistsByParsedId, progressCallback, cancellationToken);
-
-                // 3. Mise à jour des statistiques
-                stats.ArtworksImported = parsingResult.Artworks.Count;
-                stats.ArtistsImported = parsingResult.Artists.Count;
-                stats.MuseumsImported = parsingResult.Museums.Count;
-                stats.DomainsImported = parsingResult.Domains.Count;
-                stats.TechniquesImported = parsingResult.Techniques.Count;
-                stats.PeriodsImported = parsingResult.Periods.Count;
-                stats.Duration = stopwatch.Elapsed;
-
-                _logger.LogInformation("Importation des données terminée en {Duration}. " +
-                                      "Œuvres: {ArtworksCount}, Artistes: {ArtistsCount}, " +
-                                      "Musées: {MuseumsCount}, Domaines: {DomainsCount}, " +
-                                      "Techniques: {TechniquesCount}, Périodes: {PeriodsCount}",
-                                      stopwatch.Elapsed,
-                                      stats.ArtworksImported,
-                                      stats.ArtistsImported,
-                                      stats.MuseumsImported,
-                                      stats.DomainsImported,
-                                      stats.TechniquesImported,
-                                      stats.PeriodsImported);
-
-                return stats;
+                await ImportArtworksAsync(parsingResult.Artworks, artistsByParsedId, stats, errors, progressCallback, cancellationToken);
             }
-            catch (Exception ex)
+            finally
             {
-                _logger.LogError(ex, "Erreur lors de l'importation des données");
-                throw;
+                stats.Duration = stopwatch.Elapsed;
             }
+
+            _logger.LogInformation("Importation des données terminée en {Duration}. " +
+                                  "Œuvres: {ArtworksCount}, Artistes: {ArtistsCount}, " +
+                                  "Musées: {MuseumsCount}, Domaines: {DomainsCount}, " +
+                                  "Techniques: {TechniquesCount}, Périodes: {PeriodsCount}, Erreurs: {ErrorsCount}",
+                                  stats.Duration,
+                                  stats.ArtworksImported,
+                                  stats.ArtistsImported,
+                                  stats.MuseumsImported,
+                                  stats.DomainsImported,
+                                  stats.TechniquesImported,
+                                  stats.PeriodsImported,
+                                  stats.Errors);
         }
 
         /// <summary>
@@ -120,53 +129,55 @@ namespace OpenJoconde.Infrastructure.Services
         /// </summary>
         private async Task ImportReferenceEntitiesAsync(
             ParsingResult parsingResult,
+            ImportStatistics stats,
+            ImportErrors errors,
             Action<string, int, int>? progressCallback,
             CancellationToken cancellationToken)
         {
-            // Importer les domaines
-            if (parsingResult.Domains.Any())
+            stats.DomainsImported = await UpsertAsync("Domaines", parsingResult.Domains, _domainRepository.BulkUpsertAsync, errors, progressCallback, cancellationToken);
+            stats.TechniquesImported = await UpsertAsync("Techniques", parsingResult.Techniques, _techniqueRepository.BulkUpsertAsync, errors, progressCallback, cancellationToken);
+            stats.PeriodsImported = await UpsertAsync("Périodes", parsingResult.Periods, _periodRepository.BulkUpsertAsync, errors, progressCallback, cancellationToken);
+            stats.ArtistsImported = await UpsertAsync("Artistes", parsingResult.Artists, _artistRepository.BulkUpsertAsync, errors, progressCallback, cancellationToken);
+            stats.MuseumsImported = await UpsertAsync("Musées", parsingResult.Museums, _museumRepository.BulkUpsertAsync, errors, progressCallback, cancellationToken);
+        }
+
+        /// <summary>
+        /// Enregistre une liste d'entités de référence ; renvoie le nombre réellement enregistré
+        /// </summary>
+        private async Task<int> UpsertAsync<T>(
+            string label,
+            List<T> items,
+            Func<IEnumerable<T>, Task<int>> upsert,
+            ImportErrors errors,
+            Action<string, int, int>? progressCallback,
+            CancellationToken cancellationToken)
+        {
+            if (items.Count == 0)
+                return 0;
+
+            cancellationToken.ThrowIfCancellationRequested();
+            progressCallback?.Invoke(label, 0, items.Count);
+
+            int written;
+            try
             {
-                progressCallback?.Invoke("Domaines", 0, parsingResult.Domains.Count);
-                await _domainRepository.BulkUpsertAsync(parsingResult.Domains);
-                progressCallback?.Invoke("Domaines", parsingResult.Domains.Count, parsingResult.Domains.Count);
-                _logger.LogInformation("Importation de {Count} domaines terminée", parsingResult.Domains.Count);
+                written = await upsert(items);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Échec de l'enregistrement de {Count} élément(s) : {Label}", items.Count, label);
+                errors.Add(label, ex, items.Count);
+                return 0;
             }
 
-            // Importer les techniques
-            if (parsingResult.Techniques.Any())
+            if (written < items.Count)
             {
-                progressCallback?.Invoke("Techniques", 0, parsingResult.Techniques.Count);
-                await _techniqueRepository.BulkUpsertAsync(parsingResult.Techniques);
-                progressCallback?.Invoke("Techniques", parsingResult.Techniques.Count, parsingResult.Techniques.Count);
-                _logger.LogInformation("Importation de {Count} techniques terminée", parsingResult.Techniques.Count);
+                errors.Add($"{label} : {items.Count - written} sur {items.Count} non enregistré(s)", items.Count - written);
             }
 
-            // Importer les périodes
-            if (parsingResult.Periods.Any())
-            {
-                progressCallback?.Invoke("Périodes", 0, parsingResult.Periods.Count);
-                await _periodRepository.BulkUpsertAsync(parsingResult.Periods);
-                progressCallback?.Invoke("Périodes", parsingResult.Periods.Count, parsingResult.Periods.Count);
-                _logger.LogInformation("Importation de {Count} périodes terminée", parsingResult.Periods.Count);
-            }
-
-            // Importer les artistes
-            if (parsingResult.Artists.Any())
-            {
-                progressCallback?.Invoke("Artistes", 0, parsingResult.Artists.Count);
-                await _artistRepository.BulkUpsertAsync(parsingResult.Artists);
-                progressCallback?.Invoke("Artistes", parsingResult.Artists.Count, parsingResult.Artists.Count);
-                _logger.LogInformation("Importation de {Count} artistes terminée", parsingResult.Artists.Count);
-            }
-
-            // Importer les musées
-            if (parsingResult.Museums.Any())
-            {
-                progressCallback?.Invoke("Musées", 0, parsingResult.Museums.Count);
-                await _museumRepository.BulkUpsertAsync(parsingResult.Museums);
-                progressCallback?.Invoke("Musées", parsingResult.Museums.Count, parsingResult.Museums.Count);
-                _logger.LogInformation("Importation de {Count} musées terminée", parsingResult.Museums.Count);
-            }
+            progressCallback?.Invoke(label, items.Count, items.Count);
+            _logger.LogInformation("Importation de {Written}/{Count} élément(s) terminée : {Label}", written, items.Count, label);
+            return written;
         }
 
         /// <summary>
@@ -175,6 +186,8 @@ namespace OpenJoconde.Infrastructure.Services
         private async Task ImportArtworksAsync(
             List<Artwork> artworks,
             IReadOnlyDictionary<Guid, Artist> artistsByParsedId,
+            ImportStatistics stats,
+            ImportErrors errors,
             Action<string, int, int>? progressCallback,
             CancellationToken cancellationToken)
         {
@@ -189,11 +202,10 @@ namespace OpenJoconde.Infrastructure.Services
 
             for (int i = 0; i < artworks.Count; i += batchSize)
             {
-                if (cancellationToken.IsCancellationRequested)
-                    break;
+                cancellationToken.ThrowIfCancellationRequested();
 
                 var batch = artworks.Skip(i).Take(batchSize).ToList();
-                
+
                 // 1. D'abord importer les œuvres sans les relations
                 var artworksToImport = batch.Select(artwork => new Artwork
                 {
@@ -212,7 +224,24 @@ namespace OpenJoconde.Infrastructure.Services
                     UpdatedAt = DateTime.UtcNow
                 }).ToList();
 
-                await _artworkRepository.BulkUpsertAsync(artworksToImport);
+                try
+                {
+                    var written = await _artworkRepository.BulkUpsertAsync(artworksToImport);
+                    stats.ArtworksImported += written;
+                    if (written < batch.Count)
+                    {
+                        errors.Add($"Œuvres : {batch.Count - written} sur {batch.Count} non enregistrée(s)", batch.Count - written);
+                    }
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    // Le lot entier est perdu : sans œuvre en base, ses relations ne peuvent pas être écrites
+                    _logger.LogError(ex, "Échec de l'enregistrement d'un lot de {Count} œuvres", batch.Count);
+                    errors.Add("Œuvres", ex, batch.Count);
+                    totalProcessed += batch.Count;
+                    progressCallback?.Invoke("Œuvres", totalProcessed, artworks.Count);
+                    continue;
+                }
 
                 // 2. Ensuite, traiter les relations pour chaque œuvre.
                 // L'upsert a fixé l'Id réel (en base) de chaque copie, dans le même ordre que le lot.
@@ -220,81 +249,43 @@ namespace OpenJoconde.Infrastructure.Services
                 {
                     var artwork = batch[index];
                     var artworkId = artworksToImport[index].Id;
-                    try
+
+                    if (artwork.Artists.Any())
                     {
-                        // Relations avec les artistes
-                        if (artwork.Artists.Any())
-                        {
-                            try
+                        var artistRelations = artwork.Artists
+                            .Where(r => artistsByParsedId.ContainsKey(r.ArtistId))
+                            .Select(r =>
                             {
-                                var artistRelations = artwork.Artists
-                                    .Where(r => artistsByParsedId.ContainsKey(r.ArtistId))
-                                    .Select(r =>
-                                    {
-                                        var artist = artistsByParsedId[r.ArtistId];
-                                        return new ArtworkArtist
-                                        {
-                                            ArtworkId = artworkId,
-                                            ArtistId = artist.Id,
-                                            Artist = artist,
-                                            Role = r.Role
-                                        };
-                                    })
-                                    .ToList();
-                                await _artworkRelationsRepository.SaveArtworkArtistRelationsAsync(
-                                    artworkId, artistRelations);
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogError(ex, "Failed to save artist relations for artwork {ArtworkId}", artworkId);
-                            }
-                        }
-
-                        // Relations avec les domaines
-                        if (artwork.Domains.Any())
-                        {
-                            try
-                            {
-                                await _artworkRelationsRepository.SaveArtworkDomainRelationsAsync(
-                                    artworkId, artwork.Domains.Select(d => d.Id));
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogError(ex, "Failed to save domain relations for artwork {ArtworkId}", artworkId);
-                            }
-                        }
-
-                        // Relations avec les techniques
-                        if (artwork.Techniques.Any())
-                        {
-                            try
-                            {
-                                await _artworkRelationsRepository.SaveArtworkTechniqueRelationsAsync(
-                                    artworkId, artwork.Techniques.Select(t => t.Id));
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogError(ex, "Failed to save technique relations for artwork {ArtworkId}", artworkId);
-                            }
-                        }
-
-                        // Relations avec les périodes
-                        if (artwork.Periods.Any())
-                        {
-                            try
-                            {
-                                await _artworkRelationsRepository.SaveArtworkPeriodRelationsAsync(
-                                    artworkId, artwork.Periods.Select(p => p.Id));
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogError(ex, "Failed to save period relations for artwork {ArtworkId}", artworkId);
-                            }
-                        }
+                                var artist = artistsByParsedId[r.ArtistId];
+                                return new ArtworkArtist
+                                {
+                                    ArtworkId = artworkId,
+                                    ArtistId = artist.Id,
+                                    Artist = artist,
+                                    Role = r.Role
+                                };
+                            })
+                            .ToList();
+                        await SaveRelationsAsync("Relations œuvre-artiste", artworkId, errors,
+                            () => _artworkRelationsRepository.SaveArtworkArtistRelationsAsync(artworkId, artistRelations));
                     }
-                    catch (Exception ex)
+
+                    if (artwork.Domains.Any())
                     {
-                        _logger.LogError(ex, "Failed to process relations for artwork {ArtworkId}", artworkId);
+                        await SaveRelationsAsync("Relations œuvre-domaine", artworkId, errors,
+                            () => _artworkRelationsRepository.SaveArtworkDomainRelationsAsync(artworkId, artwork.Domains.Select(d => d.Id)));
+                    }
+
+                    if (artwork.Techniques.Any())
+                    {
+                        await SaveRelationsAsync("Relations œuvre-technique", artworkId, errors,
+                            () => _artworkRelationsRepository.SaveArtworkTechniqueRelationsAsync(artworkId, artwork.Techniques.Select(t => t.Id)));
+                    }
+
+                    if (artwork.Periods.Any())
+                    {
+                        await SaveRelationsAsync("Relations œuvre-période", artworkId, errors,
+                            () => _artworkRelationsRepository.SaveArtworkPeriodRelationsAsync(artworkId, artwork.Periods.Select(p => p.Id)));
                     }
                 }
 
@@ -308,7 +299,43 @@ namespace OpenJoconde.Infrastructure.Services
                 }
             }
 
-            _logger.LogInformation("Importation de {Count} œuvres et leurs relations terminée", totalProcessed);
+            _logger.LogInformation("Importation de {Written}/{Count} œuvres et de leurs relations terminée", stats.ArtworksImported, artworks.Count);
+        }
+
+        private async Task SaveRelationsAsync(string label, Guid artworkId, ImportErrors errors, Func<Task<int>> save)
+        {
+            try
+            {
+                await save();
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "{Label} : échec pour l'œuvre {ArtworkId}", label, artworkId);
+                errors.Add(label, ex);
+            }
+        }
+
+        /// <summary>
+        /// Cumule les éléments perdus pendant un import et garde quelques messages distincts
+        /// </summary>
+        private sealed class ImportErrors
+        {
+            private const int MaxMessages = 5;
+
+            private readonly ImportStatistics _stats;
+
+            public ImportErrors(ImportStatistics stats) => _stats = stats;
+
+            public void Add(string message, int count = 1)
+            {
+                _stats.Errors += count;
+                if (_stats.ErrorMessages.Count < MaxMessages && !_stats.ErrorMessages.Contains(message))
+                {
+                    _stats.ErrorMessages.Add(message);
+                }
+            }
+
+            public void Add(string context, Exception exception, int count = 1) => Add($"{context} : {exception.Message}", count);
         }
 
         /// <summary>
@@ -352,67 +379,8 @@ namespace OpenJoconde.Infrastructure.Services
         /// <summary>
         /// Importe les données depuis un fichier XML
         /// </summary>
-        public async Task<ImportReport> ImportFromXmlFileAsync(string xmlFilePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default)
-        {
-            _logger.LogInformation("Démarrage de l'importation depuis le fichier XML {FilePath}", xmlFilePath);
-            
-            var report = new ImportReport
-            {
-                ImportDate = DateTime.UtcNow,
-                Success = true
-            };
-            
-            var stopwatch = Stopwatch.StartNew();
-            
-            try
-            {
-                // Vérifier l'existence du fichier
-                if (!File.Exists(xmlFilePath))
-                {
-                    throw new FileNotFoundException("Le fichier XML Joconde n'existe pas", xmlFilePath);
-                }
-                
-                // Analyser le fichier XML avec le parser dédié
-                var parsingResult = await _xmlParser.ParseAsync(xmlFilePath, (current, total) => 
-                {
-                    progressCallback?.Invoke("Analyse XML", current, total);
-                }, cancellationToken);
-                
-                // Mettre à jour le rapport avec le nombre d'éléments trouvés
-                report.TotalArtworks = parsingResult.Artworks.Count;
-                report.TotalArtists = parsingResult.Artists.Count;
-                report.TotalMuseums = parsingResult.Museums.Count;
-                report.TotalDomains = parsingResult.Domains.Count;
-                report.TotalTechniques = parsingResult.Techniques.Count;
-                report.TotalPeriods = parsingResult.Periods.Count;
-                
-                // Importer les données
-                var importStats = await ImportDataAsync(parsingResult, progressCallback, cancellationToken);
-                
-                // Mettre à jour le rapport avec les statistiques d'importation
-                report.ImportedArtworks = importStats.ArtworksImported;
-                report.ImportedArtists = importStats.ArtistsImported;
-                report.ImportedMuseums = importStats.MuseumsImported;
-                report.ImportedDomains = importStats.DomainsImported;
-                report.ImportedTechniques = importStats.TechniquesImported;
-                report.ImportedPeriods = importStats.PeriodsImported;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erreur lors de l'importation depuis le fichier XML: {Message}", ex.Message);
-                report.Errors++;
-                report.Success = false;
-                report.ErrorMessage = ex.Message;
-            }
-            finally
-            {
-                stopwatch.Stop();
-                report.Duration = stopwatch.Elapsed;
-                _logger.LogInformation("Importation depuis le fichier XML terminée en {Duration}", report.Duration);
-            }
-            
-            return report;
-        }
+        public Task<ImportReport> ImportFromXmlFileAsync(string xmlFilePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default) =>
+            ImportParsedFileAsync("XML", xmlFilePath, _xmlParser.ParseAsync, progressCallback, cancellationToken);
 
         /// <summary>
         /// Importe les données depuis un fichier JSON
@@ -454,6 +422,7 @@ namespace OpenJoconde.Infrastructure.Services
             };
 
             var stopwatch = Stopwatch.StartNew();
+            var stats = new ImportStatistics();
 
             try
             {
@@ -474,7 +443,7 @@ namespace OpenJoconde.Infrastructure.Services
 
                 progressCallback?.Invoke("Parsing", 1, 1);
 
-                // Mettre à jour le rapport avec le nombre d'éléments trouvés
+                // Éléments trouvés dans le fichier
                 report.TotalArtworks = parsingResult.Artworks.Count;
                 report.TotalArtists = parsingResult.Artists.Count;
                 report.TotalMuseums = parsingResult.Museums.Count;
@@ -482,14 +451,13 @@ namespace OpenJoconde.Infrastructure.Services
                 report.TotalTechniques = parsingResult.Techniques.Count;
                 report.TotalPeriods = parsingResult.Periods.Count;
 
-                var importStats = await ImportDataAsync(parsingResult, progressCallback, cancellationToken);
-
-                report.ImportedArtworks = importStats.ArtworksImported;
-                report.ImportedArtists = importStats.ArtistsImported;
-                report.ImportedMuseums = importStats.MuseumsImported;
-                report.ImportedDomains = importStats.DomainsImported;
-                report.ImportedTechniques = importStats.TechniquesImported;
-                report.ImportedPeriods = importStats.PeriodsImported;
+                await ImportIntoAsync(parsingResult, stats, progressCallback, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("Importation {Format} annulée", format);
+                report.Success = false;
+                report.ErrorMessage = "Importation annulée";
             }
             catch (Exception ex)
             {
@@ -503,6 +471,21 @@ namespace OpenJoconde.Infrastructure.Services
                 stopwatch.Stop();
                 report.Duration = stopwatch.Elapsed;
                 _logger.LogInformation("Importation depuis le fichier {Format} terminée en {Duration}", format, report.Duration);
+            }
+
+            // Ce qui a réellement été écrit, y compris pour un import annulé ou interrompu
+            report.ImportedArtworks = stats.ArtworksImported;
+            report.ImportedArtists = stats.ArtistsImported;
+            report.ImportedMuseums = stats.MuseumsImported;
+            report.ImportedDomains = stats.DomainsImported;
+            report.ImportedTechniques = stats.TechniquesImported;
+            report.ImportedPeriods = stats.PeriodsImported;
+
+            if (stats.Errors > 0)
+            {
+                report.Errors += stats.Errors;
+                report.Success = false;
+                report.ErrorMessage = string.Join(" | ", stats.ErrorMessages);
             }
 
             return report;

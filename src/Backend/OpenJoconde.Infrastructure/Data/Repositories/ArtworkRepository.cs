@@ -245,13 +245,14 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
         /// Bulk insert or update artworks
         /// </summary>
         /// <param name="artworks">List of artworks to upsert</param>
-        /// <returns>Number of affected records</returns>
+        /// <returns>Number of artworks inserted or updated</returns>
         public async Task<int> BulkUpsertAsync(IEnumerable<Artwork> artworks)
         {
             try
             {
                 // This is a simple implementation. For production, use a bulk library like EFCore.BulkExtensions
-                foreach (var artwork in artworks)
+                var artworkList = artworks.ToList();
+                foreach (var artwork in artworkList)
                 {
                     var existing = await _context.Artworks
                         .FirstOrDefaultAsync(a => a.Reference == artwork.Reference);
@@ -277,7 +278,8 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
                     }
                 }
 
-                return await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
+                return artworkList.Count;
             }
             catch (Exception ex)
             {
