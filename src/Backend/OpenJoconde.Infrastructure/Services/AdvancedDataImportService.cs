@@ -243,76 +243,52 @@ namespace OpenJoconde.Infrastructure.Services
                     continue;
                 }
 
-                // 2. Ensuite, traiter les relations pour chaque œuvre.
+                // 2. Ensuite, écrire les relations de tout le lot en une fois.
                 // L'upsert a fixé l'Id réel (en base) de chaque copie, dans le même ordre que le lot.
+                var relationSets = new List<ArtworkRelationSet>(batch.Count);
                 for (int index = 0; index < batch.Count; index++)
                 {
                     var artwork = batch[index];
-                    var artworkId = artworksToImport[index].Id;
-
-                    if (artwork.Artists.Any())
+                    var set = new ArtworkRelationSet
                     {
-                        var artistRelations = artwork.Artists
+                        ArtworkId = artworksToImport[index].Id,
+                        Artists = artwork.Artists
                             .Where(r => artistsByParsedId.ContainsKey(r.ArtistId))
-                            .Select(r =>
+                            .Select(r => new ArtworkArtist
                             {
-                                var artist = artistsByParsedId[r.ArtistId];
-                                return new ArtworkArtist
-                                {
-                                    ArtworkId = artworkId,
-                                    ArtistId = artist.Id,
-                                    Artist = artist,
-                                    Role = r.Role
-                                };
+                                ArtworkId = artworksToImport[index].Id,
+                                ArtistId = artistsByParsedId[r.ArtistId].Id,
+                                Role = r.Role
                             })
-                            .ToList();
-                        await SaveRelationsAsync("Relations œuvre-artiste", artworkId, errors,
-                            () => _artworkRelationsRepository.SaveArtworkArtistRelationsAsync(artworkId, artistRelations));
-                    }
+                            .ToList(),
+                        DomainIds = artwork.Domains.Select(d => d.Id).Distinct().ToList(),
+                        TechniqueIds = artwork.Techniques.Select(t => t.Id).Distinct().ToList(),
+                        PeriodIds = artwork.Periods.Select(p => p.Id).Distinct().ToList()
+                    };
 
-                    if (artwork.Domains.Any())
-                    {
-                        await SaveRelationsAsync("Relations œuvre-domaine", artworkId, errors,
-                            () => _artworkRelationsRepository.SaveArtworkDomainRelationsAsync(artworkId, artwork.Domains.Select(d => d.Id)));
-                    }
+                    if (set.RelationCount > 0)
+                        relationSets.Add(set);
+                }
 
-                    if (artwork.Techniques.Any())
+                if (relationSets.Count > 0)
+                {
+                    try
                     {
-                        await SaveRelationsAsync("Relations œuvre-technique", artworkId, errors,
-                            () => _artworkRelationsRepository.SaveArtworkTechniqueRelationsAsync(artworkId, artwork.Techniques.Select(t => t.Id)));
+                        await _artworkRelationsRepository.SaveBatchAsync(relationSets);
                     }
-
-                    if (artwork.Periods.Any())
+                    catch (Exception ex) when (ex is not OperationCanceledException)
                     {
-                        await SaveRelationsAsync("Relations œuvre-période", artworkId, errors,
-                            () => _artworkRelationsRepository.SaveArtworkPeriodRelationsAsync(artworkId, artwork.Periods.Select(p => p.Id)));
+                        // Les relations de tout le lot sont perdues (écriture en une transaction)
+                        _logger.LogError(ex, "Échec de l'enregistrement des relations de {Count} œuvres", relationSets.Count);
+                        errors.Add("Relations des œuvres", ex, relationSets.Sum(r => r.RelationCount));
                     }
                 }
 
                 totalProcessed += batch.Count;
                 progressCallback?.Invoke("Œuvres", totalProcessed, artworks.Count);
-
-                // Libérer la mémoire
-                if (i % (batchSize * 5) == 0)
-                {
-                    GC.Collect();
-                }
             }
 
             _logger.LogInformation("Importation de {Written}/{Count} œuvres et de leurs relations terminée", stats.ArtworksImported, artworks.Count);
-        }
-
-        private async Task SaveRelationsAsync(string label, Guid artworkId, ImportErrors errors, Func<Task<int>> save)
-        {
-            try
-            {
-                await save();
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                _logger.LogError(ex, "{Label} : échec pour l'œuvre {ArtworkId}", label, artworkId);
-                errors.Add(label, ex);
-            }
         }
 
         /// <summary>

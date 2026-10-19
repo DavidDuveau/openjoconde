@@ -242,39 +242,50 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
         }
 
         /// <summary>
-        /// Bulk insert or update artworks
+        /// Insère ou met à jour des œuvres, identifiées par leur référence Joconde. Les œuvres existantes du lot
+        /// sont lues en une requête et tous leurs champs sont mis à jour. Le suivi du contexte est vidé ensuite :
+        /// il ne doit pas grossir au fil des lots.
         /// </summary>
-        /// <param name="artworks">List of artworks to upsert</param>
-        /// <returns>Number of artworks inserted or updated</returns>
+        /// <param name="artworks">Œuvres à enregistrer ; leur Id est remplacé par celui de la base</param>
+        /// <returns>Nombre d'œuvres insérées ou mises à jour</returns>
         public async Task<int> BulkUpsertAsync(IEnumerable<Artwork> artworks)
         {
+            var artworkList = artworks.ToList();
+            if (artworkList.Count == 0)
+                return 0;
+
             try
             {
-                // This is a simple implementation. For production, use a bulk library like EFCore.BulkExtensions
-                var artworkList = artworks.ToList();
+                var references = artworkList.Select(a => a.Reference).Distinct().ToList();
+                var tracked = await _context.Artworks
+                    .Where(a => references.Contains(a.Reference))
+                    .ToDictionaryAsync(a => a.Reference, StringComparer.OrdinalIgnoreCase);
+
                 foreach (var artwork in artworkList)
                 {
-                    var existing = await _context.Artworks
-                        .FirstOrDefaultAsync(a => a.Reference == artwork.Reference);
-
-                    if (existing != null)
+                    if (tracked.TryGetValue(artwork.Reference, out var existing))
                     {
-                        // Update existing
                         // L'appelant s'appuie sur l'Id réel pour écrire les relations
                         artwork.Id = existing.Id;
-                        // Map properties one by one or use AutoMapper
+                        existing.InventoryNumber = artwork.InventoryNumber;
+                        existing.Denomination = artwork.Denomination;
                         existing.Title = artwork.Title;
                         existing.Description = artwork.Description;
-                        existing.Denomination = artwork.Denomination;
-                        // ... map other properties
+                        existing.Dimensions = artwork.Dimensions;
+                        existing.CreationDate = artwork.CreationDate;
+                        existing.CreationPlace = artwork.CreationPlace;
+                        existing.ConservationPlace = artwork.ConservationPlace;
+                        existing.Copyright = artwork.Copyright;
+                        existing.ImageUrl = artwork.ImageUrl;
                         existing.UpdatedAt = DateTime.UtcNow;
                     }
                     else
                     {
-                        // Add new
                         artwork.Id = Guid.NewGuid();
                         artwork.UpdatedAt = DateTime.UtcNow;
                         _context.Artworks.Add(artwork);
+                        // Une référence répétée dans le lot met à jour l'œuvre déjà ajoutée
+                        tracked[artwork.Reference] = artwork;
                     }
                 }
 
@@ -285,6 +296,10 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
             {
                 _logger.LogError(ex, "Error bulk upserting artworks");
                 throw;
+            }
+            finally
+            {
+                _context.ChangeTracker.Clear();
             }
         }
     }

@@ -22,11 +22,8 @@ internal sealed class FailingArtworkRepository : IArtworkRepository
 /// <summary>Dépôt de relations dont chaque écriture échoue.</summary>
 internal sealed class FailingRelationsRepository : IArtworkRelationsRepository
 {
-    public Task<int> SaveArtworkArtistRelationsAsync(Guid artworkId, IEnumerable<ArtworkArtist> relations) => Fail();
-    public Task<int> SaveArtworkDomainRelationsAsync(Guid artworkId, IEnumerable<Guid> domainIds) => Fail();
-    public Task<int> SaveArtworkTechniqueRelationsAsync(Guid artworkId, IEnumerable<Guid> techniqueIds) => Fail();
-    public Task<int> SaveArtworkPeriodRelationsAsync(Guid artworkId, IEnumerable<Guid> periodIds) => Fail();
-    public Task<bool> DeleteArtworkRelationsAsync(Guid artworkId) => Task.FromResult(true);
+    public Task<int> SaveBatchAsync(IReadOnlyCollection<ArtworkRelationSet> relations) =>
+        throw new InvalidOperationException("écriture des relations refusée");
 
-    private static Task<int> Fail() => throw new InvalidOperationException("écriture des relations refusée");
+    public Task<bool> DeleteArtworkRelationsAsync(Guid artworkId) => Task.FromResult(true);
 }

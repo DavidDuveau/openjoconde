@@ -6,33 +6,23 @@ using System.Threading.Tasks;
 namespace OpenJoconde.Core.Interfaces
 {
     /// <summary>
-    /// Interface pour le repository gérant les relations entre les œuvres et les autres entités
+    /// Interface pour la gestion des relations entre les œuvres et les autres entités
     /// </summary>
     public interface IArtworkRelationsRepository
     {
         /// <summary>
-        /// Crée ou met à jour les relations entre les œuvres et les artistes
+        /// Remplace les relations (artistes, domaines, techniques, périodes) d'un groupe d'œuvres, en une seule transaction :
+        /// les relations existantes de ces œuvres sont supprimées puis celles fournies sont écrites. Tout ou rien.
         /// </summary>
-        Task<int> SaveArtworkArtistRelationsAsync(Guid artworkId, IEnumerable<ArtworkArtist> relations);
-
-        /// <summary>
-        /// Crée ou met à jour les relations entre les œuvres et les domaines
-        /// </summary>
-        Task<int> SaveArtworkDomainRelationsAsync(Guid artworkId, IEnumerable<Guid> domainIds);
-
-        /// <summary>
-        /// Crée ou met à jour les relations entre les œuvres et les techniques
-        /// </summary>
-        Task<int> SaveArtworkTechniqueRelationsAsync(Guid artworkId, IEnumerable<Guid> techniqueIds);
-
-        /// <summary>
-        /// Crée ou met à jour les relations entre les œuvres et les périodes
-        /// </summary>
-        Task<int> SaveArtworkPeriodRelationsAsync(Guid artworkId, IEnumerable<Guid> periodIds);
+        /// <param name="relations">Relations de chaque œuvre, identifiées par leur Id en base</param>
+        /// <returns>Nombre de lignes de relation écrites</returns>
+        Task<int> SaveBatchAsync(IReadOnlyCollection<ArtworkRelationSet> relations);
 
         /// <summary>
         /// Supprime toutes les relations pour une œuvre
         /// </summary>
+        /// <param name="artworkId">Identifiant de l'œuvre</param>
+        /// <returns>True si les relations ont été supprimées</returns>
         Task<bool> DeleteArtworkRelationsAsync(Guid artworkId);
     }
 }

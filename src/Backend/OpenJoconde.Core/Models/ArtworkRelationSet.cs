@@ -1,0 +1,32 @@
+using System;
+using System.Collections.Generic;
+
+namespace OpenJoconde.Core.Models
+{
+    /// <summary>
+    /// Toutes les relations d'une œuvre déjà enregistrée, à écrire en une fois avec celles de son lot
+    /// </summary>
+    public class ArtworkRelationSet
+    {
+        /// <summary>
+        /// Identifiant de l'œuvre en base
+        /// </summary>
+        public Guid ArtworkId { get; set; }
+
+        /// <summary>
+        /// Artistes de l'œuvre (identifiant de l'artiste en base et rôle)
+        /// </summary>
+        public List<ArtworkArtist> Artists { get; set; } = new List<ArtworkArtist>();
+
+        public List<Guid> DomainIds { get; set; } = new List<Guid>();
+
+        public List<Guid> TechniqueIds { get; set; } = new List<Guid>();
+
+        public List<Guid> PeriodIds { get; set; } = new List<Guid>();
+
+        /// <summary>
+        /// Nombre de lignes de relation que cette œuvre représente
+        /// </summary>
+        public int RelationCount => Artists.Count + DomainIds.Count + TechniqueIds.Count + PeriodIds.Count;
+    }
+}

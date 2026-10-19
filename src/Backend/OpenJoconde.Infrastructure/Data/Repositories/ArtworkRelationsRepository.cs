@@ -11,7 +11,8 @@ using System.Threading.Tasks;
 namespace OpenJoconde.Infrastructure.Data.Repositories
 {
     /// <summary>
-    /// Implémentation du repository pour la gestion des relations entre les œuvres et les autres entités
+    /// Implémentation du repository pour la gestion des relations entre les œuvres et les autres entités.
+    /// Les relations d'un lot d'œuvres sont écrites par SqlBulkCopy dans une seule transaction.
     /// </summary>
     public class ArtworkRelationsRepository : IArtworkRelationsRepository
     {
@@ -32,104 +33,47 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
         }
 
         /// <summary>
-        /// Crée ou met à jour les relations entre une œuvre et ses artistes
+        /// Remplace les relations d'un groupe d'œuvres, en une seule transaction
         /// </summary>
-        public async Task<int> SaveArtworkArtistRelationsAsync(Guid artworkId, IEnumerable<ArtworkArtist> relations)
+        public async Task<int> SaveBatchAsync(IReadOnlyCollection<ArtworkRelationSet> relations)
         {
+            if (relations == null || relations.Count == 0)
+                return 0;
+
             try
             {
-                // Vérifier que les relations ne sont pas null
-                if (relations == null)
-                {
-                    _logger.LogWarning("Relations collection is null for artwork {ArtworkId}", artworkId);
-                    return 0;
-                }
-                
-                // D'abord, supprimer les relations existantes
-                await DeleteRelationsAsync("ArtworkArtist", artworkId, ArtworkIdColumn);
+                await using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
+                await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
 
-                // Ensuite, insérer les nouvelles relations
-                var count = 0;
-                using (var connection = new SqlConnection(_connectionString))
-                {
-                    await connection.OpenAsync();
+                var artworkIds = string.Join(',', relations.Select(r => r.ArtworkId));
+                await DeleteRelationsAsync(connection, transaction, "ArtworkArtist", ArtworkIdColumn, artworkIds);
+                await DeleteRelationsAsync(connection, transaction, "ArtworkDomain", JoinArtworkIdColumn, artworkIds);
+                await DeleteRelationsAsync(connection, transaction, "ArtworkTechnique", JoinArtworkIdColumn, artworkIds);
+                await DeleteRelationsAsync(connection, transaction, "ArtworkPeriod", JoinArtworkIdColumn, artworkIds);
 
-                    foreach (var relation in relations)
+                var written = 0;
+
+                var artists = NewTable(ArtworkIdColumn, "ArtistId", "Role");
+                foreach (var set in relations)
+                {
+                    foreach (var link in set.Artists.GroupBy(a => a.ArtistId).Select(g => g.First()))
                     {
-                        // Skip relations with null artist
-                        if (relation?.Artist == null)
-                        {
-                            _logger.LogWarning("Skipping artwork-artist relation with null artist for artwork {ArtworkId}", artworkId);
-                            continue;
-                        }
-                        
-                        using (var command = new SqlCommand(
-                            "INSERT INTO ArtworkArtist (ArtworkId, ArtistId, Role) VALUES (@ArtworkId, @ArtistId, @Role)",
-                            connection))
-                        {
-                            command.Parameters.AddWithValue("@ArtworkId", artworkId);
-                            command.Parameters.AddWithValue("@ArtistId", relation.Artist.Id);
-                            command.Parameters.AddWithValue("@Role", relation.Role ?? (object)DBNull.Value);
-                            
-                            await command.ExecuteNonQueryAsync();
-                            count++;
-                        }
+                        artists.Rows.Add(set.ArtworkId, link.ArtistId, (object?)link.Role ?? DBNull.Value);
                     }
                 }
+                written += await BulkInsertAsync(connection, transaction, "ArtworkArtist", artists);
 
-                return count;
+                written += await BulkInsertJoinAsync(connection, transaction, "ArtworkDomain", "DomainsId", relations, r => r.DomainIds);
+                written += await BulkInsertJoinAsync(connection, transaction, "ArtworkTechnique", "TechniquesId", relations, r => r.TechniqueIds);
+                written += await BulkInsertJoinAsync(connection, transaction, "ArtworkPeriod", "PeriodsId", relations, r => r.PeriodIds);
+
+                await transaction.CommitAsync();
+                return written;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erreur lors de la sauvegarde des relations œuvre-artiste pour l'œuvre {ArtworkId}", artworkId);
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// Crée ou met à jour les relations entre une œuvre et ses domaines
-        /// </summary>
-        public async Task<int> SaveArtworkDomainRelationsAsync(Guid artworkId, IEnumerable<Guid> domainIds)
-        {
-            try
-            {
-                return await SaveSimpleRelationsAsync("ArtworkDomain", artworkId, "DomainsId", domainIds);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erreur lors de la sauvegarde des relations œuvre-domaine pour l'œuvre {ArtworkId}", artworkId);
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// Crée ou met à jour les relations entre une œuvre et ses techniques
-        /// </summary>
-        public async Task<int> SaveArtworkTechniqueRelationsAsync(Guid artworkId, IEnumerable<Guid> techniqueIds)
-        {
-            try
-            {
-                return await SaveSimpleRelationsAsync("ArtworkTechnique", artworkId, "TechniquesId", techniqueIds);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erreur lors de la sauvegarde des relations œuvre-technique pour l'œuvre {ArtworkId}", artworkId);
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// Crée ou met à jour les relations entre une œuvre et ses périodes
-        /// </summary>
-        public async Task<int> SaveArtworkPeriodRelationsAsync(Guid artworkId, IEnumerable<Guid> periodIds)
-        {
-            try
-            {
-                return await SaveSimpleRelationsAsync("ArtworkPeriod", artworkId, "PeriodsId", periodIds);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erreur lors de la sauvegarde des relations œuvre-période pour l'œuvre {ArtworkId}", artworkId);
+                _logger.LogError(ex, "Erreur lors de la sauvegarde des relations de {Count} œuvres", relations.Count);
                 throw;
             }
         }
@@ -141,10 +85,17 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
         {
             try
             {
-                await DeleteRelationsAsync("ArtworkArtist", artworkId, ArtworkIdColumn);
-                await DeleteRelationsAsync("ArtworkDomain", artworkId, JoinArtworkIdColumn);
-                await DeleteRelationsAsync("ArtworkTechnique", artworkId, JoinArtworkIdColumn);
-                await DeleteRelationsAsync("ArtworkPeriod", artworkId, JoinArtworkIdColumn);
+                await using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
+                await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
+
+                var id = artworkId.ToString();
+                await DeleteRelationsAsync(connection, transaction, "ArtworkArtist", ArtworkIdColumn, id);
+                await DeleteRelationsAsync(connection, transaction, "ArtworkDomain", JoinArtworkIdColumn, id);
+                await DeleteRelationsAsync(connection, transaction, "ArtworkTechnique", JoinArtworkIdColumn, id);
+                await DeleteRelationsAsync(connection, transaction, "ArtworkPeriod", JoinArtworkIdColumn, id);
+
+                await transaction.CommitAsync();
                 return true;
             }
             catch (Exception ex)
@@ -154,53 +105,65 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
             }
         }
 
-        /// <summary>
-        /// Méthode utilitaire pour sauvegarder les relations simples (sans attributs supplémentaires)
-        /// </summary>
-        private async Task<int> SaveSimpleRelationsAsync(string tableName, Guid artworkId, string foreignKeyName, IEnumerable<Guid> foreignKeys)
+        private static DataTable NewTable(params string[] columns)
         {
-            // D'abord, supprimer les relations existantes
-            await DeleteRelationsAsync(tableName, artworkId, JoinArtworkIdColumn);
-
-            // Ensuite, insérer les nouvelles relations
-            var count = 0;
-            using (var connection = new SqlConnection(_connectionString))
+            var table = new DataTable();
+            foreach (var column in columns)
             {
-                await connection.OpenAsync();
+                table.Columns.Add(column, column == "Role" ? typeof(string) : typeof(Guid));
+            }
+            return table;
+        }
 
-                foreach (var foreignKey in foreignKeys)
+        private static Task<int> BulkInsertJoinAsync(
+            SqlConnection connection,
+            SqlTransaction transaction,
+            string tableName,
+            string foreignKeyName,
+            IReadOnlyCollection<ArtworkRelationSet> relations,
+            Func<ArtworkRelationSet, IEnumerable<Guid>> selectIds)
+        {
+            var table = NewTable(JoinArtworkIdColumn, foreignKeyName);
+            foreach (var set in relations)
+            {
+                foreach (var id in selectIds(set).Distinct())
                 {
-                    using (var command = new SqlCommand(
-                        $"INSERT INTO {tableName} ({JoinArtworkIdColumn}, {foreignKeyName}) VALUES (@ArtworkId, @ForeignKey)",
-                        connection))
-                    {
-                        command.Parameters.AddWithValue("@ArtworkId", artworkId);
-                        command.Parameters.AddWithValue("@ForeignKey", foreignKey);
-                        
-                        await command.ExecuteNonQueryAsync();
-                        count++;
-                    }
+                    table.Rows.Add(set.ArtworkId, id);
                 }
             }
 
-            return count;
+            return BulkInsertAsync(connection, transaction, tableName, table);
+        }
+
+        private static async Task<int> BulkInsertAsync(SqlConnection connection, SqlTransaction transaction, string tableName, DataTable table)
+        {
+            if (table.Rows.Count == 0)
+                return 0;
+
+            using var bulkCopy = new SqlBulkCopy(connection, SqlBulkCopyOptions.Default, transaction)
+            {
+                DestinationTableName = tableName
+            };
+            foreach (DataColumn column in table.Columns)
+            {
+                bulkCopy.ColumnMappings.Add(column.ColumnName, column.ColumnName);
+            }
+
+            await bulkCopy.WriteToServerAsync(table);
+            return table.Rows.Count;
         }
 
         /// <summary>
-        /// Méthode utilitaire pour supprimer les relations existantes
+        /// Supprime les relations des œuvres listées (identifiants séparés par des virgules)
         /// </summary>
-        private async Task DeleteRelationsAsync(string tableName, Guid artworkId, string artworkIdColumn)
+        private static async Task DeleteRelationsAsync(SqlConnection connection, SqlTransaction transaction, string tableName, string artworkIdColumn, string artworkIds)
         {
-            using (var connection = new SqlConnection(_connectionString))
-            {
-                await connection.OpenAsync();
-                
-                using (var command = new SqlCommand($"DELETE FROM {tableName} WHERE {artworkIdColumn} = @ArtworkId", connection))
-                {
-                    command.Parameters.AddWithValue("@ArtworkId", artworkId);
-                    await command.ExecuteNonQueryAsync();
-                }
-            }
+            await using var command = new SqlCommand(
+                $"DELETE FROM {tableName} WHERE {artworkIdColumn} IN (SELECT CAST(value AS uniqueidentifier) FROM STRING_SPLIT(@ArtworkIds, ','))",
+                connection,
+                transaction);
+            command.Parameters.AddWithValue("@ArtworkIds", artworkIds);
+            await command.ExecuteNonQueryAsync();
         }
     }
 }
