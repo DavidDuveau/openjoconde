@@ -129,170 +129,93 @@ namespace OpenJoconde.Infrastructure.Data
         }
         
         /// <summary>
-        /// Bulk upsert artists (insert or update) with individual fallback
+        /// Insère ou met à jour des artistes, identifiés par leur nom et prénom (sans tenir compte de la casse).
+        /// Les artistes existants de chaque lot sont lus en une requête ; l'Id de chaque artiste est remplacé par
+        /// celui de la base. Un lot refusé par la base est compté en erreurs et les lots suivants continuent.
         /// </summary>
+        /// <returns>Nombre d'artistes enregistrés</returns>
         public async Task<int> BulkUpsertAsync(IEnumerable<Artist> artists)
         {
+            const int batchSize = 500;
             var artistList = artists.ToList();
             _logger.LogInformation("Starting bulk upsert of {Count} artists", artistList.Count);
-            
+
             int successCount = 0;
             int errorCount = 0;
-            var pendingArtists = new List<Artist>();
-            
-            foreach (var artist in artistList)
+
+            foreach (var batch in artistList.Chunk(batchSize))
             {
                 try
                 {
-                    var existingArtist = await _context.Artists
-                        .FirstOrDefaultAsync(a => 
-                            a.LastName == artist.LastName && 
-                            ((a.FirstName == null && artist.FirstName == null) || 
-                             (a.FirstName != null && a.FirstName == artist.FirstName)));
+                    var lastNames = batch.Select(a => TruncateString(a.LastName ?? "Unknown", 500)).Distinct().ToList();
+                    var known = new Dictionary<(string, string), Artist>();
+                    foreach (var existing in await _context.Artists.Where(a => lastNames.Contains(a.LastName)).ToListAsync())
+                    {
+                        known.TryAdd(NameKey(existing.LastName, existing.FirstName), existing);
+                    }
 
-                    if (existingArtist != null)
+                    foreach (var artist in batch)
                     {
-                        // Update existing artist
-                        artist.Id = existingArtist.Id;
-                        existingArtist.Nationality = artist.Nationality;
-                        existingArtist.BirthDate = artist.BirthDate;
-                        existingArtist.DeathDate = artist.DeathDate;
-                        existingArtist.Biography = artist.Biography;
-                        existingArtist.UpdatedAt = DateTime.UtcNow;
-                        
-                        _context.Artists.Update(existingArtist);
-                        pendingArtists.Add(existingArtist);
-                    }
-                    else
-                    {
-                        // Add new artist
-                        if (artist.Id == Guid.Empty)
-                        {
-                            artist.Id = Guid.NewGuid();
-                        }
-                        
-                        artist.CreatedAt = DateTime.UtcNow;
-                        artist.UpdatedAt = DateTime.UtcNow;
-                        
-                        _context.Artists.Add(artist);
-                        pendingArtists.Add(artist);
-                    }
-                    
-                    successCount++;
-                    
-                    // Save in batches of 100 to avoid memory issues
-                    if (pendingArtists.Count >= 100)
-                    {
-                        var batchResult = await SaveBatchWithIndividualFallback(pendingArtists);
-                        errorCount += batchResult.ErrorCount;
-                        
-                        if (batchResult.ErrorCount > 0)
-                        {
-                            _logger.LogWarning("Batch had {ErrorCount} errors out of {BatchSize} artists", 
-                                batchResult.ErrorCount, pendingArtists.Count);
-                        }
-                        
-                        pendingArtists.Clear();
-                        _context.ChangeTracker.Clear();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Error processing artist {LastName}, {FirstName}: {Message}", 
-                        artist.LastName, artist.FirstName, ex.Message);
-                    errorCount++;
-                }
-            }
-            
-            // Save any remaining changes
-            if (pendingArtists.Count > 0)
-            {
-                var batchResult = await SaveBatchWithIndividualFallback(pendingArtists);
-                errorCount += batchResult.ErrorCount;
-            }
-            
-            var finalSuccessCount = successCount - errorCount;
-            _logger.LogInformation("Bulk upsert completed: {Success}/{Total} artists processed successfully, {Errors} errors", 
-                finalSuccessCount, successCount, errorCount);
-            
-            return finalSuccessCount;
-        }
-        
-        /// <summary>
-        /// Saves a batch of artists with individual fallback on failure
-        /// </summary>
-        private async Task<(int ErrorCount, int SkippedCount)> SaveBatchWithIndividualFallback(List<Artist> artists)
-        {
-            int errorCount = 0;
-            int skippedCount = 0;
-            
-            try
-            {
-                // Attempt batch save
-                await _context.SaveChangesAsync();
-                return (0, 0); // Success
-            }
-            catch (Exception batchEx)
-            {
-                _logger.LogWarning(batchEx, "Batch save failed for {Count} artists. Attempting individual saves.", artists.Count);
-                
-                // Clear context and retry individually
-                _context.ChangeTracker.Clear();
-                
-                foreach (var artist in artists)
-                {
-                    try
-                    {
-                        // Re-attach and process individual artist
-                        var existingArtist = await _context.Artists
-                            .FirstOrDefaultAsync(a => a.Id == artist.Id || 
-                                (a.LastName == artist.LastName && 
-                                 ((a.FirstName == null && artist.FirstName == null) || 
-                                  (a.FirstName != null && a.FirstName == artist.FirstName))));
+                        artist.LastName = TruncateString(artist.LastName ?? "Unknown", 500);
+                        artist.FirstName = TruncateString(artist.FirstName, 500);
+                        var key = NameKey(artist.LastName, artist.FirstName);
 
-                        if (existingArtist != null)
+                        if (known.TryGetValue(key, out var existing))
                         {
-                            // Update existing
-                            existingArtist.Nationality = TruncateString(artist.Nationality, 200);
-                            existingArtist.BirthDate = TruncateString(artist.BirthDate, 100);
-                            existingArtist.DeathDate = TruncateString(artist.DeathDate, 100);
-                            existingArtist.Biography = artist.Biography; // NVARCHAR(MAX) - no limit
-                            existingArtist.UpdatedAt = DateTime.UtcNow;
+                            // Aussi pour un artiste ajouté plus tôt dans ce lot sous une casse différente
+                            artist.Id = existing.Id;
+                            if (!ReferenceEquals(existing, artist))
+                            {
+                                existing.Nationality = TruncateString(artist.Nationality, 200);
+                                existing.BirthDate = TruncateString(artist.BirthDate, 100);
+                                existing.DeathDate = TruncateString(artist.DeathDate, 100);
+                                existing.Biography = artist.Biography;
+                                existing.UpdatedAt = DateTime.UtcNow;
+                            }
                         }
                         else
                         {
-                            // Insert new with data validation
-                            var newArtist = new Artist
+                            if (artist.Id == Guid.Empty)
                             {
-                                Id = artist.Id != Guid.Empty ? artist.Id : Guid.NewGuid(),
-                                LastName = TruncateString(artist.LastName ?? "Unknown", 500),
-                                FirstName = TruncateString(artist.FirstName, 500),
-                                Nationality = TruncateString(artist.Nationality, 200),
-                                BirthDate = TruncateString(artist.BirthDate, 100),
-                                DeathDate = TruncateString(artist.DeathDate, 100),
-                                Biography = artist.Biography, // NVARCHAR(MAX) - no limit
-                                CreatedAt = DateTime.UtcNow,
-                                UpdatedAt = DateTime.UtcNow
-                            };
-                            _context.Artists.Add(newArtist);
+                                artist.Id = Guid.NewGuid();
+                            }
+
+                            artist.Nationality = TruncateString(artist.Nationality, 200);
+                            artist.BirthDate = TruncateString(artist.BirthDate, 100);
+                            artist.DeathDate = TruncateString(artist.DeathDate, 100);
+                            artist.CreatedAt = DateTime.UtcNow;
+                            artist.UpdatedAt = DateTime.UtcNow;
+
+                            _context.Artists.Add(artist);
+                            known[key] = artist;
                         }
-                        
-                        await _context.SaveChangesAsync();
-                        _context.ChangeTracker.Clear();
+
+                        successCount++;
                     }
-                    catch (Exception individualEx)
-                    {
-                        _logger.LogError(individualEx, "Failed to save artist {LastName}, {FirstName}: {Message}", 
-                            artist.LastName, artist.FirstName, individualEx.Message);
-                        errorCount++;
-                        _context.ChangeTracker.Clear();
-                    }
+
+                    await _context.SaveChangesAsync();
                 }
-                
-                return (errorCount, skippedCount);
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Batch of {Count} artists could not be saved: {Message}", batch.Length, ex.Message);
+                    errorCount += batch.Length;
+                }
+                finally
+                {
+                    _context.ChangeTracker.Clear();
+                }
             }
+
+            var finalSuccessCount = successCount - errorCount;
+            _logger.LogInformation("Bulk upsert completed: {Success}/{Total} artists processed successfully, {Errors} errors",
+                finalSuccessCount, artistList.Count, errorCount);
+
+            return finalSuccessCount;
         }
-        
+
+        private static (string, string) NameKey(string lastName, string firstName) =>
+            (lastName.ToLowerInvariant(), (firstName ?? string.Empty).ToLowerInvariant());
+
         /// <summary>
         /// Truncates a string to the specified maximum length
         /// </summary>

@@ -21,6 +21,9 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
         private const string ArtworkIdColumn = "ArtworkId";
         private const string JoinArtworkIdColumn = "ArtworksId";
 
+        // Un lot de 500 œuvres peut dépasser les 30 secondes par défaut quand les tables comptent des millions de lignes
+        private const int TimeoutSeconds = 600;
+
         private readonly string _connectionString;
         private readonly ILogger<ArtworkRelationsRepository> _logger;
 
@@ -46,11 +49,11 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
                 await connection.OpenAsync();
                 await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
 
-                var artworkIds = string.Join(',', relations.Select(r => r.ArtworkId));
-                await DeleteRelationsAsync(connection, transaction, "ArtworkArtist", ArtworkIdColumn, artworkIds);
-                await DeleteRelationsAsync(connection, transaction, "ArtworkDomain", JoinArtworkIdColumn, artworkIds);
-                await DeleteRelationsAsync(connection, transaction, "ArtworkTechnique", JoinArtworkIdColumn, artworkIds);
-                await DeleteRelationsAsync(connection, transaction, "ArtworkPeriod", JoinArtworkIdColumn, artworkIds);
+                await CreateArtworkIdTableAsync(connection, transaction, relations.Select(r => r.ArtworkId));
+                await DeleteRelationsAsync(connection, transaction, "ArtworkArtist", ArtworkIdColumn);
+                await DeleteRelationsAsync(connection, transaction, "ArtworkDomain", JoinArtworkIdColumn);
+                await DeleteRelationsAsync(connection, transaction, "ArtworkTechnique", JoinArtworkIdColumn);
+                await DeleteRelationsAsync(connection, transaction, "ArtworkPeriod", JoinArtworkIdColumn);
 
                 var written = 0;
 
@@ -89,11 +92,11 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
                 await connection.OpenAsync();
                 await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
 
-                var id = artworkId.ToString();
-                await DeleteRelationsAsync(connection, transaction, "ArtworkArtist", ArtworkIdColumn, id);
-                await DeleteRelationsAsync(connection, transaction, "ArtworkDomain", JoinArtworkIdColumn, id);
-                await DeleteRelationsAsync(connection, transaction, "ArtworkTechnique", JoinArtworkIdColumn, id);
-                await DeleteRelationsAsync(connection, transaction, "ArtworkPeriod", JoinArtworkIdColumn, id);
+                await CreateArtworkIdTableAsync(connection, transaction, new[] { artworkId });
+                await DeleteRelationsAsync(connection, transaction, "ArtworkArtist", ArtworkIdColumn);
+                await DeleteRelationsAsync(connection, transaction, "ArtworkDomain", JoinArtworkIdColumn);
+                await DeleteRelationsAsync(connection, transaction, "ArtworkTechnique", JoinArtworkIdColumn);
+                await DeleteRelationsAsync(connection, transaction, "ArtworkPeriod", JoinArtworkIdColumn);
 
                 await transaction.CommitAsync();
                 return true;
@@ -142,7 +145,8 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
 
             using var bulkCopy = new SqlBulkCopy(connection, SqlBulkCopyOptions.Default, transaction)
             {
-                DestinationTableName = tableName
+                DestinationTableName = tableName,
+                BulkCopyTimeout = TimeoutSeconds
             };
             foreach (DataColumn column in table.Columns)
             {
@@ -154,15 +158,36 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
         }
 
         /// <summary>
-        /// Supprime les relations des œuvres listées (identifiants séparés par des virgules)
+        /// Crée la table temporaire #ArtworkIds avec les œuvres à traiter, pour que les suppressions passent par une
+        /// jointure sur la clé des tables de relations plutôt que par un balayage
         /// </summary>
-        private static async Task DeleteRelationsAsync(SqlConnection connection, SqlTransaction transaction, string tableName, string artworkIdColumn, string artworkIds)
+        private static async Task CreateArtworkIdTableAsync(SqlConnection connection, SqlTransaction transaction, IEnumerable<Guid> artworkIds)
+        {
+            await using (var create = new SqlCommand("CREATE TABLE #ArtworkIds (Id uniqueidentifier NOT NULL PRIMARY KEY)", connection, transaction))
+            {
+                create.CommandTimeout = TimeoutSeconds;
+                await create.ExecuteNonQueryAsync();
+            }
+
+            var table = NewTable("Id");
+            foreach (var id in artworkIds.Distinct())
+            {
+                table.Rows.Add(id);
+            }
+
+            await BulkInsertAsync(connection, transaction, "#ArtworkIds", table);
+        }
+
+        /// <summary>
+        /// Supprime les relations des œuvres de #ArtworkIds
+        /// </summary>
+        private static async Task DeleteRelationsAsync(SqlConnection connection, SqlTransaction transaction, string tableName, string artworkIdColumn)
         {
             await using var command = new SqlCommand(
-                $"DELETE FROM {tableName} WHERE {artworkIdColumn} IN (SELECT CAST(value AS uniqueidentifier) FROM STRING_SPLIT(@ArtworkIds, ','))",
+                $"DELETE relation FROM {tableName} AS relation INNER JOIN #ArtworkIds AS selected ON selected.Id = relation.{artworkIdColumn}",
                 connection,
                 transaction);
-            command.Parameters.AddWithValue("@ArtworkIds", artworkIds);
+            command.CommandTimeout = TimeoutSeconds;
             await command.ExecuteNonQueryAsync();
         }
     }

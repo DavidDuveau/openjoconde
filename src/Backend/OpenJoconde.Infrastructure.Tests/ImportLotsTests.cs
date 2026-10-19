@@ -23,7 +23,7 @@ public class ImportLotsTests : IAsyncLifetime
     }
 
     /// <summary>CSV de test : en-tête réel, une notice par numéro, avec domaine, technique, période et auteur.</summary>
-    private string CreerCsv(int nombre, Func<int, string> titre, string suffixe = "")
+    private string CreerCsv(int nombre, Func<int, string> titre, string suffixe = "", Func<int, string>? auteur = null)
     {
         var colonnes = File.ReadLines(ImportDatabase.FixturePath("joconde_cas_particuliers.csv")).First().Split('|');
         string Ligne(int i)
@@ -36,7 +36,7 @@ public class ImportLotsTests : IAsyncLifetime
                 ["domaine"] = $"domaine {i % 7};commun",
                 ["materiaux_techniques"] = $"technique {i % 13}",
                 ["periode_de_creation"] = $"période {i % 5}",
-                ["auteur"] = $"AUTEUR{i % 40} Prénom",
+                ["auteur"] = auteur?.Invoke(i) ?? $"AUTEUR{i % 40} Prénom",
                 ["nom_officiel_musee"] = $"musée {i % 3}",
                 ["localisation"] = $"lieu {i}{suffixe}"
             };
@@ -96,6 +96,20 @@ public class ImportLotsTests : IAsyncLifetime
 
         Assert.Equal(Notices * 2, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM ArtworkDomain").SingleAsync());
         Assert.Equal(Notices, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM ArtworkArtist").SingleAsync());
+    }
+
+    [Fact]
+    public async Task Import_AuteursAuNomIdentiqueDansLeMemeLot_NeFontQuUnArtiste()
+    {
+        // Le parseur distingue ces deux graphies (espaces), la base les confond : un seul artiste, les deux œuvres liées
+        var report = await ImporterAsync(CreerCsv(2, _ => "titre", auteur: i => i == 1 ? "MARTIN  Paul" : "MARTIN Paul"));
+
+        Assert.True(report.Success, report.ErrorMessage);
+        await using var context = _db.CreateContext();
+        Assert.Equal(1, await context.Artists.CountAsync());
+        var artisteId = await context.Artists.Select(a => a.Id).SingleAsync();
+        var liens = await context.Database.SqlQueryRaw<Guid>("SELECT ArtistId AS Value FROM ArtworkArtist").ToListAsync();
+        Assert.Equal(new[] { artisteId, artisteId }, liens);
     }
 
     [Fact]
