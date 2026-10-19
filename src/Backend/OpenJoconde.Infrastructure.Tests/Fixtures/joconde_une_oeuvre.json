@@ -1,0 +1,27 @@
+[
+  {
+    "reference": "50510016755",
+    "denomination": "recto verso",
+    "description": "plume et encre, lavis brun, tracé préparatoire à la sanguine",
+    "mesures": "H. 28.9 ; L. 41.5",
+    "domaine": [
+      "dessin"
+    ],
+    "numero_inventaire": "PM 454",
+    "localisation": "Paris ; musée de l'Ecole nationale supérieure des beaux-arts",
+    "ville": "Paris",
+    "code_museofile": "M5051",
+    "nom_officiel_musee": "musée de l'Ecole nationale supérieure des beaux-arts",
+    "auteur": "DUBREUIL Toussaint",
+    "precisions_sur_l_auteur": "Paris, 1561 ; Paris, 1602",
+    "periode_de_creation": "2e moitié 16e siècle",
+    "materiaux_techniques": [
+      "plume, encre, lavis brun, sanguine"
+    ],
+    "titre": "Grotesques ; Grotesques (verso)",
+    "coordonnees": {
+      "lon": 2.33167,
+      "lat": 48.845748
+    }
+  }
+]

@@ -1,0 +1,27 @@
+[
+  {
+    "reference": "A1",
+    "titre": "Avant",
+    "domaine": [
+      "dessin"
+    ],
+    "auteur": "MARTIN Paul"
+  },
+  {
+    "reference": "A2",
+    "titre": "Titre avec } et { dans le texte",
+    "description": "accolade fermante } puis ouvrante {",
+    "domaine": [
+      "peinture"
+    ],
+    "auteur": "DURAND Anne"
+  },
+  {
+    "reference": "A3",
+    "titre": "Apres",
+    "domaine": [
+      "dessin"
+    ],
+    "auteur": "MARTIN Paul"
+  }
+]

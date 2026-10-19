@@ -85,3 +85,4 @@ pnpm-debug.log*
 *.ntvs*
 *.njsproj
 *.sw?
+!src/Backend/OpenJoconde.Infrastructure.Tests/Fixtures/*.json
