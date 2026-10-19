@@ -4,22 +4,31 @@ using OpenJoconde.Core.Models;
 using OpenJoconde.Core.Parsers;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace OpenJoconde.Infrastructure.Services
 {
     /// <summary>
-    /// Service optimisé pour parser les fichiers JSON Joconde par streaming, évitant les OutOfMemoryException
+    /// Parse un export JSON Joconde dont la racine est un tableau de notices.
+    /// Les notices sont lues une à une depuis le flux : le découpage est fait par le lecteur JSON,
+    /// donc des accolades dans un texte ne perturbent plus les notices voisines.
+    /// Les entités produites restent accumulées en mémoire dans le <see cref="ParsingResult"/>.
     /// </summary>
     public class StreamingJocondeJsonParserService : IJocondeJsonParser
     {
+        private const int BufferSize = 16384;
+        private const int ProgressInterval = 1000;
+        private const int EstimatedBytesPerArtwork = 5000;
+
+        private static readonly Regex ArtistDatesInParentheses = new(@"\(([^)]+)\)", RegexOptions.Compiled);
+
         private readonly ILogger<StreamingJocondeJsonParserService> _logger;
-        private const int BUFFER_SIZE = 16384; // 16Ko pour le buffer de lecture
 
         public StreamingJocondeJsonParserService(ILogger<StreamingJocondeJsonParserService> logger)
         {
@@ -27,11 +36,11 @@ namespace OpenJoconde.Infrastructure.Services
         }
 
         /// <summary>
-        /// Parse un fichier JSON Joconde et extrait toutes les entités en utilisant un traitement par flux
+        /// Parse un fichier JSON Joconde et extrait toutes les entités
         /// </summary>
         public async Task<ParsingResult> ParseAsync(
             string jsonFilePath,
-            Action<int, int> progressCallback = null,
+            Action<int, int>? progressCallback = null,
             CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Début du parsing JSON par streaming: {FilePath}", jsonFilePath);
@@ -42,12 +51,11 @@ namespace OpenJoconde.Infrastructure.Services
             if (!File.Exists(jsonFilePath))
                 throw new FileNotFoundException("Le fichier JSON n'existe pas", jsonFilePath);
 
-            // Estimation du nombre d'œuvres (basée sur la taille du fichier)
             long fileSize = new FileInfo(jsonFilePath).Length;
-            int estimatedItems = (int)(fileSize / 5000); // Estimation grossière basée sur une taille moyenne d'objet JSON
+            int estimatedItems = (int)(fileSize / EstimatedBytesPerArtwork);
             _logger.LogInformation("Taille du fichier: {Size} octets, estimation du nombre d'œuvres: ~{Count}", fileSize, estimatedItems);
 
-            // Utiliser des dictionnaires pour éviter les doublons
+            // Dictionnaires pour dédoublonner les entités liées
             var artists = new Dictionary<string, Artist>();
             var domains = new Dictionary<string, Domain>();
             var techniques = new Dictionary<string, Technique>();
@@ -55,124 +63,40 @@ namespace OpenJoconde.Infrastructure.Services
             var museums = new Dictionary<string, Museum>();
             var artworks = new List<Artwork>();
 
-            // Compteurs pour le suivi
             int processedItems = 0;
-            int totalItems = estimatedItems;
-            int totalBatches = 0;
-            int successfulBatches = 0;
+            int rejectedItems = 0;
 
             try
             {
-                using (var fileStream = new FileStream(jsonFilePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: BUFFER_SIZE, useAsync: true))
-                using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                await using var fileStream = new FileStream(jsonFilePath, FileMode.Open, FileAccess.Read, FileShare.Read, BufferSize, useAsync: true);
+                var options = new JsonSerializerOptions { AllowTrailingCommas = true, ReadCommentHandling = JsonCommentHandling.Skip };
+
+                await foreach (var element in JsonSerializer.DeserializeAsyncEnumerable<JsonElement>(fileStream, options, cancellationToken))
                 {
-                    // Vérifier que le fichier commence par un tableau '['
-                    char[] firstCharBuffer = new char[1];
-                    await streamReader.ReadAsync(firstCharBuffer, 0, 1);
-                    if (firstCharBuffer[0] != '[')
+                    processedItems++;
+
+                    try
                     {
-                        throw new FormatException("Le fichier JSON ne commence pas par un tableau '['");
+                        if (element.ValueKind != JsonValueKind.Object)
+                            throw new FormatException($"Notice {processedItems} : objet JSON attendu, {element.ValueKind} trouvé");
+
+                        var artwork = ExtractArtwork(element);
+                        ExtractRelatedEntities(element, artwork, artists, domains, techniques, periods, museums);
+                        artworks.Add(artwork);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        rejectedItems++;
+                        _logger.LogWarning(ex, "Notice {Index} rejetée: {Message}", processedItems, ex.Message);
                     }
 
-                    // Utiliser un JsonReaderOptions pour optimiser la lecture
-                    var readerOptions = new JsonReaderOptions
+                    if (processedItems % ProgressInterval == 0)
                     {
-                        AllowTrailingCommas = true,
-                        CommentHandling = JsonCommentHandling.Skip,
-                        MaxDepth = 64
-                    };
-
-                    StringBuilder jsonObjectBuilder = new StringBuilder();
-                    bool inObject = false;
-                    int objectDepth = 0;
-                    int batchSize = 1000; // Traitement par lots de 1000 objets
-                    List<string> batchObjects = new List<string>(batchSize);
-
-                    char[] buffer = new char[BUFFER_SIZE];
-                    int bytesRead;
-
-                    // Lecture caractère par caractère pour extraire les objets JSON individuellement
-                    while ((bytesRead = await streamReader.ReadAsync(buffer, 0, buffer.Length)) > 0)
-                    {
-                        if (cancellationToken.IsCancellationRequested)
-                        {
-                            _logger.LogWarning("Parsing annulé par l'utilisateur");
-                            break;
-                        }
-
-                        for (int i = 0; i < bytesRead; i++)
-                        {
-                            char c = buffer[i];
-
-                            // Gestion de la profondeur des objets
-                            if (c == '{')
-                            {
-                                if (!inObject)
-                                {
-                                    inObject = true;
-                                    objectDepth = 1;
-                                    jsonObjectBuilder.Clear();
-                                }
-                                else
-                                {
-                                    objectDepth++;
-                                }
-                                jsonObjectBuilder.Append(c);
-                            }
-                            else if (c == '}')
-                            {
-                                objectDepth--;
-                                jsonObjectBuilder.Append(c);
-
-                                if (inObject && objectDepth == 0)
-                                {
-                                    // Objet JSON complet
-                                    inObject = false;
-                                    batchObjects.Add(jsonObjectBuilder.ToString());
-
-                                    // Si nous avons un lot complet, traiter le lot
-                                    if (batchObjects.Count >= batchSize)
-                                    {
-                                        await ProcessBatchAsync(batchObjects, artworks, artists, domains, techniques, periods, museums);
-                                        totalBatches++;
-                                        successfulBatches++;
-
-                                        // Mise à jour des compteurs
-                                        processedItems += batchObjects.Count;
-                                        _logger.LogInformation("Lot {BatchNumber} traité: {ItemCount} œuvres, total traité: {TotalProcessed}/{EstimatedTotal}",
-                                            totalBatches, batchObjects.Count, processedItems, totalItems);
-
-                                        // Invoquer le callback de progression
-                                        progressCallback?.Invoke(processedItems, totalItems);
-
-                                        // Réinitialiser le lot
-                                        batchObjects.Clear();
-                                    }
-                                }
-                            }
-                            else if (inObject)
-                            {
-                                jsonObjectBuilder.Append(c);
-                            }
-                            // Ignorer les caractères en dehors des objets (virgules, espaces, etc.)
-                        }
-                    }
-
-                    // Traiter le dernier lot s'il n'est pas vide
-                    if (batchObjects.Count > 0)
-                    {
-                        await ProcessBatchAsync(batchObjects, artworks, artists, domains, techniques, periods, museums);
-                        totalBatches++;
-                        successfulBatches++;
-                        processedItems += batchObjects.Count;
-                        _logger.LogInformation("Dernier lot {BatchNumber} traité: {ItemCount} œuvres, total traité: {TotalProcessed}",
-                            totalBatches, batchObjects.Count, processedItems);
-                        progressCallback?.Invoke(processedItems, processedItems);
+                        progressCallback?.Invoke(processedItems, Math.Max(estimatedItems, processedItems));
                     }
                 }
 
-                // Mettre à jour le compteur total avec le nombre réel
-                totalItems = processedItems;
+                progressCallback?.Invoke(processedItems, processedItems);
 
                 var result = new ParsingResult
                 {
@@ -184,17 +108,22 @@ namespace OpenJoconde.Infrastructure.Services
                     Museums = museums.Values.ToList()
                 };
 
-                _logger.LogInformation("Parsing JSON terminé: {ArtworksCount} œuvres, {ArtistsCount} artistes, {DomainsCount} domaines, {TechniquesCount} techniques, {PeriodsCount} périodes, {MuseumsCount} musées, {SuccessfulBatches}/{TotalBatches} lots réussis",
+                _logger.LogInformation(
+                    "Parsing JSON terminé: {ArtworksCount} œuvres ({RejectedCount} notices rejetées), {ArtistsCount} artistes, {DomainsCount} domaines, {TechniquesCount} techniques, {PeriodsCount} périodes, {MuseumsCount} musées",
                     result.Artworks.Count,
+                    rejectedItems,
                     result.Artists.Count,
                     result.Domains.Count,
                     result.Techniques.Count,
                     result.Periods.Count,
-                    result.Museums.Count,
-                    successfulBatches,
-                    totalBatches);
+                    result.Museums.Count);
 
                 return result;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("Parsing annulé après {ProcessedCount} notices", processedItems);
+                throw;
             }
             catch (Exception ex)
             {
@@ -204,91 +133,38 @@ namespace OpenJoconde.Infrastructure.Services
         }
 
         /// <summary>
-        /// Traite un lot d'objets JSON et extrait les entités
-        /// </summary>
-        private async Task ProcessBatchAsync(
-            List<string> jsonObjects,
-            List<Artwork> artworks,
-            Dictionary<string, Artist> artists,
-            Dictionary<string, Domain> domains,
-            Dictionary<string, Technique> techniques,
-            Dictionary<string, Period> periods,
-            Dictionary<string, Museum> museums)
-        {
-            int batchSuccessCount = 0;
-
-            foreach (var jsonObject in jsonObjects)
-            {
-                try
-                {
-                    using (JsonDocument doc = JsonDocument.Parse(jsonObject))
-                    {
-                        JsonElement root = doc.RootElement;
-                        var artwork = ExtractArtwork(root);
-
-                        // Vérifier que la dénomination n'est pas nulle
-                        if (string.IsNullOrEmpty(artwork.Denomination))
-                        {
-                            artwork.Denomination = "Œuvre sans dénomination";
-                        }
-
-                        // Extraction des entités liées
-                        ExtractRelatedEntities(root, artwork, artists, domains, techniques, periods, museums);
-
-                        // Ajout de l'œuvre au résultat
-                        artworks.Add(artwork);
-                        batchSuccessCount++;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Erreur lors de l'extraction d'une œuvre: {Message}", ex.Message);
-                    // Continuer avec la suivante
-                }
-            }
-
-            _logger.LogDebug("Lot traité: {Success}/{Total} objets extraits avec succès", batchSuccessCount, jsonObjects.Count);
-            await Task.CompletedTask; // Pour le support de l'async
-        }
-
-        /// <summary>
         /// Extraction des informations de base d'une œuvre
         /// </summary>
-        private Artwork ExtractArtwork(JsonElement artworkElement)
+        private static Artwork ExtractArtwork(JsonElement element)
         {
-            // Extraire explicitement la dénomination
-            string denomination = GetStringValue(artworkElement, "denomination");
-
-            // Si la dénomination est vide, utiliser une valeur par défaut
-            if (string.IsNullOrEmpty(denomination))
-            {
-                denomination = "Œuvre sans dénomination";
-            }
+            var periods = GetValues(element, "periode_de_creation");
+            var creationDate = periods.Count > 0
+                ? string.Join(" ; ", periods)
+                : GetString(element, "millesime_de_creation") ?? GetString(element, "epoque");
 
             return new Artwork
             {
                 Id = Guid.NewGuid(),
-                Reference = GetStringValue(artworkElement, "reference"),
-                InventoryNumber = GetStringValue(artworkElement, "numero_inventaire"),
-                Denomination = denomination,
-                Title = GetStringValue(artworkElement, "titre"), // Use 'titre' if available, otherwise fall back to denomination
-                Description = GetStringValue(artworkElement, "description"),
-                Dimensions = GetStringValue(artworkElement, "mesures"),
-                CreationDate = GetStringValue(artworkElement, "date_sujet_represente") ?? GetStringValue(artworkElement, "epoque"),
-                CreationPlace = GetStringValue(artworkElement, "lieu_creation") ?? GetStringValue(artworkElement, "ecole_pays"),
-                ConservationPlace = GetStringValue(artworkElement, "lieu_conservation") ?? GetStringValue(artworkElement, "lieu_de_depot"),
-                Copyright = GetStringValue(artworkElement, "droits"), 
-                ImageUrl = GetStringValue(artworkElement, "image_url") ?? GetStringValue(artworkElement, "lien_image"),
+                Reference = GetString(element, "reference") ?? string.Empty,
+                InventoryNumber = GetString(element, "numero_inventaire"),
+                Denomination = GetString(element, "denomination") ?? "Œuvre sans dénomination",
+                Title = GetString(element, "titre"),
+                Description = GetString(element, "description"),
+                Dimensions = GetString(element, "mesures"),
+                CreationDate = creationDate,
+                CreationPlace = GetString(element, "lieu_de_creation_utilisation") ?? GetString(element, "ecole_pays"),
+                ConservationPlace = GetString(element, "localisation") ?? GetString(element, "lieu_de_depot"),
+                // L'export ne fournit ni URL d'image (seulement presence_image) ni texte de droits.
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
         }
 
         /// <summary>
-        /// Extraction des entités liées (artistes, domaines, techniques, etc.)
+        /// Extraction des entités liées (artiste, domaines, techniques, périodes, musée)
         /// </summary>
-        private void ExtractRelatedEntities(
-            JsonElement artworkElement,
+        private static void ExtractRelatedEntities(
+            JsonElement element,
             Artwork artwork,
             Dictionary<string, Artist> artists,
             Dictionary<string, Domain> domains,
@@ -296,145 +172,157 @@ namespace OpenJoconde.Infrastructure.Services
             Dictionary<string, Period> periods,
             Dictionary<string, Museum> museums)
         {
-            // Extraction des artistes
-            var artistName = GetStringValue(artworkElement, "auteur");
-            if (!string.IsNullOrEmpty(artistName))
+            var artistName = GetString(element, "auteur");
+            if (artistName != null)
             {
-                // Parse artist name (e.g., "Charnay Armand (1844-1915)")
-                var artist = ParseArtistName(artistName);
-                string artistKey = artistName.ToLower();
-                
-                if (!artists.TryGetValue(artistKey, out var existingArtist))
+                var artistKey = artistName.ToLowerInvariant();
+                if (!artists.TryGetValue(artistKey, out var artist))
                 {
-                    existingArtist = artist;
-                    artists[artistKey] = existingArtist;
+                    artist = ParseArtistName(artistName);
+                    artists[artistKey] = artist;
                 }
 
-                // Lier l'artiste à l'œuvre
                 artwork.Artists.Add(new ArtworkArtist
                 {
-                    ArtistId = existingArtist.Id,
+                    ArtistId = artist.Id,
                     ArtworkId = artwork.Id,
                     Role = "Créateur"
                 });
             }
 
-            // Extraction des domaines (array field)
-            if (artworkElement.TryGetProperty("domaine", out JsonElement domaineArray) && domaineArray.ValueKind == JsonValueKind.Array)
+            foreach (var name in GetValues(element, "domaine"))
             {
-                foreach (JsonElement domainElement in domaineArray.EnumerateArray())
+                if (!domains.TryGetValue(name.ToLowerInvariant(), out var domain))
                 {
-                    var domainName = domainElement.GetString();
-                    if (!string.IsNullOrEmpty(domainName))
-                    {
-                        string domainKey = domainName.ToLower();
-                        
-                        if (!domains.TryGetValue(domainKey, out var domain))
-                        {
-                            domain = new Domain
-                            {
-                                Id = Guid.NewGuid(),
-                                Name = domainName,
-                                CreatedAt = DateTime.UtcNow,
-                                UpdatedAt = DateTime.UtcNow
-                            };
-                            
-                            domains[domainKey] = domain;
-                        }
-                        
-                        artwork.Domains.Add(domain);
-                    }
+                    domain = new Domain { Id = Guid.NewGuid(), Name = name, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+                    domains[name.ToLowerInvariant()] = domain;
                 }
+                artwork.Domains.Add(domain);
             }
-            
-            // Extraction des techniques depuis description
-            var description = GetStringValue(artworkElement, "description");
-            if (!string.IsNullOrEmpty(description))
+
+            foreach (var name in GetValues(element, "materiaux_techniques"))
             {
-                var technique = ExtractTechniqueFromDescription(description);
-                if (!string.IsNullOrEmpty(technique))
+                if (!techniques.TryGetValue(name.ToLowerInvariant(), out var technique))
                 {
-                    string techniqueKey = technique.ToLower();
-                    
-                    if (!techniques.TryGetValue(techniqueKey, out var techniqueObj))
-                    {
-                        techniqueObj = new Technique
-                        {
-                            Id = Guid.NewGuid(),
-                            Name = technique,
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow
-                        };
-                        
-                        techniques[techniqueKey] = techniqueObj;
-                    }
-                    
-                    artwork.Techniques.Add(techniqueObj);
+                    technique = new Technique { Id = Guid.NewGuid(), Name = name, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+                    techniques[name.ToLowerInvariant()] = technique;
                 }
+                artwork.Techniques.Add(technique);
             }
-            
-            // Extraction des périodes
-            var epochName = GetStringValue(artworkElement, "epoque");
-            if (!string.IsNullOrEmpty(epochName))
+
+            var periodNames = GetValues(element, "periode_de_creation");
+            if (periodNames.Count == 0)
+                periodNames = GetValues(element, "epoque");
+
+            foreach (var name in periodNames)
             {
-                string periodKey = epochName.ToLower();
-                
-                if (!periods.TryGetValue(periodKey, out var period))
+                if (!periods.TryGetValue(name.ToLowerInvariant(), out var period))
                 {
-                    period = new Period
-                    {
-                        Id = Guid.NewGuid(),
-                        Name = epochName,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-                    
-                    periods[periodKey] = period;
+                    period = new Period { Id = Guid.NewGuid(), Name = name, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+                    periods[name.ToLowerInvariant()] = period;
                 }
-                
                 artwork.Periods.Add(period);
             }
-            
-            // Extraction du musée
-            var museumName = GetStringValue(artworkElement, "musee") ?? GetStringValue(artworkElement, "lieu_conservation");
-            if (!string.IsNullOrEmpty(museumName))
-            {
-                string museumKey = museumName.ToLower();
-                
-                if (!museums.TryGetValue(museumKey, out var museum))
-                {
-                    museum = new Museum
-                    {
-                        Id = Guid.NewGuid(),
-                        Name = museumName,
-                        City = GetStringValue(artworkElement, "ville") ?? GetStringValue(artworkElement, "region"),
-                        Department = GetStringValue(artworkElement, "departement"),
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
 
-                    museums[museumKey] = museum;
+            var museumName = GetString(element, "nom_officiel_musee") ?? GetString(element, "localisation");
+            if (museumName != null && !museums.ContainsKey(museumName.ToLowerInvariant()))
+            {
+                var museum = new Museum
+                {
+                    Id = Guid.NewGuid(),
+                    Name = museumName,
+                    Code = GetString(element, "code_museofile"),
+                    City = GetString(element, "ville"),
+                    Department = GetString(element, "departement"),
+                    Region = GetString(element, "region"),
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                if (TryGetCoordinates(element, out var latitude, out var longitude))
+                {
+                    museum.Latitude = latitude;
+                    museum.Longitude = longitude;
+                }
+
+                museums[museumName.ToLowerInvariant()] = museum;
+            }
+        }
+
+        /// <summary>
+        /// Valeur texte d'une propriété, ou null si elle est absente, vide ou non textuelle.
+        /// Les nombres sont convertis en texte.
+        /// </summary>
+        private static string? GetString(JsonElement element, string propertyName)
+        {
+            if (!element.TryGetProperty(propertyName, out var property))
+                return null;
+
+            var value = property.ValueKind switch
+            {
+                JsonValueKind.String => property.GetString(),
+                JsonValueKind.Number => property.GetRawText(),
+                _ => null
+            };
+
+            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
+
+        /// <summary>
+        /// Valeurs d'un champ multivalué : un tableau JSON, ou un texte dont les valeurs sont séparées par « ; ».
+        /// </summary>
+        private static List<string> GetValues(JsonElement element, string propertyName)
+        {
+            var values = new List<string>();
+            if (!element.TryGetProperty(propertyName, out var property))
+                return values;
+
+            if (property.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in property.EnumerateArray())
+                {
+                    if (item.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(item.GetString()))
+                        values.Add(item.GetString()!.Trim());
                 }
             }
-        }
-
-        /// <summary>
-        /// Récupère une valeur string à partir d'un élément JSON
-        /// </summary>
-        private string GetStringValue(JsonElement element, string propertyName)
-        {
-            if (element.TryGetProperty(propertyName, out JsonElement property))
+            else if (property.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(property.GetString()))
             {
-                return property.ValueKind == JsonValueKind.String ? property.GetString() : string.Empty;
+                values.AddRange(property.GetString()!.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
             }
 
-            return string.Empty;
+            return values.Distinct().ToList();
         }
-        
+
         /// <summary>
-        /// Parse artist name from Joconde format (e.g., "Charnay Armand (1844-1915)")
+        /// Coordonnées du musée : objet { lon, lat } (export JSON) ou texte « lat, lon » (export CSV).
         /// </summary>
-        private Artist ParseArtistName(string fullName)
+        private static bool TryGetCoordinates(JsonElement element, out double latitude, out double longitude)
+        {
+            latitude = longitude = 0;
+            if (!element.TryGetProperty("coordonnees", out var coordinates))
+                return false;
+
+            if (coordinates.ValueKind == JsonValueKind.Object)
+            {
+                return coordinates.TryGetProperty("lat", out var lat) && lat.TryGetDouble(out latitude)
+                    && coordinates.TryGetProperty("lon", out var lon) && lon.TryGetDouble(out longitude);
+            }
+
+            if (coordinates.ValueKind == JsonValueKind.String)
+            {
+                var parts = coordinates.GetString()!.Split(',', StringSplitOptions.TrimEntries);
+                return parts.Length == 2
+                    && double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out latitude)
+                    && double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out longitude);
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Découpe un nom d'auteur Joconde (ex. « DUBREUIL Toussaint », « Charnay Armand (1844-1915) »)
+        /// </summary>
+        private static Artist ParseArtistName(string fullName)
         {
             var artist = new Artist
             {
@@ -442,27 +330,20 @@ namespace OpenJoconde.Infrastructure.Services
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-            
-            // Extract birth/death dates from parentheses
-            var dateMatch = System.Text.RegularExpressions.Regex.Match(fullName, @"\(([^)]+)\)");
+
+            var dateMatch = ArtistDatesInParentheses.Match(fullName);
             if (dateMatch.Success)
             {
-                var dates = dateMatch.Groups[1].Value;
-                if (dates.Contains("-"))
+                var dateParts = dateMatch.Groups[1].Value.Split('-');
+                if (dateParts.Length == 2)
                 {
-                    var dateParts = dates.Split('-');
-                    if (dateParts.Length == 2)
-                    {
-                        artist.BirthDate = dateParts[0].Trim();
-                        artist.DeathDate = dateParts[1].Trim();
-                    }
+                    artist.BirthDate = dateParts[0].Trim();
+                    artist.DeathDate = dateParts[1].Trim();
                 }
-                
-                // Remove dates from name
+
                 fullName = fullName.Replace(dateMatch.Value, "").Trim();
             }
-            
-            // Split name into parts
+
             var nameParts = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (nameParts.Length >= 2)
             {
@@ -473,30 +354,8 @@ namespace OpenJoconde.Infrastructure.Services
             {
                 artist.LastName = fullName.Trim();
             }
-            
+
             return artist;
-        }
-        
-        /// <summary>
-        /// Extract technique from description field
-        /// </summary>
-        private string ExtractTechniqueFromDescription(string description)
-        {
-            if (string.IsNullOrEmpty(description)) return null;
-            
-            // Common technique keywords
-            var techniques = new[] { "huile", "aquarelle", "crayon", "encre", "pastel", "gouache", "acrylique", "tempera", "fusain" };
-            
-            var lowerDesc = description.ToLower();
-            foreach (var technique in techniques)
-            {
-                if (lowerDesc.Contains(technique))
-                {
-                    return technique;
-                }
-            }
-            
-            return description; // Return full description as technique if no specific technique found
         }
     }
 }

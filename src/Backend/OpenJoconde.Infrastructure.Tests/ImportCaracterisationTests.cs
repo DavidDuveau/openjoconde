@@ -36,7 +36,6 @@ public class ImportCaracterisationTests : IAsyncLifetime
     }
 
     [Fact]
-    [Trait("Backlog", "TECH-03")]
     public async Task Import_UneOeuvre_ConserveDateEtLieuDeConservation()
     {
         await ImporterAsync("joconde_une_oeuvre.json");
@@ -48,7 +47,6 @@ public class ImportCaracterisationTests : IAsyncLifetime
     }
 
     [Fact]
-    [Trait("Backlog", "TECH-03")]
     public async Task Import_UneOeuvre_EcritLeMuseeAvecSesCoordonnees()
     {
         await ImporterAsync("joconde_une_oeuvre.json");
@@ -103,7 +101,6 @@ public class ImportCaracterisationTests : IAsyncLifetime
     }
 
     [Fact]
-    [Trait("Backlog", "TECH-03")]
     public async Task Import_UneOeuvre_UtiliseMateriauxTechniquesCommeTechnique()
     {
         await ImporterAsync("joconde_une_oeuvre.json");
@@ -114,7 +111,6 @@ public class ImportCaracterisationTests : IAsyncLifetime
     }
 
     [Fact]
-    [Trait("Backlog", "TECH-03")]
     public async Task Import_AccoladesDansLeTexte_NePerdAucuneOeuvre()
     {
         var report = await ImporterAsync("joconde_accolades_dans_texte.json");
@@ -142,5 +138,48 @@ public class ImportCaracterisationTests : IAsyncLifetime
 
         await using var context = _db.CreateContext();
         Assert.Equal(await context.Artworks.CountAsync(), report.ImportedArtworks);
+    }
+
+    [Fact]
+    public async Task Import_ChampsMultivalues_EtCoordonneesEnTexte_SontDecoupes()
+    {
+        // Échantillon réel de la base : listes séparées par « ; », coordonnées « lat, lon »
+        await ImporterAsync("joconde_echantillon_csv.json");
+
+        await using var context = _db.CreateContext();
+        Assert.Equal(2, await context.Artworks.CountAsync());
+        Assert.Equal(new[] { "archéologie", "gallo-romain" }, await context.Domains.Select(d => d.Name).OrderBy(n => n).ToListAsync());
+        Assert.Equal(5, await context.Periods.CountAsync());
+
+        var musee = await context.Museums.SingleAsync();
+        Assert.Equal("M0988", musee.Code);
+        Assert.Equal(44.931125, musee.Latitude);
+        Assert.Equal(4.889563, musee.Longitude);
+
+        var oeuvre = await context.Artworks.Include(a => a.Periods).Include(a => a.Domains).Include(a => a.Techniques)
+            .SingleAsync(a => a.Reference == "09880004412");
+        Assert.Equal(5, oeuvre.Periods.Count);
+        Assert.Equal(2, oeuvre.Domains.Count);
+        Assert.Equal("Os", Assert.Single(oeuvre.Techniques).Name);
+        Assert.Equal("1er siècle av JC ; 1er siècle ; 2e siècle ; 3e siècle ; 4e siècle", oeuvre.CreationDate);
+    }
+
+    [Fact]
+    public async Task Import_FichierSansTableauRacine_EchoueAvecUnMessageExplicite()
+    {
+        var chemin = Path.Combine(Path.GetTempPath(), $"joconde_{Guid.NewGuid():N}.json");
+        await File.WriteAllTextAsync(chemin, "{ \"results\": [] }");
+        try
+        {
+            await using var context = _db.CreateContext();
+            var report = await _db.CreateImportService(context).ImportFromJsonFileAsync(chemin);
+
+            Assert.False(report.Success);
+            Assert.Contains("Erreur lors du parsing", report.ErrorMessage);
+        }
+        finally
+        {
+            File.Delete(chemin);
+        }
     }
 }
