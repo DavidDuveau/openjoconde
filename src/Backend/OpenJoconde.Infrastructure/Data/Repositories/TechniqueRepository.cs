@@ -133,6 +133,7 @@ namespace OpenJoconde.Infrastructure.Data
                     if (existingTechnique != null)
                     {
                         // Update existing technique
+                        technique.Id = existingTechnique.Id;
                         existingTechnique.Description = technique.Description;
                         existingTechnique.UpdatedAt = DateTime.UtcNow;
                         

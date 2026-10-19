@@ -15,6 +15,11 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
     /// </summary>
     public class ArtworkRelationsRepository : IArtworkRelationsRepository
     {
+        // ArtworkArtist est une entité explicite ; les autres tables de jonction sont générées par EF
+        // (relations many-to-many) et suivent sa convention de nommage : ArtworksId, DomainsId, etc.
+        private const string ArtworkIdColumn = "ArtworkId";
+        private const string JoinArtworkIdColumn = "ArtworksId";
+
         private readonly string _connectionString;
         private readonly ILogger<ArtworkRelationsRepository> _logger;
 
@@ -41,7 +46,7 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
                 }
                 
                 // D'abord, supprimer les relations existantes
-                await DeleteRelationsAsync("ArtworkArtist", artworkId);
+                await DeleteRelationsAsync("ArtworkArtist", artworkId, ArtworkIdColumn);
 
                 // Ensuite, insérer les nouvelles relations
                 var count = 0;
@@ -88,7 +93,7 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
         {
             try
             {
-                return await SaveSimpleRelationsAsync("ArtworkDomain", artworkId, "DomainId", domainIds);
+                return await SaveSimpleRelationsAsync("ArtworkDomain", artworkId, "DomainsId", domainIds);
             }
             catch (Exception ex)
             {
@@ -104,7 +109,7 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
         {
             try
             {
-                return await SaveSimpleRelationsAsync("ArtworkTechnique", artworkId, "TechniqueId", techniqueIds);
+                return await SaveSimpleRelationsAsync("ArtworkTechnique", artworkId, "TechniquesId", techniqueIds);
             }
             catch (Exception ex)
             {
@@ -120,7 +125,7 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
         {
             try
             {
-                return await SaveSimpleRelationsAsync("ArtworkPeriod", artworkId, "PeriodId", periodIds);
+                return await SaveSimpleRelationsAsync("ArtworkPeriod", artworkId, "PeriodsId", periodIds);
             }
             catch (Exception ex)
             {
@@ -136,10 +141,10 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
         {
             try
             {
-                await DeleteRelationsAsync("ArtworkArtist", artworkId);
-                await DeleteRelationsAsync("ArtworkDomain", artworkId);
-                await DeleteRelationsAsync("ArtworkTechnique", artworkId);
-                await DeleteRelationsAsync("ArtworkPeriod", artworkId);
+                await DeleteRelationsAsync("ArtworkArtist", artworkId, ArtworkIdColumn);
+                await DeleteRelationsAsync("ArtworkDomain", artworkId, JoinArtworkIdColumn);
+                await DeleteRelationsAsync("ArtworkTechnique", artworkId, JoinArtworkIdColumn);
+                await DeleteRelationsAsync("ArtworkPeriod", artworkId, JoinArtworkIdColumn);
                 return true;
             }
             catch (Exception ex)
@@ -155,7 +160,7 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
         private async Task<int> SaveSimpleRelationsAsync(string tableName, Guid artworkId, string foreignKeyName, IEnumerable<Guid> foreignKeys)
         {
             // D'abord, supprimer les relations existantes
-            await DeleteRelationsAsync(tableName, artworkId);
+            await DeleteRelationsAsync(tableName, artworkId, JoinArtworkIdColumn);
 
             // Ensuite, insérer les nouvelles relations
             var count = 0;
@@ -166,7 +171,7 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
                 foreach (var foreignKey in foreignKeys)
                 {
                     using (var command = new SqlCommand(
-                        $"INSERT INTO {tableName} (ArtworkId, {foreignKeyName}) VALUES (@ArtworkId, @ForeignKey)",
+                        $"INSERT INTO {tableName} ({JoinArtworkIdColumn}, {foreignKeyName}) VALUES (@ArtworkId, @ForeignKey)",
                         connection))
                     {
                         command.Parameters.AddWithValue("@ArtworkId", artworkId);
@@ -184,13 +189,13 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
         /// <summary>
         /// Méthode utilitaire pour supprimer les relations existantes
         /// </summary>
-        private async Task DeleteRelationsAsync(string tableName, Guid artworkId)
+        private async Task DeleteRelationsAsync(string tableName, Guid artworkId, string artworkIdColumn)
         {
             using (var connection = new SqlConnection(_connectionString))
             {
                 await connection.OpenAsync();
                 
-                using (var command = new SqlCommand($"DELETE FROM {tableName} WHERE ArtworkId = @ArtworkId", connection))
+                using (var command = new SqlCommand($"DELETE FROM {tableName} WHERE {artworkIdColumn} = @ArtworkId", connection))
                 {
                     command.Parameters.AddWithValue("@ArtworkId", artworkId);
                     await command.ExecuteNonQueryAsync();

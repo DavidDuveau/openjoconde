@@ -133,6 +133,7 @@ namespace OpenJoconde.Infrastructure.Data
                     if (existingDomain != null)
                     {
                         // Update existing domain
+                        domain.Id = existingDomain.Id;
                         existingDomain.Description = domain.Description;
                         existingDomain.UpdatedAt = DateTime.UtcNow;
                         

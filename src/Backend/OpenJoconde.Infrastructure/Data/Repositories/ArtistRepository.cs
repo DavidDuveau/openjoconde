@@ -153,6 +153,7 @@ namespace OpenJoconde.Infrastructure.Data
                     if (existingArtist != null)
                     {
                         // Update existing artist
+                        artist.Id = existingArtist.Id;
                         existingArtist.Nationality = artist.Nationality;
                         existingArtist.BirthDate = artist.BirthDate;
                         existingArtist.DeathDate = artist.DeathDate;

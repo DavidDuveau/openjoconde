@@ -133,6 +133,7 @@ namespace OpenJoconde.Infrastructure.Data
                     if (existingPeriod != null)
                     {
                         // Update existing period
+                        period.Id = existingPeriod.Id;
                         existingPeriod.StartYear = period.StartYear;
                         existingPeriod.EndYear = period.EndYear;
                         existingPeriod.Description = period.Description;

@@ -71,11 +71,11 @@ public class ImportCaracterisationTests : IAsyncLifetime
         var oeuvre = await context.Artworks.Include(a => a.Artists).ThenInclude(aa => aa.Artist)
             .SingleAsync(a => a.Reference == "50510016755");
         var lien = Assert.Single(oeuvre.Artists);
-        Assert.Equal("DUBREUIL Toussaint", lien.Artist.LastName);
+        Assert.Equal("DUBREUIL", lien.Artist.LastName);
+        Assert.Equal("Toussaint", lien.Artist.FirstName);
     }
 
     [Fact]
-    [Trait("Backlog", "TECH-02")]
     public async Task Import_UneOeuvre_LieDomaineEtTechniqueALOeuvre()
     {
         await ImporterAsync("joconde_une_oeuvre.json");
@@ -84,7 +84,33 @@ public class ImportCaracterisationTests : IAsyncLifetime
         var oeuvre = await context.Artworks.Include(a => a.Domains).Include(a => a.Techniques)
             .SingleAsync(a => a.Reference == "50510016755");
         Assert.Equal("dessin", Assert.Single(oeuvre.Domains).Name);
-        Assert.Equal("plume, encre, lavis brun, sanguine", Assert.Single(oeuvre.Techniques).Name);
+        Assert.Single(oeuvre.Techniques);
+    }
+
+    [Fact]
+    public async Task Import_DeuxFois_ConserveLesRelationsSansLesDupliquer()
+    {
+        await ImporterAsync("joconde_une_oeuvre.json");
+        await ImporterAsync("joconde_une_oeuvre.json");
+
+        await using var context = _db.CreateContext();
+        var oeuvre = await context.Artworks
+            .Include(a => a.Artists).Include(a => a.Domains).Include(a => a.Techniques)
+            .SingleAsync(a => a.Reference == "50510016755");
+        Assert.Single(oeuvre.Artists);
+        Assert.Single(oeuvre.Domains);
+        Assert.Single(oeuvre.Techniques);
+    }
+
+    [Fact]
+    [Trait("Backlog", "TECH-03")]
+    public async Task Import_UneOeuvre_UtiliseMateriauxTechniquesCommeTechnique()
+    {
+        await ImporterAsync("joconde_une_oeuvre.json");
+
+        await using var context = _db.CreateContext();
+        var technique = await context.Techniques.SingleAsync();
+        Assert.Equal("plume, encre, lavis brun, sanguine", technique.Name);
     }
 
     [Fact]

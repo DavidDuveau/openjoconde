@@ -259,6 +259,8 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
                     if (existing != null)
                     {
                         // Update existing
+                        // L'appelant s'appuie sur l'Id réel pour écrire les relations
+                        artwork.Id = existing.Id;
                         // Map properties one by one or use AutoMapper
                         existing.Title = artwork.Title;
                         existing.Description = artwork.Description;

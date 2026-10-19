@@ -72,11 +72,15 @@ namespace OpenJoconde.Infrastructure.Services
             {
                 _logger.LogInformation("Début de l'importation des données");
 
+                // Les liens œuvre-artiste du parseur ne portent que l'Id d'origine de l'artiste :
+                // on le retient avant l'upsert, qui remplace l'Id par celui déjà en base.
+                var artistsByParsedId = parsingResult.Artists.ToDictionary(a => a.Id);
+
                 // 1. Importation des entités de référence
                 await ImportReferenceEntitiesAsync(parsingResult, progressCallback, cancellationToken);
 
                 // 2. Importation des œuvres
-                await ImportArtworksAsync(parsingResult.Artworks, progressCallback, cancellationToken);
+                await ImportArtworksAsync(parsingResult.Artworks, artistsByParsedId, progressCallback, cancellationToken);
 
                 // 3. Mise à jour des statistiques
                 stats.ArtworksImported = parsingResult.Artworks.Count;
@@ -167,6 +171,7 @@ namespace OpenJoconde.Infrastructure.Services
         /// </summary>
         private async Task ImportArtworksAsync(
             List<Artwork> artworks,
+            IReadOnlyDictionary<Guid, Artist> artistsByParsedId,
             Action<string, int, int>? progressCallback,
             CancellationToken cancellationToken)
         {
@@ -206,30 +211,39 @@ namespace OpenJoconde.Infrastructure.Services
 
                 await _artworkRepository.BulkUpsertAsync(artworksToImport);
 
-                // 2. Ensuite, traiter les relations pour chaque œuvre
-                foreach (var artwork in batch)
+                // 2. Ensuite, traiter les relations pour chaque œuvre.
+                // L'upsert a fixé l'Id réel (en base) de chaque copie, dans le même ordre que le lot.
+                for (int index = 0; index < batch.Count; index++)
                 {
+                    var artwork = batch[index];
+                    var artworkId = artworksToImport[index].Id;
                     try
                     {
-                        // Vérifier que l'œuvre existe avant de créer les relations
-                        var existingArtwork = await _artworkRepository.GetByIdAsync(artwork.Id);
-                        if (existingArtwork == null)
-                        {
-                            _logger.LogWarning("Skipping relations for artwork {ArtworkId} - artwork not found in database", artwork.Id);
-                            continue;
-                        }
-                        
                         // Relations avec les artistes
                         if (artwork.Artists.Any())
                         {
                             try
                             {
+                                var artistRelations = artwork.Artists
+                                    .Where(r => artistsByParsedId.ContainsKey(r.ArtistId))
+                                    .Select(r =>
+                                    {
+                                        var artist = artistsByParsedId[r.ArtistId];
+                                        return new ArtworkArtist
+                                        {
+                                            ArtworkId = artworkId,
+                                            ArtistId = artist.Id,
+                                            Artist = artist,
+                                            Role = r.Role
+                                        };
+                                    })
+                                    .ToList();
                                 await _artworkRelationsRepository.SaveArtworkArtistRelationsAsync(
-                                    artwork.Id, artwork.Artists);
+                                    artworkId, artistRelations);
                             }
                             catch (Exception ex)
                             {
-                                _logger.LogError(ex, "Failed to save artist relations for artwork {ArtworkId}", artwork.Id);
+                                _logger.LogError(ex, "Failed to save artist relations for artwork {ArtworkId}", artworkId);
                             }
                         }
 
@@ -239,11 +253,11 @@ namespace OpenJoconde.Infrastructure.Services
                             try
                             {
                                 await _artworkRelationsRepository.SaveArtworkDomainRelationsAsync(
-                                    artwork.Id, artwork.Domains.Select(d => d.Id));
+                                    artworkId, artwork.Domains.Select(d => d.Id));
                             }
                             catch (Exception ex)
                             {
-                                _logger.LogError(ex, "Failed to save domain relations for artwork {ArtworkId}", artwork.Id);
+                                _logger.LogError(ex, "Failed to save domain relations for artwork {ArtworkId}", artworkId);
                             }
                         }
 
@@ -253,11 +267,11 @@ namespace OpenJoconde.Infrastructure.Services
                             try
                             {
                                 await _artworkRelationsRepository.SaveArtworkTechniqueRelationsAsync(
-                                    artwork.Id, artwork.Techniques.Select(t => t.Id));
+                                    artworkId, artwork.Techniques.Select(t => t.Id));
                             }
                             catch (Exception ex)
                             {
-                                _logger.LogError(ex, "Failed to save technique relations for artwork {ArtworkId}", artwork.Id);
+                                _logger.LogError(ex, "Failed to save technique relations for artwork {ArtworkId}", artworkId);
                             }
                         }
 
@@ -267,17 +281,17 @@ namespace OpenJoconde.Infrastructure.Services
                             try
                             {
                                 await _artworkRelationsRepository.SaveArtworkPeriodRelationsAsync(
-                                    artwork.Id, artwork.Periods.Select(p => p.Id));
+                                    artworkId, artwork.Periods.Select(p => p.Id));
                             }
                             catch (Exception ex)
                             {
-                                _logger.LogError(ex, "Failed to save period relations for artwork {ArtworkId}", artwork.Id);
+                                _logger.LogError(ex, "Failed to save period relations for artwork {ArtworkId}", artworkId);
                             }
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to process relations for artwork {ArtworkId}", artwork.Id);
+                        _logger.LogError(ex, "Failed to process relations for artwork {ArtworkId}", artworkId);
                     }
                 }
 
