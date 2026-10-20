@@ -148,7 +148,14 @@ namespace OpenJoconde.Infrastructure.Services
             }
 
             var museumName = Fit(record.GetString("nom_officiel_musee") ?? record.GetString("localisation"), LongNameMax);
-            if (museumName != null && !_museums.ContainsKey(museumName.ToLowerInvariant()))
+            if (museumName == null)
+                return;
+
+            if (_museums.TryGetValue(museumName.ToLowerInvariant(), out var knownMuseum))
+            {
+                artwork.Museum = knownMuseum;
+            }
+            else
             {
                 var museum = new Museum
                 {
@@ -169,6 +176,7 @@ namespace OpenJoconde.Infrastructure.Services
                 }
 
                 _museums[museumName.ToLowerInvariant()] = museum;
+                artwork.Museum = museum;
             }
         }
 

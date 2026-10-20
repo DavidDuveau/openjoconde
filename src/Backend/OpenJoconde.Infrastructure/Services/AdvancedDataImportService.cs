@@ -99,8 +99,11 @@ namespace OpenJoconde.Infrastructure.Services
                 // 1. Importation des entités de référence
                 await ImportReferenceEntitiesAsync(parsingResult, stats, errors, progressCallback, cancellationToken);
 
+                // Un musée non enregistré ne peut pas être référencé : sa clé étrangère ferait échouer le lot d'œuvres
+                var usableMuseumIds = await UsableMuseumIdsAsync(parsingResult.Museums, stats.MuseumsImported);
+
                 // 2. Importation des œuvres
-                await ImportArtworksAsync(parsingResult.Artworks, artistsByParsedId, stats, errors, progressCallback, cancellationToken);
+                await ImportArtworksAsync(parsingResult.Artworks, artistsByParsedId, usableMuseumIds, stats, errors, progressCallback, cancellationToken);
             }
             finally
             {
@@ -178,11 +181,23 @@ namespace OpenJoconde.Infrastructure.Services
         }
 
         /// <summary>
+        /// Identifiants des musées présents en base ; null quand ils y sont tous
+        /// </summary>
+        private async Task<HashSet<Guid>?> UsableMuseumIdsAsync(List<Museum> museums, int museumsWritten)
+        {
+            if (museumsWritten >= museums.Count)
+                return null;
+
+            return await _museumRepository.GetExistingIdsAsync(museums.Select(m => m.Id));
+        }
+
+        /// <summary>
         /// Importe les œuvres et leurs relations
         /// </summary>
         private async Task ImportArtworksAsync(
             List<Artwork> artworks,
             IReadOnlyDictionary<Guid, Artist> artistsByParsedId,
+            HashSet<Guid>? usableMuseumIds,
             ImportStatistics stats,
             ImportErrors errors,
             Action<string, int, int>? progressCallback,
@@ -218,6 +233,10 @@ namespace OpenJoconde.Infrastructure.Services
                     ConservationPlace = artwork.ConservationPlace,
                     Copyright = artwork.Copyright,
                     ImageUrl = artwork.ImageUrl,
+                    // L'upsert des musées a fixé leur Id réel sur les objets du parseur
+                    MuseumId = artwork.Museum != null && (usableMuseumIds == null || usableMuseumIds.Contains(artwork.Museum.Id))
+                        ? artwork.Museum.Id
+                        : null,
                     UpdatedAt = DateTime.UtcNow
                 }).ToList();
 

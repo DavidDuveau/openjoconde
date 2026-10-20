@@ -36,6 +36,11 @@ namespace OpenJoconde.Core.Interfaces
         Task<bool> DeleteAsync(Guid id);
         
         /// <summary>
+        /// Rend ceux des identifiants donnés qui existent en base
+        /// </summary>
+        Task<HashSet<Guid>> GetExistingIdsAsync(IEnumerable<Guid> ids);
+
+        /// <summary>
         /// Importe en masse des musées (insertion ou mise à jour)
         /// </summary>
         Task<int> BulkUpsertAsync(IEnumerable<Museum> museums);

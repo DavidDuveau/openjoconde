@@ -66,6 +66,24 @@
       </dl>
 
       <p class="museum-description" v-if="museum.description">{{ museum.description }}</p>
+
+      <section class="museum-artworks">
+        <h2>Œuvres<span v-if="artworksTotal"> ({{ artworksTotal }})</span></h2>
+
+        <p v-if="artworksError" class="artworks-error">{{ artworksError }}</p>
+        <p v-else-if="!artworksLoading && artworks.length === 0" class="no-artworks">
+          Aucune œuvre n'est rattachée à ce musée.
+        </p>
+
+        <ul v-else class="artwork-list">
+          <li v-for="artwork in artworks" :key="artwork.id">
+            <router-link :to="`/artworks/${artwork.id}`">{{ artwork.title || artwork.reference }}</router-link>
+            <span class="artwork-date" v-if="artwork.creationDate">{{ artwork.creationDate }}</span>
+          </li>
+        </ul>
+
+        <PaginationBar :page="artworksPage" :total-pages="artworksTotalPages" @change="goToArtworksPage" />
+      </section>
     </div>
   </div>
 </template>
@@ -74,15 +92,54 @@
 import { defineComponent, ref, computed, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ApiService from '@/services/api';
+import PaginationBar from '@/components/PaginationBar.vue';
+import { Artwork } from '@/types/artwork';
 import { Museum } from '@/types/models';
 
 export default defineComponent({
   name: 'MuseumDetailView',
+  components: { PaginationBar },
   setup() {
     const route = useRoute();
     const museum = ref<Museum | null>(null);
     const loading = ref<boolean>(false);
     const error = ref<string | null>(null);
+
+    const artworks = ref<Artwork[]>([]);
+    const artworksLoading = ref<boolean>(false);
+    const artworksError = ref<string | null>(null);
+    const artworksPage = ref<number>(1);
+    const artworksTotal = ref<number>(0);
+    const artworksTotalPages = ref<number>(1);
+    const artworksPageSize = 20;
+
+    const fetchArtworks = async () => {
+      const museumId = route.params.id as string;
+      artworksLoading.value = true;
+      artworksError.value = null;
+
+      try {
+        const result = await ApiService.searchArtworks({
+          museumId,
+          page: artworksPage.value,
+          pageSize: artworksPageSize
+        });
+        artworks.value = result.items;
+        artworksTotal.value = result.totalItems;
+        artworksTotalPages.value = result.totalPages;
+      } catch (err) {
+        console.error('Error fetching museum artworks:', err);
+        artworks.value = [];
+        artworksError.value = 'Erreur lors du chargement des œuvres du musée.';
+      } finally {
+        artworksLoading.value = false;
+      }
+    };
+
+    const goToArtworksPage = (page: number) => {
+      artworksPage.value = page;
+      fetchArtworks();
+    };
 
     const fetchMuseum = async () => {
       const museumId = route.params.id as string;
@@ -93,6 +150,8 @@ export default defineComponent({
 
       try {
         museum.value = await ApiService.getMuseum(museumId);
+        artworksPage.value = 1;
+        fetchArtworks();
       } catch (err: any) {
         console.error('Error fetching museum:', err);
         museum.value = null;
@@ -122,7 +181,22 @@ export default defineComponent({
       `https://www.openstreetmap.org/?mlat=${museum.value?.latitude}&mlon=${museum.value?.longitude}#map=15/${museum.value?.latitude}/${museum.value?.longitude}`
     );
 
-    return { museum, loading, error, fetchMuseum, place, hasCoordinates, mapUrl };
+    return {
+      museum,
+      loading,
+      error,
+      fetchMuseum,
+      place,
+      hasCoordinates,
+      mapUrl,
+      artworks,
+      artworksLoading,
+      artworksError,
+      artworksPage,
+      artworksTotal,
+      artworksTotalPages,
+      goToArtworksPage
+    };
   }
 });
 </script>
@@ -251,5 +325,46 @@ export default defineComponent({
 .museum-description {
   line-height: 1.6;
   white-space: pre-line;
+}
+
+.museum-artworks {
+  margin-top: 35px;
+
+  h2 {
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    font-size: 1.4rem;
+  }
+
+  .no-artworks,
+  .artworks-error {
+    color: #666;
+  }
+
+  .artwork-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+
+    li {
+      padding: 8px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    a {
+      color: var(--primary-color);
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+
+    .artwork-date {
+      margin-left: 10px;
+      color: #666;
+      font-size: 0.9rem;
+    }
+  }
 }
 </style>

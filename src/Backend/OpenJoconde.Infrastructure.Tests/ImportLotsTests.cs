@@ -113,6 +113,56 @@ public class ImportLotsTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Import_RattacheChaqueOeuvreASonMusee()
+    {
+        var report = await ImporterAsync(CreerCsv(Notices, i => $"titre {i}"));
+
+        Assert.True(report.Success, report.ErrorMessage);
+        await using var context = _db.CreateContext();
+        Assert.Equal(3, await context.Museums.CountAsync());
+        var oeuvres = await context.Artworks.Include(a => a.Museum).ToListAsync();
+        Assert.All(oeuvres, a =>
+        {
+            var numero = int.Parse(a.Reference.TrimStart('L'));
+            Assert.Equal($"musée {numero % 3}", a.Museum?.Name);
+        });
+    }
+
+    [Fact]
+    public async Task Reimport_GardeLesMuseesEtLeurRattachement()
+    {
+        await ImporterAsync(CreerCsv(Notices, i => $"titre {i}"));
+        List<Guid> avant;
+        await using (var context = _db.CreateContext())
+            avant = await context.Museums.OrderBy(m => m.Name).Select(m => m.Id).ToListAsync();
+
+        var report = await ImporterAsync(CreerCsv(Notices, i => $"titre {i}", " v2"));
+
+        Assert.True(report.Success, report.ErrorMessage);
+        await using var verif = _db.CreateContext();
+        Assert.Equal(avant, await verif.Museums.OrderBy(m => m.Name).Select(m => m.Id).ToListAsync());
+        Assert.Equal(Notices, await verif.Artworks.CountAsync(a => a.MuseumId != null));
+    }
+
+    [Fact]
+    public async Task Oeuvres_FiltrablesParMusee()
+    {
+        await ImporterAsync(CreerCsv(Notices, i => $"titre {i}"));
+        await using var context = _db.CreateContext();
+        var musee = await context.Museums.SingleAsync(m => m.Name == "musée 1");
+        var controleur = new OpenJoconde.API.Controllers.ArtworksController(
+            context, Microsoft.Extensions.Logging.Abstractions.NullLogger<OpenJoconde.API.Controllers.ArtworksController>.Instance);
+
+        var reponse = await controleur.GetArtworks(page: 1, pageSize: 50, museumId: musee.Id);
+
+        var page = Assert.IsType<OpenJoconde.Core.Models.PaginatedResult<OpenJoconde.Core.Models.Artwork>>(
+            Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(reponse.Result).Value);
+        Assert.Equal(Notices / 3, page.TotalItems);
+        Assert.Equal(50, page.Items.Count);
+        Assert.All(page.Items, a => Assert.Equal(musee.Id, a.MuseumId));
+    }
+
+    [Fact]
     public async Task Reimport_ReprendLesChampsModifiesDeLaNotice()
     {
         var chemin = Path.Combine(Path.GetTempPath(), $"joconde_modifie_{Guid.NewGuid():N}.json");

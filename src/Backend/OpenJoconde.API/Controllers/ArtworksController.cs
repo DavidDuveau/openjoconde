@@ -29,12 +29,14 @@ namespace OpenJoconde.API.Controllers
         /// <param name="page">Numéro de page (commence à 1)</param>
         /// <param name="pageSize">Nombre d'éléments par page</param>
         /// <param name="search">Terme de recherche (titre, référence, etc.)</param>
+        /// <param name="museumId">Ne garder que les œuvres de ce musée</param>
         /// <returns>Liste paginée d'oeuvres d'art</returns>
         [HttpGet]
         public async Task<ActionResult<PaginatedResult<Artwork>>> GetArtworks(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10,
-            [FromQuery] string? search = null)
+            [FromQuery] string? search = null,
+            [FromQuery] Guid? museumId = null)
         {
             try
             {
@@ -48,6 +50,11 @@ namespace OpenJoconde.API.Controllers
                 // Query de base
                 IQueryable<Artwork> query = _context.Artworks
                     .OrderBy(a => a.Title);
+
+                if (museumId.HasValue)
+                {
+                    query = query.Where(a => a.MuseumId == museumId.Value);
+                }
 
                 // Appliquer la recherche si nécessaire
                 if (!string.IsNullOrWhiteSpace(search))

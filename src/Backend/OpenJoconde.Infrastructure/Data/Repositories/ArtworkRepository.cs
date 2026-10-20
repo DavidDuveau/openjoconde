@@ -61,6 +61,7 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
                         existing.ConservationPlace = artwork.ConservationPlace;
                         existing.Copyright = artwork.Copyright;
                         existing.ImageUrl = artwork.ImageUrl;
+                        existing.MuseumId = artwork.MuseumId;
                         existing.UpdatedAt = DateTime.UtcNow;
                     }
                     else

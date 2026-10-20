@@ -32,9 +32,12 @@ L'URL de la source se règle dans `JocondeData:SourceUrl` (synchronisation manue
 2. Créer le schéma avec la migration EF Core :
 
    ```bash
+   dotnet tool restore
    cd src/Backend/OpenJoconde.API
    dotnet ef database update --project ../OpenJoconde.Infrastructure
    ```
+
+   Une base déjà peuplée avant la migration `AddArtworkMuseum` garde ses œuvres sans musée tant qu'on ne relance pas l'import (synchronisation) : le rattachement est écrit à l'import.
 
 3. Appliquer les scripts SQL Server complémentaires de `src/Backend/OpenJoconde.Infrastructure/Database/Migrations/`, dans l'ordre :
    - `SqlServer_Initial_Migration.sql` (triggers `UpdatedAt`)

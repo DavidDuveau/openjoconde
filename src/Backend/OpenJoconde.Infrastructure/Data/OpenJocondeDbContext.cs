@@ -40,6 +40,11 @@ namespace OpenJoconde.Infrastructure.Data
                 entity.HasIndex(e => e.Reference).IsUnique();
                 entity.HasIndex(e => e.InventoryNumber);
                 entity.HasIndex(e => e.Title);
+                entity.HasIndex(e => e.MuseumId);
+                entity.HasOne(e => e.Museum)
+                    .WithMany()
+                    .HasForeignKey(e => e.MuseumId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Configure Artist entity

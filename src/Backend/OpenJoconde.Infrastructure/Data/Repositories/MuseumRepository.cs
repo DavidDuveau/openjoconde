@@ -156,8 +156,15 @@ namespace OpenJoconde.Infrastructure.Data
 
                     if (existingMuseum != null)
                     {
+                        // L'appelant s'appuie sur l'Id réel pour rattacher les œuvres
+                        museum.Id = existingMuseum.Id;
+
                         // Update existing museum
                         existingMuseum.Department = museum.Department;
+                        existingMuseum.Region = museum.Region;
+                        existingMuseum.Code = museum.Code;
+                        existingMuseum.Latitude = museum.Latitude;
+                        existingMuseum.Longitude = museum.Longitude;
                         existingMuseum.Address = museum.Address;
                         existingMuseum.ZipCode = museum.ZipCode;
                         existingMuseum.Phone = museum.Phone;
@@ -224,6 +231,15 @@ namespace OpenJoconde.Infrastructure.Data
             return finalSuccessCount;
         }
         
+        /// <summary>
+        /// Rend ceux des identifiants donnés qui existent en base
+        /// </summary>
+        public async Task<HashSet<Guid>> GetExistingIdsAsync(IEnumerable<Guid> ids)
+        {
+            var wanted = ids.Distinct().ToList();
+            return (await _context.Museums.Where(m => wanted.Contains(m.Id)).Select(m => m.Id).ToListAsync()).ToHashSet();
+        }
+
         /// <summary>
         /// Saves a batch of museums with individual fallback on failure
         /// </summary>

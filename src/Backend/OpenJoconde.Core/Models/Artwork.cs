@@ -69,6 +69,16 @@ namespace OpenJoconde.Core.Models
         public string? ImageUrl { get; set; }
 
         /// <summary>
+        /// Museum that holds this artwork
+        /// </summary>
+        public Guid? MuseumId { get; set; }
+
+        /// <summary>
+        /// Museum that holds this artwork (loaded on demand)
+        /// </summary>
+        public Museum? Museum { get; set; }
+
+        /// <summary>
         /// Creation timestamp
         /// </summary>
         public DateTime CreatedAt { get; set; }
