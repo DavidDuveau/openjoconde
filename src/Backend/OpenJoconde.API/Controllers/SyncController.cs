@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using OpenJoconde.API.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -71,6 +73,8 @@ namespace OpenJoconde.API.Controllers
         /// <summary>
         /// Déclenche une synchronisation manuelle
         /// </summary>
+        [RequireApiKey]
+        [EnableRateLimiting("ecriture")]
         [HttpPost("start")]
         public async Task<IActionResult> StartSync(CancellationToken cancellationToken)
         {
@@ -199,6 +203,8 @@ namespace OpenJoconde.API.Controllers
         /// <summary>
         /// Annule une synchronisation en cours
         /// </summary>
+        [RequireApiKey]
+        [EnableRateLimiting("ecriture")]
         [HttpPost("cancel/{id}")]
         public async Task<IActionResult> CancelSync(Guid id, CancellationToken cancellationToken)
         {

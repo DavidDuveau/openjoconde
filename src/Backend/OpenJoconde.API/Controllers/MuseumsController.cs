@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using OpenJoconde.API.Security;
 using Microsoft.Extensions.Logging;
 using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Core.Models;
@@ -100,6 +102,8 @@ namespace OpenJoconde.API.Controllers
         /// <response code="201">Retourne le musée créé</response>
         /// <response code="400">Requête invalide</response>
         /// <response code="500">Erreur interne du serveur</response>
+        [RequireApiKey]
+        [EnableRateLimiting("ecriture")]
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -136,6 +140,8 @@ namespace OpenJoconde.API.Controllers
         /// <response code="400">Requête invalide</response>
         /// <response code="404">Musée non trouvé</response>
         /// <response code="500">Erreur interne du serveur</response>
+        [RequireApiKey]
+        [EnableRateLimiting("ecriture")]
         [HttpPut("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -186,6 +192,8 @@ namespace OpenJoconde.API.Controllers
         /// <response code="204">Le musée a été supprimé avec succès</response>
         /// <response code="404">Musée non trouvé</response>
         /// <response code="500">Erreur interne du serveur</response>
+        [RequireApiKey]
+        [EnableRateLimiting("ecriture")]
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]

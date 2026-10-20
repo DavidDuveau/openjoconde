@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using OpenJoconde.API.Security;
 using Microsoft.Extensions.Logging;
 using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Core.Parsers;
@@ -35,6 +37,8 @@ namespace OpenJoconde.API.Controllers
         /// <summary>
         /// Importe les données à partir d'un fichier XML téléchargé
         /// </summary>
+        [RequireApiKey]
+        [EnableRateLimiting("ecriture")]
         [HttpPost("from-file")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -100,6 +104,8 @@ namespace OpenJoconde.API.Controllers
         /// <summary>
         /// Télécharge le dernier fichier XML de data.gouv.fr et l'importe
         /// </summary>
+        [RequireApiKey]
+        [EnableRateLimiting("ecriture")]
         [HttpPost("from-datagouv")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]

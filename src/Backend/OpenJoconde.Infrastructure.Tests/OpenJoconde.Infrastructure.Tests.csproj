@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OpenJoconde.Infrastructure\OpenJoconde.Infrastructure.csproj" />
+    <ProjectReference Include="..\OpenJoconde.API\OpenJoconde.API.csproj" />
   </ItemGroup>
 
   <ItemGroup>

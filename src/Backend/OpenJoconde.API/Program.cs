@@ -9,7 +9,9 @@ using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Infrastructure.Data;
 using OpenJoconde.Infrastructure.Services;
 using OpenJoconde.API.Extensions;
+using Microsoft.AspNetCore.RateLimiting;
 using System;
+using System.Threading.RateLimiting;
 using System.IO;
 using System.Linq;
 
@@ -86,6 +88,15 @@ builder.Services.AddCors(options =>
                 .AllowAnyHeader()
                 .AllowAnyMethod();
     });
+});
+
+// Limitation de débit des routes d'écriture et d'import, par adresse IP
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("ecriture", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.Connection.RemoteIpAddress?.ToString() ?? "inconnue",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1) }));
 });
 
 var app = builder.Build();
@@ -166,6 +177,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AllowVueApp");
+app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
 

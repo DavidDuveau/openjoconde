@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using OpenJoconde.API.Security;
 using Microsoft.Extensions.Logging;
 using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Core.Models;
@@ -31,6 +33,8 @@ namespace OpenJoconde.API.Controllers
         /// <summary>
         /// Importe les données à partir d'un fichier JSON téléchargé en utilisant le parser optimisé
         /// </summary>
+        [RequireApiKey]
+        [EnableRateLimiting("ecriture")]
         [HttpPost("from-file")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

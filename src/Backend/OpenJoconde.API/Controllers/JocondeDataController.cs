@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using OpenJoconde.API.Security;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using OpenJoconde.Core.Interfaces;
@@ -34,6 +36,8 @@ namespace OpenJoconde.API.Controllers
         /// Déclenche manuellement la mise à jour des données Joconde
         /// </summary>
         /// <returns>Rapport d'importation</returns>
+        [RequireApiKey]
+        [EnableRateLimiting("ecriture")]
         [HttpPost("import")]
         public async Task<IActionResult> ImportJocondeData(CancellationToken cancellationToken)
         {
@@ -84,6 +88,8 @@ namespace OpenJoconde.API.Controllers
         /// Déclenche l'importation avancée des données Joconde avec analyse complète du XML
         /// </summary>
         /// <returns>Rapport d'importation détaillé</returns>
+        [RequireApiKey]
+        [EnableRateLimiting("ecriture")]
         [HttpPost("import/advanced")]
         public async Task<IActionResult> ImportJocondeDataAdvanced(CancellationToken cancellationToken)
         {

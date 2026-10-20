@@ -86,6 +86,12 @@ Depuis VS Code :
 | `GET /api/sync/status`, `POST /api/sync/start` | Suivi et lancement de la synchronisation |
 | `GET /api/health` | État de l'API et de la base |
 
+Les routes d'écriture et d'import (`POST`, `PUT`, `DELETE`) exigent l'en-tête `X-Api-Key` égal à `Security:ApiKey`. Tant que cette clé n'est pas configurée, ces routes répondent `401`. Elles sont aussi limitées à 20 requêtes par minute et par adresse IP (`429` au-delà). Définir la clé hors du dépôt, par exemple :
+
+```bash
+dotnet user-secrets set "Security:ApiKey" "<clé>" --project src/Backend/OpenJoconde.API
+```
+
 La liste complète est dans Swagger.
 
 ## Structure
