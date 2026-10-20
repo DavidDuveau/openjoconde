@@ -27,7 +27,6 @@ namespace OpenJoconde.Infrastructure.Services
         private readonly ITechniqueRepository _techniqueRepository;
         private readonly IPeriodRepository _periodRepository;
         private readonly IArtworkRelationsRepository _artworkRelationsRepository;
-        private readonly IJocondeXmlParser _xmlParser;
         private readonly IJocondeJsonParser _jsonParser;
         private readonly IJocondeCsvParser _csvParser;
         private readonly HttpClient _httpClient;
@@ -41,7 +40,6 @@ namespace OpenJoconde.Infrastructure.Services
             ITechniqueRepository techniqueRepository,
             IPeriodRepository periodRepository,
             IArtworkRelationsRepository artworkRelationsRepository,
-            IJocondeXmlParser xmlParser,
             IJocondeJsonParser jsonParser,
             IJocondeCsvParser csvParser,
             HttpClient httpClient)
@@ -54,7 +52,6 @@ namespace OpenJoconde.Infrastructure.Services
             _techniqueRepository = techniqueRepository ?? throw new ArgumentNullException(nameof(techniqueRepository));
             _periodRepository = periodRepository ?? throw new ArgumentNullException(nameof(periodRepository));
             _artworkRelationsRepository = artworkRelationsRepository ?? throw new ArgumentNullException(nameof(artworkRelationsRepository));
-            _xmlParser = xmlParser ?? throw new ArgumentNullException(nameof(xmlParser));
             _jsonParser = jsonParser ?? throw new ArgumentNullException(nameof(jsonParser));
             _csvParser = csvParser ?? throw new ArgumentNullException(nameof(csvParser));
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
@@ -353,12 +350,6 @@ namespace OpenJoconde.Infrastructure.Services
         }
 
         /// <summary>
-        /// Importe les données depuis un fichier XML
-        /// </summary>
-        public Task<ImportReport> ImportFromXmlFileAsync(string xmlFilePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default) =>
-            ImportParsedFileAsync("XML", xmlFilePath, _xmlParser.ParseAsync, progressCallback, cancellationToken);
-
-        /// <summary>
         /// Importe les données depuis un fichier JSON
         /// </summary>
         public Task<ImportReport> ImportFromJsonFileAsync(string jsonFilePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default) =>
@@ -371,15 +362,14 @@ namespace OpenJoconde.Infrastructure.Services
             ImportParsedFileAsync("CSV", csvFilePath, _csvParser.ParseAsync, progressCallback, cancellationToken);
 
         /// <summary>
-        /// Importe un fichier en choisissant le parseur selon l'extension (.csv, .json ou .xml)
+        /// Importe un fichier en choisissant le parseur selon l'extension (.csv ou .json)
         /// </summary>
         public Task<ImportReport> ImportFromFileAsync(string filePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default) =>
             Path.GetExtension(filePath).ToLowerInvariant() switch
             {
                 ".csv" => ImportFromCsvFileAsync(filePath, progressCallback, cancellationToken),
                 ".json" => ImportFromJsonFileAsync(filePath, progressCallback, cancellationToken),
-                ".xml" => ImportFromXmlFileAsync(filePath, progressCallback, cancellationToken),
-                var extension => throw new NotSupportedException($"Format de fichier non pris en charge : '{extension}' (attendu : .csv, .json ou .xml)")
+                var extension => throw new NotSupportedException($"Format de fichier non pris en charge : '{extension}' (attendu : .csv ou .json)")
             };
 
         private async Task<ImportReport> ImportParsedFileAsync(

@@ -8,10 +8,10 @@ namespace OpenJoconde.Infrastructure.Services
     /// </summary>
     public static class JocondeSourceFile
     {
-        private static readonly string[] SupportedExtensions = { ".csv", ".json", ".xml" };
+        private static readonly string[] SupportedExtensions = { ".csv", ".json" };
 
         /// <summary>
-        /// Extension du fichier désigné par l'URL (.csv, .json ou .xml). L'import choisit son parseur d'après elle ;
+        /// Extension du fichier désigné par l'URL (.csv ou .json). L'import choisit son parseur d'après elle ;
         /// à défaut, on suppose le CSV publié sur data.gouv.fr.
         /// </summary>
         public static string ExtensionFor(string url)

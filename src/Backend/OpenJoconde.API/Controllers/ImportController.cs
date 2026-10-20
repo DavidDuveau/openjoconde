@@ -20,7 +20,7 @@ namespace OpenJoconde.API.Controllers
     [Route("api/[controller]")]
     public class ImportController : ControllerBase
     {
-        private static readonly string[] SupportedExtensions = { ".csv", ".json", ".xml" };
+        private static readonly string[] SupportedExtensions = { ".csv", ".json" };
 
         private readonly ILogger<ImportController> _logger;
         private readonly IDataImportService _dataImportService;
@@ -34,7 +34,7 @@ namespace OpenJoconde.API.Controllers
         }
 
         /// <summary>
-        /// Importe un fichier Joconde (CSV, JSON ou XML), le format étant déduit de l'extension
+        /// Importe un fichier Joconde (CSV ou JSON), le format étant déduit de l'extension
         /// </summary>
         [RequireApiKey]
         [EnableRateLimiting("ecriture")]
@@ -49,7 +49,7 @@ namespace OpenJoconde.API.Controllers
 
             var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
             if (!SupportedExtensions.Contains(extension))
-                return BadRequest("Le fichier doit être au format CSV, JSON ou XML.");
+                return BadRequest("Le fichier doit être au format CSV ou JSON.");
 
             var tempPath = Path.Combine(Path.GetTempPath(), $"joconde_{Guid.NewGuid():N}{extension}");
 

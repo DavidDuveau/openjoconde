@@ -56,7 +56,6 @@ public sealed class ImportDatabase : IAsyncLifetime
             new TechniqueRepository(context, NullLogger<TechniqueRepository>.Instance),
             new PeriodRepository(context, NullLogger<PeriodRepository>.Instance),
             relations ?? new ArtworkRelationsRepository(ConnectionString, NullLogger<ArtworkRelationsRepository>.Instance),
-            new JocondeXmlParserService(NullLogger<JocondeXmlParserService>.Instance),
             new StreamingJocondeJsonParserService(NullLogger<StreamingJocondeJsonParserService>.Instance),
             new StreamingJocondeCsvParserService(NullLogger<StreamingJocondeCsvParserService>.Instance),
             new HttpClient());

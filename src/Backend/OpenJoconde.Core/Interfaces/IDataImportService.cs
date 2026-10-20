@@ -34,15 +34,6 @@ namespace OpenJoconde.Core.Interfaces
         Task<string> DownloadJocondeDataAsync(string url, string destinationPath, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Importe les données depuis un fichier XML
-        /// </summary>
-        /// <param name="xmlFilePath">Chemin du fichier XML à importer</param>
-        /// <param name="progressCallback">Callback pour suivre la progression</param>
-        /// <param name="cancellationToken">Token d'annulation</param>
-        /// <returns>Rapport d'importation</returns>
-        Task<ImportReport> ImportFromXmlFileAsync(string xmlFilePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// Importe les données depuis un fichier JSON
         /// </summary>
         /// <param name="jsonFilePath">Chemin du fichier JSON à importer</param>
@@ -61,7 +52,7 @@ namespace OpenJoconde.Core.Interfaces
         Task<ImportReport> ImportFromCsvFileAsync(string csvFilePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Importe un fichier en choisissant le parseur selon son extension (.csv, .json ou .xml)
+        /// Importe un fichier en choisissant le parseur selon son extension (.csv ou .json)
         /// </summary>
         /// <param name="filePath">Chemin du fichier à importer</param>
         /// <param name="progressCallback">Callback pour suivre la progression</param>
