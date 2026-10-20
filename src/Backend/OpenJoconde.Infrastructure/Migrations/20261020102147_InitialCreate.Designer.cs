@@ -12,8 +12,8 @@ using OpenJoconde.Infrastructure.Data;
 namespace OpenJoconde.Infrastructure.Migrations
 {
     [DbContext(typeof(OpenJocondeDbContext))]
-    [Migration("20261020094518_AddArtworkMuseum")]
-    partial class AddArtworkMuseum
+    [Migration("20261020102147_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -110,7 +110,12 @@ namespace OpenJoconde.Infrastructure.Migrations
 
                     b.HasIndex("LastName");
 
-                    b.ToTable("Artist", (string)null);
+                    b.ToTable("Artist", null, t =>
+                        {
+                            t.HasTrigger("update_artist_timestamp");
+                        });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("OpenJoconde.Core.Models.Artwork", b =>
@@ -176,7 +181,12 @@ namespace OpenJoconde.Infrastructure.Migrations
 
                     b.HasIndex("Title");
 
-                    b.ToTable("Artwork", (string)null);
+                    b.ToTable("Artwork", null, t =>
+                        {
+                            t.HasTrigger("update_artwork_timestamp");
+                        });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("OpenJoconde.Core.Models.ArtworkArtist", b =>
@@ -272,7 +282,12 @@ namespace OpenJoconde.Infrastructure.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Domain", (string)null);
+                    b.ToTable("Domain", null, t =>
+                        {
+                            t.HasTrigger("update_domain_timestamp");
+                        });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("OpenJoconde.Core.Models.JocondeMetadata", b =>
@@ -377,7 +392,12 @@ namespace OpenJoconde.Infrastructure.Migrations
 
                     b.HasIndex("Name");
 
-                    b.ToTable("Museum", (string)null);
+                    b.ToTable("Museum", null, t =>
+                        {
+                            t.HasTrigger("update_museum_timestamp");
+                        });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("OpenJoconde.Core.Models.Period", b =>
@@ -411,7 +431,12 @@ namespace OpenJoconde.Infrastructure.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Period", (string)null);
+                    b.ToTable("Period", null, t =>
+                        {
+                            t.HasTrigger("update_period_timestamp");
+                        });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("OpenJoconde.Core.Models.Technique", b =>
@@ -439,7 +464,12 @@ namespace OpenJoconde.Infrastructure.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Technique", (string)null);
+                    b.ToTable("Technique", null, t =>
+                        {
+                            t.HasTrigger("update_technique_timestamp");
+                        });
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
             modelBuilder.Entity("ArtworkDomain", b =>

@@ -33,7 +33,8 @@ public sealed class ImportDatabase : IAsyncLifetime
     public async Task InitializeAsync()
     {
         await using var context = CreateContext();
-        await context.Database.EnsureCreatedAsync();
+        // Les migrations, pas EnsureCreated : c'est le schéma que créera vraiment `dotnet ef database update`
+        await context.Database.MigrateAsync();
     }
 
     public async Task DisposeAsync()

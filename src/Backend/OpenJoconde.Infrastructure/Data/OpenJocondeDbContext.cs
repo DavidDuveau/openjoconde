@@ -30,7 +30,8 @@ namespace OpenJoconde.Infrastructure.Data
             // Configure Artwork entity
             modelBuilder.Entity<Artwork>(entity =>
             {
-                entity.ToTable("Artwork");
+                // Les déclencheurs UpdatedAt de la migration : EF doit le savoir pour ne pas utiliser OUTPUT dans ses UPDATE
+                entity.ToTable("Artwork", table => table.HasTrigger("update_artwork_timestamp"));
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
                 entity.Property(e => e.Reference).HasMaxLength(100).IsRequired();
@@ -50,7 +51,8 @@ namespace OpenJoconde.Infrastructure.Data
             // Configure Artist entity
             modelBuilder.Entity<Artist>(entity =>
             {
-                entity.ToTable("Artist");
+                // Les déclencheurs UpdatedAt de la migration : EF doit le savoir pour ne pas utiliser OUTPUT dans ses UPDATE
+                entity.ToTable("Artist", table => table.HasTrigger("update_artist_timestamp"));
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
                 entity.Property(e => e.LastName).HasMaxLength(500).IsRequired();
@@ -82,7 +84,8 @@ namespace OpenJoconde.Infrastructure.Data
             // Configure Domain entity
             modelBuilder.Entity<Domain>(entity =>
             {
-                entity.ToTable("Domain");
+                // Les déclencheurs UpdatedAt de la migration : EF doit le savoir pour ne pas utiliser OUTPUT dans ses UPDATE
+                entity.ToTable("Domain", table => table.HasTrigger("update_domain_timestamp"));
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
                 entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
@@ -93,7 +96,8 @@ namespace OpenJoconde.Infrastructure.Data
             // Configure Technique entity
             modelBuilder.Entity<Technique>(entity =>
             {
-                entity.ToTable("Technique");
+                // Les déclencheurs UpdatedAt de la migration : EF doit le savoir pour ne pas utiliser OUTPUT dans ses UPDATE
+                entity.ToTable("Technique", table => table.HasTrigger("update_technique_timestamp"));
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
                 entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
@@ -104,7 +108,8 @@ namespace OpenJoconde.Infrastructure.Data
             // Configure Period entity
             modelBuilder.Entity<Period>(entity =>
             {
-                entity.ToTable("Period");
+                // Les déclencheurs UpdatedAt de la migration : EF doit le savoir pour ne pas utiliser OUTPUT dans ses UPDATE
+                entity.ToTable("Period", table => table.HasTrigger("update_period_timestamp"));
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
                 entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
@@ -115,7 +120,8 @@ namespace OpenJoconde.Infrastructure.Data
             // Configure Museum entity
             modelBuilder.Entity<Museum>(entity =>
             {
-                entity.ToTable("Museum");
+                // Les déclencheurs UpdatedAt de la migration : EF doit le savoir pour ne pas utiliser OUTPUT dans ses UPDATE
+                entity.ToTable("Museum", table => table.HasTrigger("update_museum_timestamp"));
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
                 entity.Property(e => e.Name).HasMaxLength(500).IsRequired();

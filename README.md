@@ -22,7 +22,7 @@ L'URL de la source se règle dans `JocondeData:SourceUrl` (synchronisation manue
 - [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [Node.js](https://nodejs.org/) 18 ou supérieur
 - SQL Server 2019 ou supérieur
-- L'outil EF Core : `dotnet tool install --global dotnet-ef`
+- L'outil EF Core, épinglé dans `dotnet-tools.json` (`dotnet tool restore`)
 
 ## Installation
 
@@ -37,14 +37,9 @@ L'URL de la source se règle dans `JocondeData:SourceUrl` (synchronisation manue
    dotnet ef database update --project ../OpenJoconde.Infrastructure
    ```
 
-   Une base déjà peuplée avant la migration `AddArtworkMuseum` garde ses œuvres sans musée tant qu'on ne relance pas l'import (synchronisation) : le rattachement est écrit à l'import.
+   La migration `InitialCreate` crée toutes les tables, leurs index et les déclencheurs `UpdatedAt` : il n'y a plus de scripts SQL à appliquer ensuite.
 
-3. Appliquer les scripts SQL Server complémentaires de `src/Backend/OpenJoconde.Infrastructure/Database/Migrations/`, dans l'ordre :
-   - `SqlServer_Initial_Migration.sql` (triggers `UpdatedAt`)
-   - `Updates/SqlServer_UpdateSchema_v1.1.sql`
-   - `Updates/AddTimestamps_v1.2.sql`
-   - `Updates/SqlServer_UpdateSchema_v1.2.sql`
-   - `Updates/SqlServer_UpdateSchema_v1.3.sql` (élargissement des colonnes)
+   Une base créée avec l'ancien procédé (scripts SQL `Updates/`, retirés) ne porte pas l'historique des migrations : la supprimer, relancer `dotnet ef database update`, puis la synchronisation pour recharger les données. Après une mise à jour de la source, la synchronisation réécrit aussi le rattachement des œuvres à leur musée.
 
 ### Backend
 
@@ -105,7 +100,6 @@ src/
 │   ├── OpenJoconde.Core/            # Modèles, interfaces, parsers Joconde
 │   └── OpenJoconde.Infrastructure/  # DbContext, repositories, services d'import
 │       ├── Data/                    # DbContext et repositories
-│       ├── Database/Migrations/     # Scripts SQL Server complémentaires
 │       ├── Migrations/              # Migrations EF Core
 │       └── Services/                # Téléchargement, parsing, import, synchronisation
 └── Frontend/
