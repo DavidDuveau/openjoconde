@@ -107,92 +107,16 @@ namespace OpenJoconde.API.Controllers
                 }
                 finally
                 {
-                    // Nettoyage du fichier temporaire - commenté pour le débogage
-                    // if (System.IO.File.Exists(tempFilePath))
-                    // {
-                    //     System.IO.File.Delete(tempFilePath);
-                    // }
-                    
-                    // Laisser le fichier pour inspection manuelle si nécessaire
-                    _logger.LogInformation("Fichier JSON temporaire conservé pour analyse: {FilePath}", tempFilePath);
+                    if (System.IO.File.Exists(tempFilePath))
+                    {
+                        System.IO.File.Delete(tempFilePath);
+                    }
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur lors de l'importation du JSON avec le parser optimisé: {Message}", ex.Message);
-                return StatusCode(500, new { error = "Une erreur est survenue lors de l'importation des données.", details = ex.Message });
-            }
-        }
-
-        /// <summary>
-        /// Importe un fichier JSON déjà existant sur le serveur
-        /// </summary>
-        [HttpPost("from-server-file")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> ImportFromServerFile(string filePath, CancellationToken cancellationToken)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(filePath))
-                    return BadRequest("Le chemin du fichier ne peut pas être vide.");
-
-                if (!System.IO.File.Exists(filePath))
-                    return BadRequest($"Le fichier n'existe pas: {filePath}");
-
-                var extension = Path.GetExtension(filePath).ToLowerInvariant();
-                if (extension != ".json")
-                    return BadRequest("Le fichier doit être au format JSON.");
-
-                // Utilisation du parser JSON optimisé
-                _logger.LogInformation("Début du parsing optimisé du fichier JSON: {FilePath}", filePath);
-                int processedItems = 0;
-
-                var parsingResult = await _jsonParser.ParseAsync(filePath, 
-                    progressCallback: (current, total) =>
-                    {
-                        processedItems = current;
-                        if (current % 1000 == 0 || current == total)
-                        {
-                            _logger.LogInformation("Progression du parsing JSON: {Current}/{Total} éléments traités", current, total);
-                        }
-                    },
-                    cancellationToken: cancellationToken);
-
-                _logger.LogInformation("Parsing JSON terminé: {Count} œuvres extraites", parsingResult.Artworks.Count);
-
-                // Importation des données en base
-                _logger.LogInformation("Début de l'importation des données en base");
-                var importStats = await _dataImportService.ImportDataAsync(parsingResult, 
-                    progressCallback: (phase, current, total) =>
-                    {
-                        _logger.LogDebug("Progression de l'import ({Phase}): {Current}/{Total}", phase, current, total);
-                    },
-                    cancellationToken: cancellationToken);
-
-                return Ok(new
-                {
-                    message = "Importation réussie avec le parser streaming",
-                    filePath = filePath,
-                    fileSize = new FileInfo(filePath).Length,
-                    processed = processedItems,
-                    parsed = new
-                    {
-                        artworks = parsingResult.Artworks.Count,
-                        artists = parsingResult.Artists.Count,
-                        domains = parsingResult.Domains.Count,
-                        techniques = parsingResult.Techniques.Count,
-                        periods = parsingResult.Periods.Count,
-                        museums = parsingResult.Museums.Count
-                    },
-                    imported = importStats
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erreur lors de l'importation du JSON avec le parser optimisé: {Message}", ex.Message);
-                return StatusCode(500, new { error = "Une erreur est survenue lors de l'importation des données.", details = ex.Message });
+                return StatusCode(500, new { error = "Une erreur est survenue lors de l'importation des données." });
             }
         }
     }

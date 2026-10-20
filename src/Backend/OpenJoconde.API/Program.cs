@@ -106,7 +106,6 @@ using (var scope = app.Services.CreateScope())
     
     // Afficher la chaîne de connexion utilisée (masquer le mot de passe si présent)
     var connectionString = config.GetConnectionString("DefaultConnection");
-    logger.LogInformation("Chaîne de connexion: {ConnectionString}", connectionString);
     
     // Vérifier les options de connexion
     logger.LogInformation("Vérification de la connexion à la base de données SQL Server...");

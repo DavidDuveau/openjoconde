@@ -72,7 +72,6 @@ namespace OpenJoconde.API.Controllers
                 {
                     status = "Unhealthy",
                     timestamp = DateTime.UtcNow,
-                    error = ex.Message,
                     message = "Internal error during health check"
                 });
             }

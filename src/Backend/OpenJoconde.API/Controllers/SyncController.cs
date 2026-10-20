@@ -172,7 +172,7 @@ namespace OpenJoconde.API.Controllers
                         {
                             syncToUpdate.CompletedAt = DateTime.UtcNow;
                             syncToUpdate.Status = "Failed";
-                            syncToUpdate.ErrorMessage = ex.Message;
+                            syncToUpdate.ErrorMessage = "La synchronisation a échoué, voir les journaux du serveur";
                             await dbContext.SaveChangesAsync();
                         }
                     }
@@ -191,7 +191,7 @@ namespace OpenJoconde.API.Controllers
                 return StatusCode(500, new
                 {
                     Success = false,
-                    Message = $"Erreur lors du démarrage de la synchronisation: {ex.Message}"
+                    Message = "Erreur lors du démarrage de la synchronisation"
                 });
             }
         }
@@ -243,7 +243,7 @@ namespace OpenJoconde.API.Controllers
                 return StatusCode(500, new
                 {
                     Success = false,
-                    Message = $"Erreur lors de l'annulation de la synchronisation: {ex.Message}"
+                    Message = "Erreur lors de l'annulation de la synchronisation"
                 });
             }
         }
