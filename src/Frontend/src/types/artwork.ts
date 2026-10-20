@@ -20,23 +20,26 @@ export interface Artwork {
  */
 export interface ArtworkDetail {
   id: string;
-  title: string;
+  title: string | null;
   reference: string;
-  inventoryNumber: string;
-  imageUrl: string;
-  description: string;
-  dimensions: string;
-  creationDate: string;
-  creationPlace: string;
+  inventoryNumber: string | null;
+  denomination: string | null;
+  imageUrl: string | null;
+  description: string | null;
+  dimensions: string | null;
+  creationDate: string | null;
+  creationPlace: string | null;
+  conservationPlace: string | null;
+  copyright: string | null;
   museum: {
     id: string;
     name: string;
-  };
+  } | null;
   artists: {
     id: string;
-    firstName: string;
+    firstName: string | null;
     lastName: string;
-    role?: string;
+    role: string | null;
   }[];
   domains: {
     id: string;
