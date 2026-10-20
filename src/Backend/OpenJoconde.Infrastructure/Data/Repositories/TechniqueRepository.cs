@@ -112,89 +112,88 @@ namespace OpenJoconde.Infrastructure.Data
         }
         
         /// <summary>
-        /// Bulk upsert techniques (insert or update) with individual fallback
+        /// Insère ou met à jour des techniques, identifiés par leur nom. Les existants de chaque lot de 100 sont lus en une
+        /// requête ; un lot refusé par la base est rejoué élément par élément.
         /// </summary>
+        /// <returns>Nombre d'éléments enregistrés</returns>
         public async Task<int> BulkUpsertAsync(IEnumerable<Technique> techniques)
         {
-            var techniqueList = techniques.ToList();
-            _logger.LogInformation("Starting bulk upsert of {Count} techniques", techniqueList.Count);
-            
+            const int batchSize = 100;
+            var items = techniques.ToList();
+            _logger.LogInformation("Starting bulk upsert of {Count} techniques", items.Count);
+
             int successCount = 0;
             int errorCount = 0;
-            var pendingTechniques = new List<Technique>();
-            
-            foreach (var technique in techniqueList)
+
+            foreach (var chunk in items.Chunk(batchSize))
             {
+                var pending = new List<Technique>();
+                var names = chunk.Where(i => i.Name != null).Select(i => i.Name).Distinct().ToList();
+                Dictionary<string, Technique> known;
                 try
                 {
-                    var existingTechnique = await _context.Techniques
-                        .FirstOrDefaultAsync(t => t.Name == technique.Name);
-
-                    if (existingTechnique != null)
+                    known = new Dictionary<string, Technique>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var existing in await _context.Techniques.Where(e => names.Contains(e.Name)).ToListAsync())
                     {
-                        // Update existing technique
-                        technique.Id = existingTechnique.Id;
-                        existingTechnique.Description = technique.Description;
-                        existingTechnique.UpdatedAt = DateTime.UtcNow;
-                        
-                        _context.Techniques.Update(existingTechnique);
-                        pendingTechniques.Add(existingTechnique);
-                    }
-                    else
-                    {
-                        // Add new technique
-                        if (technique.Id == Guid.Empty)
-                        {
-                            technique.Id = Guid.NewGuid();
-                        }
-                        
-                        technique.CreatedAt = DateTime.UtcNow;
-                        technique.UpdatedAt = DateTime.UtcNow;
-                        
-                        _context.Techniques.Add(technique);
-                        pendingTechniques.Add(technique);
-                    }
-                    
-                    successCount++;
-                    
-                    // Save in batches of 100 to avoid memory issues
-                    if (pendingTechniques.Count >= 100)
-                    {
-                        var batchResult = await SaveBatchWithIndividualFallback(pendingTechniques);
-                        errorCount += batchResult.ErrorCount;
-                        
-                        if (batchResult.ErrorCount > 0)
-                        {
-                            _logger.LogWarning("Batch had {ErrorCount} errors out of {BatchSize} techniques", 
-                                batchResult.ErrorCount, pendingTechniques.Count);
-                        }
-                        
-                        pendingTechniques.Clear();
-                        _context.ChangeTracker.Clear();
+                        known.TryAdd(existing.Name, existing);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Error processing technique {Name}: {Message}", 
-                        technique.Name, ex.Message);
-                    errorCount++;
+                    _logger.LogError(ex, "Lecture des techniques existants impossible pour un lot de {Count}", chunk.Length);
+                    errorCount += chunk.Length;
+                    _context.ChangeTracker.Clear();
+                    continue;
                 }
-            }
-            
-            // Save any remaining changes
-            if (pendingTechniques.Count > 0)
-            {
-                var batchResult = await SaveBatchWithIndividualFallback(pendingTechniques);
+
+                foreach (var item in chunk)
+                {
+                    if (item.Name != null && known.TryGetValue(item.Name, out var existing))
+                    {
+                        // Aussi pour un élément ajouté plus tôt dans ce lot sous une casse différente
+                        item.Id = existing.Id;
+                        if (!ReferenceEquals(existing, item))
+                        {
+                            existing.Description = item.Description;
+                            existing.UpdatedAt = DateTime.UtcNow;
+                            pending.Add(existing);
+                        }
+                    }
+                    else
+                    {
+                        if (item.Id == Guid.Empty)
+                        {
+                            item.Id = Guid.NewGuid();
+                        }
+
+                        item.CreatedAt = DateTime.UtcNow;
+                        item.UpdatedAt = DateTime.UtcNow;
+                        _context.Techniques.Add(item);
+                        pending.Add(item);
+                        if (item.Name != null)
+                            known[item.Name] = item;
+                    }
+
+                    successCount++;
+                }
+
+                var batchResult = await SaveBatchWithIndividualFallback(pending);
                 errorCount += batchResult.ErrorCount;
+                if (batchResult.ErrorCount > 0)
+                {
+                    _logger.LogWarning("Batch had {ErrorCount} errors out of {BatchSize} techniques", batchResult.ErrorCount, pending.Count);
+                }
+
+                _context.ChangeTracker.Clear();
             }
-            
+
             var finalSuccessCount = successCount - errorCount;
-            _logger.LogInformation("Bulk upsert completed: {Success}/{Total} techniques processed successfully, {Errors} errors", 
+            _logger.LogInformation("Bulk upsert completed: {Success}/{Total} techniques processed successfully, {Errors} errors",
                 finalSuccessCount, successCount, errorCount);
-            
+
             return finalSuccessCount;
         }
-        
+
         /// <summary>
         /// Saves a batch of techniques with individual fallback on failure
         /// </summary>
