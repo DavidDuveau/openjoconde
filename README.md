@@ -6,7 +6,7 @@ Le backend télécharge et importe les données Joconde dans SQL Server, puis le
 
 ## Stack
 
-- **Backend** : .NET 9, ASP.NET Core, Entity Framework Core 9 (SQL Server)
+- **Backend** : .NET 10, ASP.NET Core, Entity Framework Core 10 (SQL Server)
 - **Frontend** : Vue 3, TypeScript, Pinia, Vue Router, Vue CLI 5
 - **Base de données** : SQL Server 2019 ou supérieur (Express suffit)
 
@@ -19,7 +19,7 @@ L'URL de la source se règle dans `JocondeData:SourceUrl` (synchronisation manue
 
 ## Prérequis
 
-- [.NET SDK 9](https://dotnet.microsoft.com/download/dotnet/9.0)
+- [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [Node.js](https://nodejs.org/) 18 ou supérieur
 - SQL Server 2019 ou supérieur
 - L'outil EF Core : `dotnet tool install --global dotnet-ef`
