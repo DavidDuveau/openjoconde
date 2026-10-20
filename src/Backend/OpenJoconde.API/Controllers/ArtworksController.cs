@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using OpenJoconde.API.Dtos;
 using OpenJoconde.Core.Models;
 using OpenJoconde.Infrastructure.Data;
 using System;
@@ -98,9 +99,9 @@ namespace OpenJoconde.API.Controllers
         /// Récupère une oeuvre d'art par son identifiant
         /// </summary>
         /// <param name="id">Identifiant de l'oeuvre d'art</param>
-        /// <returns>L'oeuvre d'art</returns>
+        /// <returns>La fiche de l'oeuvre d'art, avec son musée, ses artistes, domaines, techniques et périodes</returns>
         [HttpGet("{id}")]
-        public async Task<ActionResult<Artwork>> GetArtwork(Guid id)
+        public async Task<ActionResult<ArtworkDetailDto>> GetArtwork(Guid id)
         {
             try
             {
@@ -108,6 +109,35 @@ namespace OpenJoconde.API.Controllers
 
                 var artwork = await _context.Artworks
                     .Where(a => a.Id == id)
+                    .AsNoTracking()
+                    .Select(a => new ArtworkDetailDto
+                    {
+                        Id = a.Id,
+                        Reference = a.Reference,
+                        InventoryNumber = a.InventoryNumber,
+                        Denomination = a.Denomination,
+                        Title = a.Title,
+                        Description = a.Description,
+                        Dimensions = a.Dimensions,
+                        CreationDate = a.CreationDate,
+                        CreationPlace = a.CreationPlace,
+                        ConservationPlace = a.ConservationPlace,
+                        Copyright = a.Copyright,
+                        ImageUrl = a.ImageUrl,
+                        Museum = a.Museum == null ? null : new NamedItemDto { Id = a.Museum.Id, Name = a.Museum.Name },
+                        Artists = a.Artists
+                            .Select(aa => new ArtworkArtistDto
+                            {
+                                Id = aa.Artist.Id,
+                                FirstName = aa.Artist.FirstName,
+                                LastName = aa.Artist.LastName,
+                                Role = aa.Role
+                            })
+                            .ToList(),
+                        Domains = a.Domains.Select(d => new NamedItemDto { Id = d.Id, Name = d.Name }).ToList(),
+                        Techniques = a.Techniques.Select(t => new NamedItemDto { Id = t.Id, Name = t.Name }).ToList(),
+                        Periods = a.Periods.Select(p => new NamedItemDto { Id = p.Id, Name = p.Name }).ToList()
+                    })
                     .FirstOrDefaultAsync();
 
                 if (artwork == null)
