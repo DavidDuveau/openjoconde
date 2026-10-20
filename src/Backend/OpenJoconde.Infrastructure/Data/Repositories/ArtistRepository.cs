@@ -38,7 +38,7 @@ namespace OpenJoconde.Infrastructure.Data
         /// <summary>
         /// Search artists by name
         /// </summary>
-        public async Task<IEnumerable<Artist>> SearchByNameAsync(string name, int page = 1, int pageSize = 10)
+        public async Task<PaginatedResult<Artist>> SearchByNameAsync(string? name, int page = 1, int pageSize = 10)
         {
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
@@ -54,13 +54,17 @@ namespace OpenJoconde.Infrastructure.Data
                     (a.FirstName != null && a.FirstName.ToLower().Contains(name)));
             }
 
-            return await query
+            var ordered = query
                 .OrderBy(a => a.LastName)
-                .ThenBy(a => a.FirstName)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .AsNoTracking()
-                .ToListAsync();
+                .ThenBy(a => a.FirstName);
+
+            return new PaginatedResult<Artist>
+            {
+                Items = await ordered.Skip((page - 1) * pageSize).Take(pageSize).AsNoTracking().ToListAsync(),
+                TotalItems = await ordered.CountAsync(),
+                Page = page,
+                PageSize = pageSize
+            };
         }
 
         /// <summary>

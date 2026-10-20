@@ -38,7 +38,7 @@ namespace OpenJoconde.Infrastructure.Data
         /// <summary>
         /// Search museums by name
         /// </summary>
-        public async Task<IEnumerable<Museum>> SearchByNameAsync(string name, int page = 1, int pageSize = 10)
+        public async Task<PaginatedResult<Museum>> SearchByNameAsync(string? name, int page = 1, int pageSize = 10)
         {
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
@@ -55,13 +55,17 @@ namespace OpenJoconde.Infrastructure.Data
                     m.Department.ToLower().Contains(name));
             }
 
-            return await query
+            var ordered = query
                 .OrderBy(m => m.Name)
-                .ThenBy(m => m.City)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .AsNoTracking()
-                .ToListAsync();
+                .ThenBy(m => m.City);
+
+            return new PaginatedResult<Museum>
+            {
+                Items = await ordered.Skip((page - 1) * pageSize).Take(pageSize).AsNoTracking().ToListAsync(),
+                TotalItems = await ordered.CountAsync(),
+                Page = page,
+                PageSize = pageSize
+            };
         }
 
         /// <summary>

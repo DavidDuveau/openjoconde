@@ -18,7 +18,7 @@ namespace OpenJoconde.Core.Interfaces
         /// <summary>
         /// Recherche des musées par nom
         /// </summary>
-        Task<IEnumerable<Museum>> SearchByNameAsync(string name, int page = 1, int pageSize = 10);
+        Task<PaginatedResult<Museum>> SearchByNameAsync(string? name, int page = 1, int pageSize = 10);
 
         /// <summary>
         /// Ajoute un nouveau musée

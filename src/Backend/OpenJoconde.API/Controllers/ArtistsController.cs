@@ -39,7 +39,7 @@ namespace OpenJoconde.API.Controllers
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<IEnumerable<Artist>>> SearchArtists(
+        public async Task<ActionResult<PaginatedResult<Artist>>> SearchArtists(
             [FromQuery] string? name = null,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10)

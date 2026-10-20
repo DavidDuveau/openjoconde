@@ -18,7 +18,7 @@ namespace OpenJoconde.Core.Interfaces
         /// <summary>
         /// Recherche des artistes par nom
         /// </summary>
-        Task<IEnumerable<Artist>> SearchByNameAsync(string name, int page = 1, int pageSize = 10);
+        Task<PaginatedResult<Artist>> SearchByNameAsync(string? name, int page = 1, int pageSize = 10);
 
         /// <summary>
         /// Ajoute un nouvel artiste

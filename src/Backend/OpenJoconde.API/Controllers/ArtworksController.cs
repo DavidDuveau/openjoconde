@@ -75,8 +75,7 @@ namespace OpenJoconde.API.Controllers
                     Items = items,
                     TotalItems = totalItems,
                     Page = page,
-                    PageSize = pageSize,
-                    TotalPages = (int)Math.Ceiling(totalItems / (double)pageSize)
+                    PageSize = pageSize
                 };
 
                 return Ok(result);
@@ -118,37 +117,5 @@ namespace OpenJoconde.API.Controllers
                 return StatusCode(500, "Une erreur est survenue lors de la récupération de l'oeuvre d'art.");
             }
         }
-    }
-
-    /// <summary>
-    /// Résultat paginé pour les listes d'éléments
-    /// </summary>
-    /// <typeparam name="T">Type d'élément</typeparam>
-    public class PaginatedResult<T>
-    {
-        /// <summary>
-        /// Éléments de la page courante
-        /// </summary>
-        public required IEnumerable<T> Items { get; set; }
-
-        /// <summary>
-        /// Nombre total d'éléments (toutes pages confondues)
-        /// </summary>
-        public int TotalItems { get; set; }
-
-        /// <summary>
-        /// Numéro de la page courante
-        /// </summary>
-        public int Page { get; set; }
-
-        /// <summary>
-        /// Nombre d'éléments par page
-        /// </summary>
-        public int PageSize { get; set; }
-
-        /// <summary>
-        /// Nombre total de pages
-        /// </summary>
-        public int TotalPages { get; set; }
     }
 }
