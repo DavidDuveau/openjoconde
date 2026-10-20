@@ -86,3 +86,4 @@ pnpm-debug.log*
 *.njsproj
 *.sw?
 !src/Backend/OpenJoconde.Infrastructure.Tests/Fixtures/*.json
+!dotnet-tools.json
