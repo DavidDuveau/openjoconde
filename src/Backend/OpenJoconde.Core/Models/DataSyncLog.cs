@@ -63,13 +63,28 @@ namespace OpenJoconde.Core.Models
         public int ErrorCount { get; set; }
 
         /// <summary>
+        /// Nombre d'œuvres déjà à jour, donc non réécrites (synchronisation incrémentale)
+        /// </summary>
+        public int ArtworksUnchanged { get; set; }
+
+        /// <summary>
+        /// Nombre d'œuvres supprimées parce que la source ne les contient plus
+        /// </summary>
+        public int ArtworksRemoved { get; set; }
+
+        /// <summary>
+        /// Version (ETag) de la source importée ; une synchronisation réussie la mémorise pour ne pas retélécharger un fichier inchangé
+        /// </summary>
+        public string? SourceETag { get; set; }
+
+        /// <summary>
         /// Message d'erreur en cas d'échec
         /// </summary>
         public string? ErrorMessage { get; set; }
         
         /// <summary>
-        /// Statut de la synchronisation : 'Running', 'Completed', 'CompletedWithErrors', 'Failed', 'Canceled'
-        /// ou 'Interrupted' (le serveur s'est arrêté en cours de route)
+        /// Statut de la synchronisation : 'Running', 'Completed', 'CompletedWithErrors', 'Failed', 'Canceled',
+        /// 'UpToDate' (source inchangée, rien téléchargé) ou 'Interrupted' (le serveur s'est arrêté en cours de route)
         /// </summary>
         public string Status { get; set; } = "Pending";
     }

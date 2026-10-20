@@ -22,29 +22,9 @@ public class ImportLotsTests : IAsyncLifetime
             File.Delete(fichier);
     }
 
-    /// <summary>CSV de test : en-tête réel, une notice par numéro, avec domaine, technique, période et auteur.</summary>
     private string CreerCsv(int nombre, Func<int, string> titre, string suffixe = "", Func<int, string>? auteur = null)
     {
-        var colonnes = File.ReadLines(ImportDatabase.FixturePath("joconde_cas_particuliers.csv")).First().Split('|');
-        string Ligne(int i)
-        {
-            var valeurs = new Dictionary<string, string>
-            {
-                ["reference"] = $"L{i:D6}",
-                ["titre"] = titre(i),
-                ["description"] = $"description {i}{suffixe}",
-                ["domaine"] = $"domaine {i % 7};commun",
-                ["materiaux_techniques"] = $"technique {i % 13}",
-                ["periode_de_creation"] = $"période {i % 5}",
-                ["auteur"] = auteur?.Invoke(i) ?? $"AUTEUR{i % 40} Prénom",
-                ["nom_officiel_musee"] = $"musée {i % 3}",
-                ["localisation"] = $"lieu {i}{suffixe}"
-            };
-            return string.Join('|', colonnes.Select(c => "\"" + valeurs.GetValueOrDefault(c.ToLowerInvariant(), "").Replace("\"", "\"\"") + "\""));
-        }
-
-        var chemin = Path.Combine(Path.GetTempPath(), $"joconde_lots_{Guid.NewGuid():N}.csv");
-        File.WriteAllLines(chemin, new[] { string.Join('|', colonnes) }.Concat(Enumerable.Range(1, nombre).Select(Ligne)));
+        var chemin = GeneratedCsv.Create(Enumerable.Range(1, nombre), titre, suffixe, auteur);
         _fichiers.Add(chemin);
         return chemin;
     }

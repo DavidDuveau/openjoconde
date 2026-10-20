@@ -124,6 +124,11 @@ namespace OpenJoconde.Infrastructure.Migrations
                     b.Property<string>("ConservationPlace")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<byte[]>("ContentHash")
+                        .HasMaxLength(16)
+                        .HasColumnType("binary(16)")
+                        .IsFixedLength();
+
                     b.Property<string>("Copyright")
                         .HasColumnType("nvarchar(max)");
 
@@ -218,6 +223,12 @@ namespace OpenJoconde.Infrastructure.Migrations
                     b.Property<int>("ArtworksProcessed")
                         .HasColumnType("int");
 
+                    b.Property<int>("ArtworksRemoved")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ArtworksUnchanged")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("datetime2");
 
@@ -229,6 +240,10 @@ namespace OpenJoconde.Infrastructure.Migrations
 
                     b.Property<string>("ErrorMessage")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SourceETag")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<DateTime>("StartedAt")
                         .HasColumnType("datetime2");

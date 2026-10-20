@@ -19,6 +19,7 @@ public class SyncCoordinatorTests : IAsyncLifetime
     private readonly ImportDatabase _db = new();
     private readonly string _tempDirectory = Path.Combine(Path.GetTempPath(), $"sync_tests_{Guid.NewGuid():N}");
     private readonly FakeImportService _import = new();
+    private readonly FakeDownloadService _download = new();
     private SyncCoordinator _coordinator = null!;
 
     public async Task InitializeAsync()
@@ -34,7 +35,7 @@ public class SyncCoordinatorTests : IAsyncLifetime
 
         var services = new ServiceCollection()
             .AddDbContext<OpenJocondeDbContext>(options => options.UseSqlServer(_db.ConnectionString))
-            .AddSingleton<IJocondeDataService, FakeDownloadService>()
+            .AddSingleton<IJocondeDataService>(_download)
             .AddSingleton<IDataImportService>(_import)
             .BuildServiceProvider();
 
@@ -201,21 +202,115 @@ public class SyncCoordinatorTests : IAsyncLifetime
         Assert.False(File.Exists(reste));
     }
 
+    private async Task<DataSyncLog> SynchroniserAsync(bool force = false)
+    {
+        var result = await _coordinator.TryStartAsync("Manual", force: force);
+        await result.Completion;
+        return await LogAsync(result.SyncId!.Value);
+    }
+
+    [Fact]
+    public async Task SourceInchangee_NeTelechargeRien()
+    {
+        _download.Version = "\"v1\"";
+        _import.OnImport = (_, _) => Task.FromResult(new ImportReport { Success = true, ImportedArtworks = 10 });
+
+        var premiere = await SynchroniserAsync();
+        var seconde = await SynchroniserAsync();
+
+        Assert.Equal("Completed", premiere.Status);
+        Assert.Equal("\"v1\"", premiere.SourceETag);
+        Assert.Equal("UpToDate", seconde.Status);
+        Assert.True(seconde.Success);
+        Assert.Equal("\"v1\"", seconde.SourceETag);
+        Assert.Equal(1, _download.Downloads);
+    }
+
+    [Fact]
+    public async Task SourceChangee_EstImportee_EnMode_Incremental()
+    {
+        _download.Version = "\"v1\"";
+        _import.OnImport = (_, _) => Task.FromResult(new ImportReport { Success = true, SkippedArtworks = 900, RemovedArtworks = 4 });
+        await SynchroniserAsync();
+
+        _download.Version = "\"v2\"";
+        var log = await SynchroniserAsync();
+
+        Assert.Equal("Completed", log.Status);
+        Assert.Equal("\"v2\"", log.SourceETag);
+        Assert.Equal(900, log.ArtworksUnchanged);
+        Assert.Equal(4, log.ArtworksRemoved);
+        Assert.Equal(2, _download.Downloads);
+        Assert.True(_import.LastOnlyChanges);
+    }
+
+    [Fact]
+    public async Task Force_TelechargeMemeSiLaSourceEstInchangee()
+    {
+        _download.Version = "\"v1\"";
+        _import.OnImport = (_, _) => Task.FromResult(new ImportReport { Success = true });
+        await SynchroniserAsync();
+
+        var log = await SynchroniserAsync(force: true);
+
+        Assert.Equal("Completed", log.Status);
+        Assert.Equal(2, _download.Downloads);
+    }
+
+    [Fact]
+    public async Task SynchroAvecPertes_NeMemorisePasLaVersion_LaSuivanteRecommence()
+    {
+        _download.Version = "\"v1\"";
+        _import.OnImport = (_, _) => Task.FromResult(new ImportReport { Success = false, Errors = 2, ErrorMessage = "pertes" });
+        var avecPertes = await SynchroniserAsync();
+
+        _import.OnImport = (_, _) => Task.FromResult(new ImportReport { Success = true });
+        var suivante = await SynchroniserAsync();
+
+        Assert.Equal("CompletedWithErrors", avecPertes.Status);
+        Assert.Null(avecPertes.SourceETag);
+        Assert.Equal("Completed", suivante.Status);
+        Assert.Equal(2, _download.Downloads);
+    }
+
+    [Fact]
+    public async Task SourceSansVersion_EstToujoursTelechargee()
+    {
+        _download.Version = null;
+        _import.OnImport = (_, _) => Task.FromResult(new ImportReport { Success = true });
+
+        await SynchroniserAsync();
+        await SynchroniserAsync();
+
+        Assert.Equal(2, _download.Downloads);
+    }
+
     private sealed class FakeDownloadService : IJocondeDataService
     {
+        public string? Version { get; set; }
+        public int Downloads { get; private set; }
+
         public Task<string> DownloadJocondeDataAsync(string url, string destinationPath, CancellationToken cancellationToken = default)
         {
+            Downloads++;
             File.WriteAllText(destinationPath, "Reference|Titre");
             return Task.FromResult(destinationPath);
         }
+
+        public Task<string?> GetSourceVersionAsync(string url, CancellationToken cancellationToken = default) => Task.FromResult(Version);
     }
 
     private sealed class FakeImportService : IDataImportService
     {
         public Func<string, CancellationToken, Task<ImportReport>> OnImport { get; set; } = (_, _) => Task.FromResult(new ImportReport());
 
-        public Task<ImportReport> ImportFromFileAsync(string filePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default) =>
-            OnImport(filePath, cancellationToken);
+        public bool? LastOnlyChanges { get; private set; }
+
+        public Task<ImportReport> ImportFromFileAsync(string filePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default, bool onlyChanges = false)
+        {
+            LastOnlyChanges = onlyChanges;
+            return OnImport(filePath, cancellationToken);
+        }
 
         public Task<ImportStatistics> ImportDataAsync(OpenJoconde.Core.Parsers.ParsingResult parsingResult, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<string> DownloadJocondeDataAsync(string url, string destinationPath, CancellationToken cancellationToken = default) => throw new NotSupportedException();

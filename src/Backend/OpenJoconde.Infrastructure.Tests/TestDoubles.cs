@@ -8,6 +8,9 @@ internal sealed class FailingArtworkRepository : IArtworkRepository
 {
     public Task<int> BulkUpsertAsync(IEnumerable<Artwork> artworks) =>
         throw new InvalidOperationException("écriture des œuvres refusée");
+
+    public Task<Dictionary<string, Guid?>> GetContentHashesAsync() => Task.FromResult(new Dictionary<string, Guid?>());
+    public Task<int> DeleteByReferencesAsync(IReadOnlyCollection<string> references) => Task.FromResult(0);
 }
 
 /// <summary>Dépôt de relations dont chaque écriture échoue.</summary>

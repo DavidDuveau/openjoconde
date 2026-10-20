@@ -12,5 +12,10 @@ namespace OpenJoconde.Core.Interfaces
         /// Télécharge les données Joconde depuis l'URL spécifiée
         /// </summary>
         Task<string> DownloadJocondeDataAsync(string url, string destinationPath, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Version courante de la source (ETag), lue sans télécharger le fichier ; null si la source ne l'indique pas
+        /// </summary>
+        Task<string?> GetSourceVersionAsync(string url, CancellationToken cancellationToken = default);
     }
 }

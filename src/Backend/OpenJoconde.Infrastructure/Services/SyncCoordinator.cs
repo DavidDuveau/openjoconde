@@ -42,7 +42,7 @@ namespace OpenJoconde.Infrastructure.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task<SyncStartResult> TryStartAsync(string triggeredBy, CancellationToken cancellationToken = default)
+        public async Task<SyncStartResult> TryStartAsync(string triggeredBy, CancellationToken cancellationToken = default, bool force = false)
         {
             var connectionString = _configuration.GetConnectionString("DefaultConnection")
                 ?? throw new InvalidOperationException("La chaîne de connexion 'DefaultConnection' n'est pas configurée");
@@ -63,7 +63,7 @@ namespace OpenJoconde.Infrastructure.Services
                 _running[syncId] = cancellation;
 
                 // RunAsync prend possession de la connexion : le verrou tient jusqu'à la fin de la synchronisation
-                var completion = Task.Run(() => RunAsync(syncId, lockConnection, cancellation));
+                var completion = Task.Run(() => RunAsync(syncId, lockConnection, cancellation, force));
                 return SyncStartResult.Running(syncId, completion);
             }
             catch
@@ -168,7 +168,7 @@ namespace OpenJoconde.Infrastructure.Services
             return log.Id;
         }
 
-        private async Task RunAsync(Guid syncId, SqlConnection lockConnection, CancellationTokenSource cancellation)
+        private async Task RunAsync(Guid syncId, SqlConnection lockConnection, CancellationTokenSource cancellation, bool force)
         {
             var outcome = new SyncOutcome { Status = "Failed", ErrorMessage = FailureMessage };
 
@@ -180,6 +180,21 @@ namespace OpenJoconde.Infrastructure.Services
 
                 var sourceUrl = _configuration["JocondeData:SourceUrl"]
                     ?? throw new InvalidOperationException("L'URL source des données Joconde n'est pas configurée");
+                // Source inchangée depuis la dernière synchronisation réussie : rien à télécharger
+                var sourceVersion = await downloader.GetSourceVersionAsync(sourceUrl, cancellation.Token);
+                if (!force && sourceVersion != null && sourceVersion == await LastSyncedVersionAsync(cancellation.Token))
+                {
+                    _logger.LogInformation("Source inchangée (version {Version}) : synchronisation {SyncId} sans téléchargement", sourceVersion, syncId);
+                    outcome = new SyncOutcome
+                    {
+                        Status = "UpToDate",
+                        Success = true,
+                        SourceETag = sourceVersion,
+                        ErrorMessage = "Source inchangée depuis la dernière synchronisation"
+                    };
+                    return;
+                }
+
                 var tempDirectory = TempDirectory();
                 Directory.CreateDirectory(tempDirectory);
                 var filePath = Path.Combine(tempDirectory, $"joconde_{DateTime.Now:yyyyMMdd_HHmmss}{JocondeSourceFile.ExtensionFor(sourceUrl)}");
@@ -187,7 +202,7 @@ namespace OpenJoconde.Infrastructure.Services
                 try
                 {
                     await downloader.DownloadJocondeDataAsync(sourceUrl, filePath, cancellation.Token);
-                    var report = await importer.ImportFromFileAsync(filePath, LogProgress, cancellation.Token);
+                    var report = await importer.ImportFromFileAsync(filePath, LogProgress, cancellation.Token, onlyChanges: true);
 
                     outcome = new SyncOutcome
                     {
@@ -195,6 +210,10 @@ namespace OpenJoconde.Infrastructure.Services
                         Success = report.Success,
                         ArtworksProcessed = report.ImportedArtworks,
                         ArtistsProcessed = report.ImportedArtists,
+                        ArtworksUnchanged = report.SkippedArtworks,
+                        ArtworksRemoved = report.RemovedArtworks,
+                        // Une synchronisation avec pertes ne mémorise pas la version : la suivante recommence
+                        SourceETag = report.Success ? sourceVersion : null,
                         ErrorCount = report.Errors,
                         ErrorMessage = Truncate(report.ErrorMessage)
                     };
@@ -227,6 +246,20 @@ namespace OpenJoconde.Infrastructure.Services
             }
         }
 
+        /// <summary>
+        /// Version de la source à la dernière synchronisation réussie (importée ou constatée à jour)
+        /// </summary>
+        private async Task<string?> LastSyncedVersionAsync(CancellationToken cancellationToken)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<OpenJocondeDbContext>();
+            return await context.DataSyncLogs
+                .Where(log => (log.Status == "Completed" || log.Status == "UpToDate") && log.SourceETag != null)
+                .OrderByDescending(log => log.StartedAt)
+                .Select(log => log.SourceETag)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
         private async Task CloseLogAsync(Guid syncId, SyncOutcome outcome)
         {
             try
@@ -242,6 +275,9 @@ namespace OpenJoconde.Infrastructure.Services
                 log.Success = outcome.Success;
                 log.ArtworksProcessed = outcome.ArtworksProcessed;
                 log.ArtistsProcessed = outcome.ArtistsProcessed;
+                log.ArtworksUnchanged = outcome.ArtworksUnchanged;
+                log.ArtworksRemoved = outcome.ArtworksRemoved;
+                log.SourceETag = outcome.SourceETag;
                 log.ErrorCount = outcome.ErrorCount;
                 log.ErrorMessage = outcome.ErrorMessage;
                 await context.SaveChangesAsync();
@@ -269,6 +305,9 @@ namespace OpenJoconde.Infrastructure.Services
             public bool Success { get; init; }
             public int ArtworksProcessed { get; init; }
             public int ArtistsProcessed { get; init; }
+            public int ArtworksUnchanged { get; init; }
+            public int ArtworksRemoved { get; init; }
+            public string? SourceETag { get; init; }
             public int ErrorCount { get; init; }
             public string? ErrorMessage { get; init; }
         }

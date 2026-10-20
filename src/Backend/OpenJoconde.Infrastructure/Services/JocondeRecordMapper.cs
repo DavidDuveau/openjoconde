@@ -50,7 +50,8 @@ namespace OpenJoconde.Infrastructure.Services
         public void Add(IJocondeRecord record)
         {
             var artwork = ExtractArtwork(record);
-            ExtractRelatedEntities(record, artwork);
+            var author = ExtractRelatedEntities(record, artwork);
+            artwork.ContentHash = ArtworkFingerprint.Compute(artwork, author);
             _artworks.Add(artwork);
         }
 
@@ -93,8 +94,10 @@ namespace OpenJoconde.Infrastructure.Services
             };
         }
 
-        private void ExtractRelatedEntities(IJocondeRecord record, Artwork artwork)
+        /// <returns>L'artiste de la notice, dont l'empreinte tient compte</returns>
+        private Artist? ExtractRelatedEntities(IJocondeRecord record, Artwork artwork)
         {
+            Artist? author = null;
             var artistName = record.GetString("auteur");
             if (artistName != null)
             {
@@ -105,6 +108,7 @@ namespace OpenJoconde.Infrastructure.Services
                     _artists[key] = artist;
                 }
 
+                author = artist;
                 artwork.Artists.Add(new ArtworkArtist
                 {
                     ArtistId = artist.Id,
@@ -149,7 +153,7 @@ namespace OpenJoconde.Infrastructure.Services
 
             var museumName = Fit(record.GetString("nom_officiel_musee") ?? record.GetString("localisation"), LongNameMax);
             if (museumName == null)
-                return;
+                return author;
 
             if (_museums.TryGetValue(museumName.ToLowerInvariant(), out var knownMuseum))
             {
@@ -178,6 +182,8 @@ namespace OpenJoconde.Infrastructure.Services
                 _museums[museumName.ToLowerInvariant()] = museum;
                 artwork.Museum = museum;
             }
+
+            return author;
         }
 
         /// <summary>
