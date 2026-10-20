@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia';
-import { Artwork, SearchParams, PaginatedResult } from '@/types/models';
+import { Artwork, ArtworkDetail } from '@/types/artwork';
+import { SearchParams } from '@/types/models';
 import ApiService from '@/services/api';
 
 interface ArtworkState {
   artworks: Artwork[];
-  currentArtwork: Artwork | null;
+  currentArtwork: ArtworkDetail | null;
   loading: boolean;
   error: string | null;
   totalItems: number;

@@ -53,7 +53,7 @@
         </div>
       </div>
       
-      <div class="pagination" v-if="totalCount > pageSize">
+      <div class="pagination" v-if="totalItems > pageSize">
         <button 
           class="pagination-button"
           :disabled="currentPage === 1"
@@ -101,7 +101,7 @@ export default defineComponent({
     const error = ref<string | null>(null);
     const currentPage = ref<number>(1);
     const pageSize = ref<number>(12);
-    const totalCount = ref<number>(0);
+    const totalItems = ref<number>(0);
     const totalPages = ref<number>(1);
     const searchQuery = ref<string>('');
     let searchTimeout: number | null = null;
@@ -117,9 +117,9 @@ export default defineComponent({
       error.value = null;
       
       try {
-        const result = await ApiService.getArtists(currentPage.value, pageSize.value);
+        const result = await ApiService.getArtists(currentPage.value, pageSize.value, searchQuery.value.trim());
         artists.value = result.items;
-        totalCount.value = result.totalCount;
+        totalItems.value = result.totalItems;
         totalPages.value = result.totalPages;
       } catch (err) {
         console.error('Error fetching artists:', err);
@@ -191,7 +191,7 @@ export default defineComponent({
       error,
       currentPage,
       pageSize,
-      totalCount,
+      totalItems,
       totalPages,
       searchQuery,
       pageNumbers,

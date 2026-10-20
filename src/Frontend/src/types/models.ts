@@ -68,6 +68,10 @@ export interface Museum {
   email: string;
   website: string;
   description: string;
+  region?: string;
+  code?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface SearchParams {
