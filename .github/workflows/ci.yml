@@ -25,6 +25,10 @@ jobs:
           dotnet-version: 10.0.x
       - run: dotnet restore OpenJoconde.sln
       - run: dotnet build OpenJoconde.sln --no-restore --configuration Release
+      - name: Le modèle EF correspond aux migrations
+        run: |
+          dotnet tool restore
+          dotnet ef migrations has-pending-model-changes --project src/Backend/OpenJoconde.Infrastructure --startup-project src/Backend/OpenJoconde.API --no-build --configuration Release
       - run: dotnet test OpenJoconde.sln --no-build --configuration Release
 
   frontend:
