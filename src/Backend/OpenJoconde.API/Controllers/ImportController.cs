@@ -4,38 +4,37 @@ using Microsoft.AspNetCore.RateLimiting;
 using OpenJoconde.API.Security;
 using Microsoft.Extensions.Logging;
 using OpenJoconde.Core.Interfaces;
-using OpenJoconde.Core.Parsers;
 using System;
 using System.IO;
-using System.Text.Json;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace OpenJoconde.API.Controllers
 {
+    /// <summary>
+    /// Import d'un fichier Joconde fourni par l'appelant. L'import du fichier publié par le ministère
+    /// passe par la synchronisation (POST api/sync/start).
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class ImportController : ControllerBase
     {
+        private static readonly string[] SupportedExtensions = { ".csv", ".json", ".xml" };
+
         private readonly ILogger<ImportController> _logger;
-        private readonly IJocondeXmlParser _xmlParser;
         private readonly IDataImportService _dataImportService;
-        private readonly IJocondeDataService _jocondeDataService;
 
         public ImportController(
             ILogger<ImportController> logger,
-            IJocondeXmlParser xmlParser,
-            IDataImportService dataImportService,
-            IJocondeDataService jocondeDataService)
+            IDataImportService dataImportService)
         {
             _logger = logger;
-            _xmlParser = xmlParser;
             _dataImportService = dataImportService;
-            _jocondeDataService = jocondeDataService;
         }
 
         /// <summary>
-        /// Importe les données à partir d'un fichier XML téléchargé
+        /// Importe un fichier Joconde (CSV, JSON ou XML), le format étant déduit de l'extension
         /// </summary>
         [RequireApiKey]
         [EnableRateLimiting("ecriture")]
@@ -45,120 +44,45 @@ namespace OpenJoconde.API.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ImportFromFile(IFormFile file, CancellationToken cancellationToken)
         {
+            if (file == null || file.Length == 0)
+                return BadRequest("Le fichier n'est pas valide.");
+
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!SupportedExtensions.Contains(extension))
+                return BadRequest("Le fichier doit être au format CSV, JSON ou XML.");
+
+            var tempPath = Path.Combine(Path.GetTempPath(), $"joconde_{Guid.NewGuid():N}{extension}");
+
             try
             {
-                if (file == null || file.Length == 0)
-                    return BadRequest("Le fichier n'est pas valide.");
+                using (var stream = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true))
+                {
+                    await file.CopyToAsync(stream, cancellationToken);
+                }
 
-                // Récupération du chemin temporaire pour stocker le fichier
-                var tempPath = Path.GetTempFileName();
-                
-                try
+                _logger.LogInformation("Début de l'importation du fichier {FileName}", file.FileName);
+                var report = await _dataImportService.ImportFromFileAsync(
+                    tempPath,
+                    (phase, current, total) => _logger.LogDebug("Progression de l'import ({Phase}): {Current}/{Total}", phase, current, total),
+                    cancellationToken);
+
+                return Ok(new
                 {
-                    // Sauvegarde du fichier reçu
-                    using (var stream = new FileStream(tempPath, FileMode.Create))
-                    {
-                        await file.CopyToAsync(stream, cancellationToken);
-                    }
-                    
-                    // Parsing du fichier XML
-                    _logger.LogInformation("Début du parsing du fichier {FileName}", file.FileName);
-                    var parsingResult = await _xmlParser.ParseAsync(tempPath, 
-                        progressCallback: (current, total) =>
-                        {
-                            _logger.LogDebug("Progression du parsing: {Current}/{Total}", current, total);
-                        },
-                        cancellationToken: cancellationToken);
-                    
-                    // Importation des données en base
-                    _logger.LogInformation("Début de l'importation des données en base");
-                    var importStats = await _dataImportService.ImportDataAsync(parsingResult, 
-                        progressCallback: (phase, current, total) =>
-                        {
-                            _logger.LogDebug("Progression de l'import ({Phase}): {Current}/{Total}", phase, current, total);
-                        },
-                        cancellationToken: cancellationToken);
-                    
-                    return Ok(new
-                    {
-                        message = "Importation réussie",
-                        stats = importStats
-                    });
-                }
-                finally
-                {
-                    // Nettoyage du fichier temporaire
-                    if (System.IO.File.Exists(tempPath))
-                    {
-                        System.IO.File.Delete(tempPath);
-                    }
-                }
+                    message = report.Success ? "Importation réussie" : "Importation terminée avec des erreurs",
+                    stats = report
+                });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erreur lors de l'importation des données");
                 return StatusCode(500, "Une erreur est survenue lors de l'importation des données.");
             }
-        }
-
-        /// <summary>
-        /// Télécharge le dernier fichier XML de data.gouv.fr et l'importe
-        /// </summary>
-        [RequireApiKey]
-        [EnableRateLimiting("ecriture")]
-        [HttpPost("from-datagouv")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> ImportFromDataGouv(CancellationToken cancellationToken)
-        {
-            try
+            finally
             {
-                // Téléchargement du fichier
-                _logger.LogInformation("Téléchargement du fichier depuis data.gouv.fr");
-                var tempPath = Path.GetTempFileName();
-                
-                try
+                if (System.IO.File.Exists(tempPath))
                 {
-                    // Téléchargement du fichier XML
-                    await _jocondeDataService.DownloadLatestFileAsync(tempPath, cancellationToken);
-                    
-                    // Parsing du fichier XML
-                    _logger.LogInformation("Début du parsing du fichier");
-                    var parsingResult = await _xmlParser.ParseAsync(tempPath, 
-                        progressCallback: (current, total) =>
-                        {
-                            _logger.LogDebug("Progression du parsing: {Current}/{Total}", current, total);
-                        },
-                        cancellationToken: cancellationToken);
-                    
-                    // Importation des données en base
-                    _logger.LogInformation("Début de l'importation des données en base");
-                    var importStats = await _dataImportService.ImportDataAsync(parsingResult, 
-                        progressCallback: (phase, current, total) =>
-                        {
-                            _logger.LogDebug("Progression de l'import ({Phase}): {Current}/{Total}", phase, current, total);
-                        },
-                        cancellationToken: cancellationToken);
-                    
-                    return Ok(new
-                    {
-                        message = "Importation réussie",
-                        stats = importStats
-                    });
+                    System.IO.File.Delete(tempPath);
                 }
-                finally
-                {
-                    // Nettoyage du fichier temporaire
-                    if (System.IO.File.Exists(tempPath))
-                    {
-                        System.IO.File.Delete(tempPath);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erreur lors de l'importation des données depuis data.gouv.fr");
-                return StatusCode(500, "Une erreur est survenue lors de l'importation des données.");
             }
         }
     }

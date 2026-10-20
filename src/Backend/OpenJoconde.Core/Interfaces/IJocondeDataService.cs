@@ -12,10 +12,5 @@ namespace OpenJoconde.Core.Interfaces
         /// Télécharge les données Joconde depuis l'URL spécifiée
         /// </summary>
         Task<string> DownloadJocondeDataAsync(string url, string destinationPath, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Télécharge le dernier fichier Joconde disponible
-        /// </summary>
-        Task<string> DownloadLatestFileAsync(string destinationDirectory, CancellationToken cancellationToken = default);
     }
 }

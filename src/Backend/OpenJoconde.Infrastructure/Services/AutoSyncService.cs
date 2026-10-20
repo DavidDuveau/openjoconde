@@ -19,7 +19,6 @@ namespace OpenJoconde.Infrastructure.Services
         private readonly TimeSpan _syncInterval;
         private readonly string _dataSourceUrl;
         private readonly string _tempDirectory;
-        private readonly bool _useBatchProcessing;
 
         public AutoSyncService(
             ILogger<AutoSyncService> logger,
@@ -39,7 +38,6 @@ namespace OpenJoconde.Infrastructure.Services
             _tempDirectory = configuration.GetValue<string>(
                 "JocondeSync:TempDirectory", 
                 Path.Combine(Path.GetTempPath(), "OpenJoconde"));
-            _useBatchProcessing = configuration.GetValue<bool>("JocondeSync:UseBatchProcessing", true);
 
             // Créer le répertoire temporaire s'il n'existe pas
             if (!Directory.Exists(_tempDirectory))
@@ -66,39 +64,25 @@ namespace OpenJoconde.Infrastructure.Services
                     {
                         ImportReport importResult;
 
-                        if (_useBatchProcessing)
-                        {
-                            // Utiliser le traitement par lots pour les données volumineuses
-                            _logger.LogInformation("Utilisation du traitement par lots pour la synchronisation");
-                            
-                            var batchProcessor = scope.ServiceProvider.GetRequiredService<BatchProcessingService>();
-                            importResult = await batchProcessor.ProcessDataInBatchesAsync(stoppingToken);
-                            
-                            _logger.LogInformation("Traitement par lots terminé: {ArtworksCount} œuvres importées en {Duration}",
-                                importResult.ImportedArtworks, importResult.Duration);
-                        }
-                        else
-                        {
-                            // Méthode traditionnelle avec téléchargement unique
-                            _logger.LogInformation("Utilisation du téléchargement standard pour la synchronisation");
-                            
-                            // Générer un timestamp pour les fichiers temporaires
-                            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                            var tempFilePath = Path.Combine(_tempDirectory, $"joconde_{timestamp}{JocondeSourceFile.ExtensionFor(_dataSourceUrl)}");
+                        // Générer un timestamp pour les fichiers temporaires
+                        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                        var tempFilePath = Path.Combine(_tempDirectory, $"joconde_{timestamp}{JocondeSourceFile.ExtensionFor(_dataSourceUrl)}");
 
-                            var jocondeDataService = scope.ServiceProvider.GetRequiredService<IJocondeDataService>();
-                            var dataImportService = scope.ServiceProvider.GetRequiredService<IDataImportService>();
-                            
-                            // Télécharger les données
+                        var jocondeDataService = scope.ServiceProvider.GetRequiredService<IJocondeDataService>();
+                        var dataImportService = scope.ServiceProvider.GetRequiredService<IDataImportService>();
+
+                        try
+                        {
                             await jocondeDataService.DownloadJocondeDataAsync(_dataSourceUrl, tempFilePath, stoppingToken);
                             _logger.LogInformation("Fichier téléchargé avec succès: {FilePath}", tempFilePath);
 
                             // Importer les données (le format est déduit de l'extension du fichier)
                             importResult = await dataImportService.ImportFromFileAsync(tempFilePath, null, stoppingToken);
-                            _logger.LogInformation("Importation terminée: {ArtworksCount} œuvres importées",
-                                importResult.ImportedArtworks);
-
-                            // Nettoyer les fichiers temporaires
+                            _logger.LogInformation("Importation terminée: {ArtworksCount} œuvres importées en {Duration}",
+                                importResult.ImportedArtworks, importResult.Duration);
+                        }
+                        finally
+                        {
                             if (File.Exists(tempFilePath))
                             {
                                 File.Delete(tempFilePath);
@@ -110,7 +94,7 @@ namespace OpenJoconde.Infrastructure.Services
                         var syncLog = new DataSyncLog
                         {
                             Id = Guid.NewGuid(),
-                            SyncType = _useBatchProcessing ? "BatchSync" : "FullSync",
+                            SyncType = "FullSync",
                             StartTime = DateTime.UtcNow.Subtract(importResult.Duration),
                             EndTime = DateTime.UtcNow,
                             ArtworksProcessed = importResult.ImportedArtworks,

@@ -81,9 +81,8 @@ Depuis VS Code :
 |---|---|
 | `GET /api/artworks`, `GET /api/artworks/{id}` | Œuvres, paginées, avec recherche (`search`) |
 | `GET /api/artists`, `GET /api/museums` | Artistes et musées |
-| `POST /api/jocondedata/import` | Télécharge et importe les données Joconde |
-| `POST /api/jsonimport/from-file` | Importe un fichier JSON Joconde |
-| `GET /api/sync/status`, `POST /api/sync/start` | Suivi et lancement de la synchronisation |
+| `POST /api/import/from-file` | Importe un fichier Joconde envoyé par l'appelant (CSV, JSON ou XML selon l'extension) |
+| `GET /api/sync/status`, `POST /api/sync/start` | Suivi et lancement de la synchronisation (télécharge la source configurée et l'importe) |
 | `GET /api/health` | État de l'API et de la base |
 
 Les routes d'écriture et d'import (`POST`, `PUT`, `DELETE`) exigent l'en-tête `X-Api-Key` égal à `Security:ApiKey`. Tant que cette clé n'est pas configurée, ces routes répondent `401`. Elles sont aussi limitées à 20 requêtes par minute et par adresse IP (`429` au-delà). Définir la clé hors du dépôt, par exemple :

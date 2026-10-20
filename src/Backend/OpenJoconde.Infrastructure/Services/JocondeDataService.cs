@@ -113,47 +113,5 @@ namespace OpenJoconde.Infrastructure.Services
                 throw;
             }
         }
-
-
-
-
-        
-        
-
-
-        /// <summary>
-        /// Télécharge le dernier fichier Joconde disponible
-        /// </summary>
-        public async Task<string> DownloadLatestFileAsync(string destinationDirectory, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                _logger.LogInformation("Téléchargement du dernier fichier Joconde disponible");
-                
-                // URL mise à jour pour les données Joconde au format JSON sans pagination
-                // L'API semble ne plus accepter les paramètres de pagination, utiliser l'export complet
-                var url = "https://data.culture.gouv.fr/api/explore/v2.1/catalog/datasets/base-joconde-extrait/exports/json?lang=fr&timezone=Europe%2FBerlin";
-                
-                // Créer le répertoire de destination s'il n'existe pas
-                if (!Directory.Exists(destinationDirectory))
-                {
-                    Directory.CreateDirectory(destinationDirectory);
-                }
-                
-                // Générer un nom de fichier avec timestamp (format JSON)
-                var fileName = $"joconde_{DateTime.Now:yyyyMMdd_HHmmss}.json";
-                var filePath = Path.Combine(destinationDirectory, fileName);
-                
-                // Télécharger le fichier
-                return await DownloadJocondeDataAsync(url, filePath, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erreur lors du téléchargement du dernier fichier Joconde: {Message}", ex.Message);
-                throw;
-            }
-        }
-
-        
     }
 }

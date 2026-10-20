@@ -39,7 +39,6 @@ namespace OpenJoconde.API.Extensions
             services.AddScoped<IJocondeJsonParser, StreamingJocondeJsonParserService>();
             services.AddScoped<IJocondeCsvParser, StreamingJocondeCsvParserService>();
             services.AddScoped<IDataImportService, AdvancedDataImportService>();
-            services.AddScoped<BatchProcessingService>();
 
             return services;
         }
