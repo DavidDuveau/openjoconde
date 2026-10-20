@@ -187,6 +187,20 @@ public class SyncCoordinatorTests : IAsyncLifetime
         Assert.Equal("Completed", (await LogAsync(result.SyncId!.Value)).Status);
     }
 
+    [Fact]
+    public async Task FichierLaisseParUneSynchroTuee_EstSupprimeAuDemarrage()
+    {
+        Directory.CreateDirectory(_tempDirectory);
+        var reste = Path.Combine(_tempDirectory, "joconde_20260101_000000.csv");
+        File.WriteAllText(reste, "partiel");
+        _import.OnImport = (_, _) => Task.FromResult(new ImportReport { Success = true });
+
+        var result = await _coordinator.TryStartAsync("Manual");
+        await result.Completion;
+
+        Assert.False(File.Exists(reste));
+    }
+
     private sealed class FakeDownloadService : IJocondeDataService
     {
         public Task<string> DownloadJocondeDataAsync(string url, string destinationPath, CancellationToken cancellationToken = default)

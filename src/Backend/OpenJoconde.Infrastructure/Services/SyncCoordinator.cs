@@ -57,6 +57,7 @@ namespace OpenJoconde.Infrastructure.Services
                     return SyncStartResult.Busy(await RunningSinceAsync(cancellationToken));
                 }
 
+                DeleteLeftoverDownloads();
                 var syncId = await OpenLogAsync(triggeredBy, cancellationToken);
                 var cancellation = new CancellationTokenSource();
                 _running[syncId] = cancellation;
@@ -92,6 +93,32 @@ namespace OpenJoconde.Infrastructure.Services
             // 0 et 1 : verrou obtenu (tout de suite, ou après attente) ; négatif : refusé
             return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken)) >= 0;
         }
+
+        /// <summary>
+        /// Le verrou est à nous : un fichier téléchargé qui traîne vient d'un processus tué en pleine synchronisation
+        /// </summary>
+        private void DeleteLeftoverDownloads()
+        {
+            var tempDirectory = TempDirectory();
+            if (!Directory.Exists(tempDirectory))
+                return;
+
+            foreach (var leftover in Directory.GetFiles(tempDirectory, "joconde_*"))
+            {
+                try
+                {
+                    File.Delete(leftover);
+                    _logger.LogWarning("Fichier de synchronisation interrompue supprimé : {File}", leftover);
+                }
+                catch (IOException ex)
+                {
+                    _logger.LogWarning(ex, "Impossible de supprimer {File}", leftover);
+                }
+            }
+        }
+
+        private string TempDirectory() =>
+            _configuration["JocondeData:TempDirectory"] ?? Path.Combine(Path.GetTempPath(), "openjoconde");
 
         private async Task<DateTime?> RunningSinceAsync(CancellationToken cancellationToken)
         {
@@ -153,7 +180,7 @@ namespace OpenJoconde.Infrastructure.Services
 
                 var sourceUrl = _configuration["JocondeData:SourceUrl"]
                     ?? throw new InvalidOperationException("L'URL source des données Joconde n'est pas configurée");
-                var tempDirectory = _configuration["JocondeData:TempDirectory"] ?? Path.Combine(Path.GetTempPath(), "openjoconde");
+                var tempDirectory = TempDirectory();
                 Directory.CreateDirectory(tempDirectory);
                 var filePath = Path.Combine(tempDirectory, $"joconde_{DateTime.Now:yyyyMMdd_HHmmss}{JocondeSourceFile.ExtensionFor(sourceUrl)}");
 
