@@ -48,7 +48,10 @@ namespace OpenJoconde.Core.Interfaces
         /// Démarre une synchronisation en arrière-plan, sauf si une autre est déjà en cours
         /// </summary>
         /// <param name="triggeredBy">« Manual » ou « Automatic »</param>
-        Task<SyncStartResult> TryStartAsync(string triggeredBy, CancellationToken cancellationToken = default);
+        /// <param name="force">
+        /// Télécharge et compare même si la source n'a pas changé depuis la dernière synchronisation réussie
+        /// </param>
+        Task<SyncStartResult> TryStartAsync(string triggeredBy, CancellationToken cancellationToken = default, bool force = false);
 
         /// <summary>
         /// Demande l'annulation d'une synchronisation en cours dans ce processus

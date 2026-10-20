@@ -79,6 +79,11 @@ namespace OpenJoconde.Core.Models
         public Museum? Museum { get; set; }
 
         /// <summary>
+        /// Empreinte du contenu importé (voir ArtworkFingerprint) : permet à la synchronisation de ne réécrire que ce qui a changé
+        /// </summary>
+        public byte[]? ContentHash { get; set; }
+
+        /// <summary>
         /// Creation timestamp
         /// </summary>
         public DateTime CreatedAt { get; set; }

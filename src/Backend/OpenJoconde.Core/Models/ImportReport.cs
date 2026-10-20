@@ -28,9 +28,14 @@ namespace OpenJoconde.Core.Models
         public int UpdatedArtworks { get; set; }
         
         /// <summary>
-        /// Nombre d'œuvres ignorées
+        /// Nombre d'œuvres ignorées : déjà à jour en base (synchronisation incrémentale)
         /// </summary>
         public int SkippedArtworks { get; set; }
+
+        /// <summary>
+        /// Nombre d'œuvres supprimées parce que la source ne les contient plus
+        /// </summary>
+        public int RemovedArtworks { get; set; }
         
         /// <summary>
         /// Nombre d'erreurs rencontrées

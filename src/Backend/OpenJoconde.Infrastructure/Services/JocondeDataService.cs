@@ -113,5 +113,23 @@ namespace OpenJoconde.Infrastructure.Services
                 throw;
             }
         }
+
+        /// <summary>
+        /// Version courante de la source (ETag), lue par une requête HEAD, sans télécharger le fichier
+        /// </summary>
+        public async Task<string?> GetSourceVersionAsync(string url, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Head, url);
+                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                return response.IsSuccessStatusCode ? response.Headers.ETag?.Tag : null;
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning(ex, "Version de la source illisible : la synchronisation télécharge le fichier");
+                return null;
+            }
+        }
     }
 }

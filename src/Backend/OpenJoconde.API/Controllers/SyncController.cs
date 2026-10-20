@@ -59,6 +59,8 @@ namespace OpenJoconde.API.Controllers
                 lastSync.StartedAt,
                 LastSync = lastSync.CompletedAt ?? lastSync.StartedAt,
                 lastSync.ItemsProcessed,
+                lastSync.ArtworksUnchanged,
+                lastSync.ArtworksRemoved,
                 lastSync.ErrorCount
             });
         }
@@ -87,6 +89,9 @@ namespace OpenJoconde.API.Controllers
                 s.CompletedAt,
                 s.ArtworksProcessed,
                 s.ArtistsProcessed,
+                s.ArtworksUnchanged,
+                s.ArtworksRemoved,
+                s.SourceETag,
                 s.ErrorCount,
                 s.ErrorMessage
             }));
@@ -95,15 +100,16 @@ namespace OpenJoconde.API.Controllers
         /// <summary>
         /// Déclenche une synchronisation manuelle
         /// </summary>
+        /// <param name="force">Télécharge et compare même si la source n'a pas changé depuis la dernière synchronisation réussie</param>
         [RequireApiKey]
         [EnableRateLimiting("ecriture")]
         [HttpPost("start")]
-        public async Task<IActionResult> StartSync(CancellationToken cancellationToken)
+        public async Task<IActionResult> StartSync([FromQuery] bool force = false, CancellationToken cancellationToken = default)
         {
             try
             {
                 _logger.LogInformation("Demande de synchronisation manuelle");
-                var result = await _coordinator.TryStartAsync("Manual", cancellationToken);
+                var result = await _coordinator.TryStartAsync("Manual", cancellationToken, force);
 
                 if (!result.Started)
                 {

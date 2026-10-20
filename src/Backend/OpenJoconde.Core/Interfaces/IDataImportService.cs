@@ -57,8 +57,12 @@ namespace OpenJoconde.Core.Interfaces
         /// <param name="filePath">Chemin du fichier à importer</param>
         /// <param name="progressCallback">Callback pour suivre la progression</param>
         /// <param name="cancellationToken">Token d'annulation</param>
+        /// <param name="onlyChanges">
+        /// Synchronisation incrémentale : n'écrit que les œuvres nouvelles ou modifiées (comparées par empreinte) et
+        /// supprime celles que la source ne contient plus
+        /// </param>
         /// <returns>Rapport d'importation</returns>
-        Task<ImportReport> ImportFromFileAsync(string filePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default);
+        Task<ImportReport> ImportFromFileAsync(string filePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default, bool onlyChanges = false);
     }
 
     /// <summary>

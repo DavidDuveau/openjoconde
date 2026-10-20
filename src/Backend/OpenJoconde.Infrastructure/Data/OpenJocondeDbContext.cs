@@ -41,6 +41,7 @@ namespace OpenJoconde.Infrastructure.Data
                 entity.HasIndex(e => e.Reference).IsUnique();
                 entity.HasIndex(e => e.InventoryNumber);
                 entity.HasIndex(e => e.Title);
+                entity.Property(e => e.ContentHash).HasMaxLength(16).IsFixedLength();
                 entity.HasIndex(e => e.MuseumId);
                 entity.HasOne(e => e.Museum)
                     .WithMany()
@@ -155,6 +156,7 @@ namespace OpenJoconde.Infrastructure.Data
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
                 entity.Property(e => e.SyncType).HasMaxLength(50).IsRequired();
                 entity.Property(e => e.TriggeredBy).HasMaxLength(20).IsRequired();
+                entity.Property(e => e.SourceETag).HasMaxLength(200);
                 entity.Property(e => e.Status).HasMaxLength(20).IsRequired();
                 entity.HasIndex(e => e.StartedAt);
             });

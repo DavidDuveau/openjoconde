@@ -233,6 +233,7 @@ namespace OpenJoconde.Infrastructure.Services
                     ConservationPlace = artwork.ConservationPlace,
                     Copyright = artwork.Copyright,
                     ImageUrl = artwork.ImageUrl,
+                    ContentHash = artwork.ContentHash,
                     // L'upsert des musées a fixé leur Id réel sur les objets du parseur
                     MuseumId = artwork.Museum != null && (usableMuseumIds == null || usableMuseumIds.Contains(artwork.Museum.Id))
                         ? artwork.Museum.Id
@@ -383,20 +384,90 @@ namespace OpenJoconde.Infrastructure.Services
         /// <summary>
         /// Importe un fichier en choisissant le parseur selon l'extension (.csv ou .json)
         /// </summary>
-        public Task<ImportReport> ImportFromFileAsync(string filePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default) =>
+        public Task<ImportReport> ImportFromFileAsync(string filePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default, bool onlyChanges = false) =>
             Path.GetExtension(filePath).ToLowerInvariant() switch
             {
-                ".csv" => ImportFromCsvFileAsync(filePath, progressCallback, cancellationToken),
-                ".json" => ImportFromJsonFileAsync(filePath, progressCallback, cancellationToken),
+                ".csv" => ImportParsedFileAsync("CSV", filePath, _csvParser.ParseAsync, progressCallback, cancellationToken, onlyChanges),
+                ".json" => ImportParsedFileAsync("JSON", filePath, _jsonParser.ParseAsync, progressCallback, cancellationToken, onlyChanges),
                 var extension => throw new NotSupportedException($"Format de fichier non pris en charge : '{extension}' (attendu : .csv ou .json)")
             };
+
+        /// <summary>
+        /// Part de la fraction maximale d'œuvres de la base qu'une synchronisation peut supprimer : au-delà, la source
+        /// est jugée tronquée ou fautive, et rien n'est supprimé
+        /// </summary>
+        private const double MaxRemovedRatio = 0.10;
+
+        /// <summary>
+        /// Synchronisation incrémentale : écrit les œuvres nouvelles ou modifiées, puis supprime celles que la source ne contient plus
+        /// </summary>
+        private async Task ImportChangesAsync(
+            ParsingResult parsingResult,
+            ImportStatistics stats,
+            ImportReport report,
+            Action<string, int, int>? progressCallback,
+            CancellationToken cancellationToken)
+        {
+            progressCallback?.Invoke("Comparaison", 0, 1);
+            var existing = await _artworkRepository.GetContentHashesAsync();
+            var plan = IncrementalPlanner.Plan(parsingResult, existing);
+            progressCallback?.Invoke("Comparaison", 1, 1);
+
+            report.SkippedArtworks = plan.Unchanged;
+            _logger.LogInformation(
+                "Comparaison avec la base : {Changed} œuvre(s) à écrire, {Unchanged} déjà à jour, {Missing} absente(s) de la source",
+                plan.Changed.Artworks.Count, plan.Unchanged, plan.Missing.Count);
+
+            await ImportIntoAsync(plan.Changed, stats, progressCallback, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            await RemoveMissingAsync(plan.Missing, existing.Count, parsingResult.RejectedRecords, stats, report);
+        }
+
+        private async Task RemoveMissingAsync(
+            IReadOnlyList<string> missing,
+            int existingCount,
+            int rejectedRecords,
+            ImportStatistics stats,
+            ImportReport report)
+        {
+            if (missing.Count == 0)
+                return;
+
+            var errors = new ImportErrors(stats);
+
+            if (rejectedRecords > 0)
+            {
+                // Une notice rejetée au parsing peut être l'une des « absentes » : on ne supprime pas sur une lecture incomplète
+                errors.Add($"{missing.Count} œuvre(s) absente(s) de la source non supprimée(s) : {rejectedRecords} notice(s) rejetée(s) au parsing");
+                return;
+            }
+
+            var ratio = (double)missing.Count / Math.Max(existingCount, 1);
+            if (ratio > MaxRemovedRatio)
+            {
+                errors.Add($"Suppression refusée : {missing.Count} œuvre(s) ({ratio:P0} de la base) ont disparu de la source, au-delà du seuil de {MaxRemovedRatio:P0}");
+                return;
+            }
+
+            try
+            {
+                report.RemovedArtworks = await _artworkRepository.DeleteByReferencesAsync(missing);
+                _logger.LogInformation("{Count} œuvre(s) supprimée(s) : absentes de la source", report.RemovedArtworks);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Échec de la suppression de {Count} œuvre(s) absentes de la source", missing.Count);
+                errors.Add("Suppression des œuvres absentes de la source", ex, missing.Count);
+            }
+        }
 
         private async Task<ImportReport> ImportParsedFileAsync(
             string format,
             string filePath,
             Func<string, Action<int, int>?, CancellationToken, Task<ParsingResult>> parse,
             Action<string, int, int>? progressCallback,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            bool onlyChanges = false)
         {
             _logger.LogInformation("Démarrage de l'importation depuis le fichier {Format} {FilePath}", format, filePath);
 
@@ -436,7 +507,14 @@ namespace OpenJoconde.Infrastructure.Services
                 report.TotalTechniques = parsingResult.Techniques.Count;
                 report.TotalPeriods = parsingResult.Periods.Count;
 
-                await ImportIntoAsync(parsingResult, stats, progressCallback, cancellationToken);
+                if (onlyChanges)
+                {
+                    await ImportChangesAsync(parsingResult, stats, report, progressCallback, cancellationToken);
+                }
+                else
+                {
+                    await ImportIntoAsync(parsingResult, stats, progressCallback, cancellationToken);
+                }
             }
             catch (OperationCanceledException)
             {

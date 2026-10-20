@@ -14,6 +14,8 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
     /// </summary>
     public class ArtworkRepository : IArtworkRepository
     {
+        private const int ArtworkHashLength = 16;
+
         private readonly OpenJocondeDbContext _context;
         private readonly ILogger<ArtworkRepository> _logger;
 
@@ -62,6 +64,7 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
                         existing.Copyright = artwork.Copyright;
                         existing.ImageUrl = artwork.ImageUrl;
                         existing.MuseumId = artwork.MuseumId;
+                        existing.ContentHash = artwork.ContentHash;
                         existing.UpdatedAt = DateTime.UtcNow;
                     }
                     else
@@ -86,6 +89,36 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
             {
                 _context.ChangeTracker.Clear();
             }
+        }
+
+        /// <summary>
+        /// Référence et empreinte de contenu de chaque œuvre en base, lues en flux
+        /// </summary>
+        public async Task<Dictionary<string, Guid?>> GetContentHashesAsync()
+        {
+            var hashes = new Dictionary<string, Guid?>(StringComparer.OrdinalIgnoreCase);
+            await foreach (var row in _context.Artworks.AsNoTracking()
+                .Select(a => new { a.Reference, a.ContentHash })
+                .AsAsyncEnumerable())
+            {
+                hashes[row.Reference] = row.ContentHash is { Length: ArtworkHashLength } bytes ? new Guid(bytes) : null;
+            }
+
+            return hashes;
+        }
+
+        /// <summary>
+        /// Supprime les œuvres de ces références, par groupes ; leurs liens partent avec elles (suppression en cascade)
+        /// </summary>
+        public async Task<int> DeleteByReferencesAsync(IReadOnlyCollection<string> references)
+        {
+            var deleted = 0;
+            foreach (var group in references.Chunk(1000))
+            {
+                deleted += await _context.Artworks.Where(a => group.Contains(a.Reference)).ExecuteDeleteAsync();
+            }
+
+            return deleted;
         }
     }
 }

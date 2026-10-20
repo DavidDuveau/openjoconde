@@ -17,6 +17,14 @@ Le backend télécharge et importe les données Joconde dans SQL Server, puis le
 
 L'URL de la source se règle dans `JocondeData:SourceUrl` (synchronisations manuelle et automatique) de `src/Backend/OpenJoconde.API/appsettings.json`. Le parsing du fichier complet prend environ une minute et occupe environ 1,4 Go de mémoire.
 
+La synchronisation est **incrémentale**. Le fichier est republié environ chaque semaine, et l'export ne donne pas toujours de date de mise à jour exploitable (`Date_de_mise_a_jour` est vide pour un quart des notices). Elle procède donc par empreinte :
+
+- si la version (ETag) de la source est celle de la dernière synchronisation réussie, rien n'est téléchargé (statut `UpToDate`) ;
+- sinon le fichier est lu en entier, et l'empreinte de chaque notice est comparée à celle de la base : seules les œuvres nouvelles ou modifiées (et les artistes, domaines, techniques, périodes et musées qu'elles utilisent) sont écrites ;
+- les œuvres que la source ne contient plus sont supprimées, avec leurs liens. Par sécurité, rien n'est supprimé si la source semble tronquée : plus de 10 % de la base disparaîtrait, ou des notices ont été rejetées à la lecture. La synchronisation est alors marquée `CompletedWithErrors`.
+
+Une base importée avant l'arrivée des empreintes est réécrite une fois en entier, puis suit le régime incrémental.
+
 ## Prérequis
 
 - [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0)
@@ -80,7 +88,7 @@ Depuis VS Code :
 | `GET /api/artworks`, `GET /api/artworks/{id}` | Œuvres, paginées, avec recherche (`search`) |
 | `GET /api/artists`, `GET /api/museums` | Artistes et musées |
 | `POST /api/import/from-file` | Importe un fichier Joconde envoyé par l'appelant (CSV ou JSON selon l'extension) |
-| `GET /api/sync/status`, `POST /api/sync/start` | Statut de la dernière synchronisation ; lancement (télécharge la source configurée et l'importe). Une seule à la fois : `409` si une autre tourne |
+| `GET /api/sync/status`, `POST /api/sync/start` | Statut de la dernière synchronisation ; lancement (télécharge la source configurée et l'importe ; `?force=true` pour télécharger même si la source n'a pas changé). Une seule à la fois : `409` si une autre tourne |
 | `POST /api/sync/cancel/{id}`, `GET /api/sync/history` | Annulation d'une synchronisation en cours ; historique avec messages d'erreur (clé d'API) |
 | `GET /api/health` | État de l'API et de la base |
 
