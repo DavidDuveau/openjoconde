@@ -38,6 +38,8 @@ namespace OpenJoconde.API.Extensions
             services.AddScoped<IJocondeJsonParser, StreamingJocondeJsonParserService>();
             services.AddScoped<IJocondeCsvParser, StreamingJocondeCsvParserService>();
             services.AddScoped<IDataImportService, AdvancedDataImportService>();
+            // Singleton : il garde les annulations des synchronisations en cours
+            services.AddSingleton<ISyncCoordinator, SyncCoordinator>();
 
             return services;
         }

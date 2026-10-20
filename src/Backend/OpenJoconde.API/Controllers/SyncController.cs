@@ -1,16 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using OpenJoconde.API.Security;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OpenJoconde.API.Security;
 using OpenJoconde.Core.Interfaces;
-using OpenJoconde.Core.Models;
 using OpenJoconde.Infrastructure.Data;
-using OpenJoconde.Infrastructure.Services;
 using System;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,35 +16,30 @@ namespace OpenJoconde.API.Controllers
     [ApiController]
     public class SyncController : ControllerBase
     {
-        private readonly IDataImportService _importService;
-        private readonly IConfiguration _configuration;
-        private readonly ILogger<SyncController> _logger;
+        private readonly ISyncCoordinator _coordinator;
         private readonly OpenJocondeDbContext _dbContext;
-        private readonly IServiceScopeFactory _serviceScopeFactory;
+        private readonly ILogger<SyncController> _logger;
 
         public SyncController(
-            IDataImportService importService,
-            IConfiguration configuration,
-            ILogger<SyncController> logger,
+            ISyncCoordinator coordinator,
             OpenJocondeDbContext dbContext,
-            IServiceScopeFactory serviceScopeFactory)
+            ILogger<SyncController> logger)
         {
-            _importService = importService ?? throw new ArgumentNullException(nameof(importService));
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _coordinator = coordinator ?? throw new ArgumentNullException(nameof(coordinator));
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
-            _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
-        /// Obtient le statut de la dernière synchronisation
+        /// Obtient le statut de la dernière synchronisation (sans message d'erreur : voir /history)
         /// </summary>
         [HttpGet("status")]
-        public async Task<IActionResult> GetSyncStatus()
+        public async Task<IActionResult> GetSyncStatus(CancellationToken cancellationToken)
         {
             var lastSync = await _dbContext.DataSyncLogs
+                .AsNoTracking()
                 .OrderByDescending(s => s.StartedAt)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(cancellationToken);
 
             if (lastSync == null)
             {
@@ -63,11 +53,43 @@ namespace OpenJoconde.API.Controllers
 
             return Ok(new
             {
-                Status = lastSync.Status,
-                Message = lastSync.Status == "Failed" ? lastSync.ErrorMessage : "Dernière synchronisation réussie",
+                SyncId = lastSync.Id,
+                lastSync.Status,
+                lastSync.TriggeredBy,
+                lastSync.StartedAt,
                 LastSync = lastSync.CompletedAt ?? lastSync.StartedAt,
-                ItemsProcessed = lastSync.ItemsProcessed
+                lastSync.ItemsProcessed,
+                lastSync.ErrorCount
             });
+        }
+
+        /// <summary>
+        /// Historique des dernières synchronisations, messages d'erreur compris
+        /// </summary>
+        [RequireApiKey]
+        [HttpGet("history")]
+        public async Task<IActionResult> GetHistory([FromQuery] int count = 20, CancellationToken cancellationToken = default)
+        {
+            count = Math.Clamp(count, 1, 100);
+            var logs = await _dbContext.DataSyncLogs
+                .AsNoTracking()
+                .OrderByDescending(s => s.StartedAt)
+                .Take(count)
+                .ToListAsync(cancellationToken);
+
+            return Ok(logs.Select(s => new
+            {
+                s.Id,
+                s.Status,
+                s.SyncType,
+                s.TriggeredBy,
+                s.StartedAt,
+                s.CompletedAt,
+                s.ArtworksProcessed,
+                s.ArtistsProcessed,
+                s.ErrorCount,
+                s.ErrorMessage
+            }));
         }
 
         /// <summary>
@@ -80,118 +102,29 @@ namespace OpenJoconde.API.Controllers
         {
             try
             {
-                _logger.LogInformation("Démarrage d'une synchronisation manuelle");
+                _logger.LogInformation("Demande de synchronisation manuelle");
+                var result = await _coordinator.TryStartAsync("Manual", cancellationToken);
 
-                // Vérifier si une synchronisation est déjà en cours
-                var runningSync = await _dbContext.DataSyncLogs
-                    .Where(s => s.Status == "Running")
-                    .FirstOrDefaultAsync(cancellationToken);
-
-                if (runningSync != null)
+                if (!result.Started)
                 {
                     return Conflict(new
                     {
                         Success = false,
                         Message = "Une synchronisation est déjà en cours",
-                        StartedAt = runningSync.StartedAt
+                        StartedAt = result.RunningSince
                     });
                 }
-
-                // Créer un enregistrement pour la nouvelle synchronisation
-                var syncLog = new DataSyncLog
-                {
-                    SyncType = "Manual",
-                    StartedAt = DateTime.UtcNow,
-                    Status = "Running",
-                    ArtworksProcessed = 0,
-                    ArtistsProcessed = 0,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                _dbContext.DataSyncLogs.Add(syncLog);
-                await _dbContext.SaveChangesAsync(cancellationToken);
-
-                // Lancer la synchronisation en arrière-plan
-                _ = Task.Run(async () =>
-                {
-                    // Créer un nouveau scope pour avoir accès aux services scoped
-                    using var scope = _serviceScopeFactory.CreateScope();
-                    var importService = scope.ServiceProvider.GetRequiredService<IDataImportService>();
-                    var dbContext = scope.ServiceProvider.GetRequiredService<OpenJocondeDbContext>();
-                    
-                    try
-                    {
-                        // Configuration
-                        var dataSourceUrl = _configuration["JocondeData:SourceUrl"] ?? throw new InvalidOperationException("L'URL source des données Joconde n'est pas configurée");
-                        var tempDirectory = _configuration["JocondeData:TempDirectory"] ?? Path.Combine(Path.GetTempPath(), "openjoconde");
-
-                        // Créer le répertoire temporaire s'il n'existe pas
-                        if (!Directory.Exists(tempDirectory))
-                        {
-                            Directory.CreateDirectory(tempDirectory);
-                        }
-
-                        // Télécharger le fichier
-                        var dataService = scope.ServiceProvider.GetRequiredService<IJocondeDataService>();
-                        var tempFilePath = await dataService.DownloadJocondeDataAsync(dataSourceUrl, Path.Combine(tempDirectory, $"joconde_manual_{DateTime.Now:yyyyMMdd_HHmmss}{JocondeSourceFile.ExtensionFor(dataSourceUrl)}"));
-
-                        // Importer les données
-                        var importReport = await importService.ImportFromFileAsync(
-                            tempFilePath,
-                            (stage, current, total) =>
-                            {
-                                if (current % 1000 == 0 || current == total)
-                                {
-                                    _logger.LogInformation("{Stage}: {Current}/{Total} ({Percent}%)",
-                                        stage, current, total, Math.Round((double)current / total * 100));
-                                }
-                            });
-
-                        // Mettre à jour l'enregistrement de synchronisation
-                        var syncToUpdate = await dbContext.DataSyncLogs.FindAsync(syncLog.Id);
-                        if (syncToUpdate != null)
-                        {
-                            syncToUpdate.CompletedAt = DateTime.UtcNow;
-                            syncToUpdate.Status = importReport.Success ? "Completed" : "Failed";
-                            syncToUpdate.ArtworksProcessed = importReport.ImportedArtworks;
-                            syncToUpdate.ErrorMessage = importReport.ErrorMessage;
-                            await dbContext.SaveChangesAsync();
-                        }
-
-                        // Nettoyer les fichiers temporaires
-                        if (System.IO.File.Exists(tempFilePath))
-                        {
-                            System.IO.File.Delete(tempFilePath);
-                        }
-
-                        _logger.LogInformation("Synchronisation manuelle terminée avec succès");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Erreur lors de la synchronisation manuelle: {Message}", ex.Message);
-                        
-                        // Mettre à jour l'enregistrement de synchronisation avec l'erreur
-                        var syncToUpdate = await dbContext.DataSyncLogs.FindAsync(syncLog.Id);
-                        if (syncToUpdate != null)
-                        {
-                            syncToUpdate.CompletedAt = DateTime.UtcNow;
-                            syncToUpdate.Status = "Failed";
-                            syncToUpdate.ErrorMessage = "La synchronisation a échoué, voir les journaux du serveur";
-                            await dbContext.SaveChangesAsync();
-                        }
-                    }
-                });
 
                 return Ok(new
                 {
                     Success = true,
                     Message = "Synchronisation démarrée avec succès",
-                    SyncId = syncLog.Id
+                    SyncId = result.SyncId
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erreur lors du démarrage de la synchronisation: {Message}", ex.Message);
+                _logger.LogError(ex, "Erreur lors du démarrage de la synchronisation");
                 return StatusCode(500, new
                 {
                     Success = false,
@@ -208,50 +141,32 @@ namespace OpenJoconde.API.Controllers
         [HttpPost("cancel/{id}")]
         public async Task<IActionResult> CancelSync(Guid id, CancellationToken cancellationToken)
         {
-            try
+            if (_coordinator.RequestCancel(id))
             {
-                var syncLog = await _dbContext.DataSyncLogs.FindAsync(new object[] { id }, cancellationToken);
-                
-                if (syncLog == null)
-                {
-                    return NotFound(new
-                    {
-                        Success = false,
-                        Message = "Synchronisation non trouvée"
-                    });
-                }
-
-                if (syncLog.Status != "Running")
-                {
-                    return BadRequest(new
-                    {
-                        Success = false,
-                        Message = "Impossible d'annuler une synchronisation qui n'est pas en cours"
-                    });
-                }
-
-                // Mettre à jour le statut
-                syncLog.Status = "Canceled";
-                syncLog.CompletedAt = DateTime.UtcNow;
-                syncLog.ErrorMessage = "Synchronisation annulée par l'utilisateur";
-                
-                await _dbContext.SaveChangesAsync(cancellationToken);
-                
-                return Ok(new
+                return Accepted(new
                 {
                     Success = true,
-                    Message = "Synchronisation annulée avec succès"
+                    Message = "Annulation demandée : la synchronisation s'arrête à la fin de l'étape en cours"
                 });
             }
-            catch (Exception ex)
+
+            var status = await _dbContext.DataSyncLogs
+                .Where(s => s.Id == id)
+                .Select(s => s.Status)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (status == null)
             {
-                _logger.LogError(ex, "Erreur lors de l'annulation de la synchronisation: {Message}", ex.Message);
-                return StatusCode(500, new
-                {
-                    Success = false,
-                    Message = "Erreur lors de l'annulation de la synchronisation"
-                });
+                return NotFound(new { Success = false, Message = "Synchronisation non trouvée" });
             }
+
+            return Conflict(new
+            {
+                Success = false,
+                Message = status == "Running"
+                    ? "Cette synchronisation ne tourne pas dans ce serveur : elle sera marquée interrompue au prochain démarrage"
+                    : "Impossible d'annuler une synchronisation qui n'est pas en cours"
+            });
         }
     }
 }

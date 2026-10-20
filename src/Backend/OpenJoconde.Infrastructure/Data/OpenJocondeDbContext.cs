@@ -154,7 +154,9 @@ namespace OpenJoconde.Infrastructure.Data
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
                 entity.Property(e => e.SyncType).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.TriggeredBy).HasMaxLength(20).IsRequired();
                 entity.Property(e => e.Status).HasMaxLength(20).IsRequired();
+                entity.HasIndex(e => e.StartedAt);
             });
 
             // Configure many-to-many relationships

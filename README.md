@@ -15,7 +15,7 @@ Le backend télécharge et importe les données Joconde dans SQL Server, puis le
 - [Collections des musées de France : base Joconde sur data.gouv.fr](https://www.data.gouv.fr/datasets/collections-des-musees-de-france-base-joconde)
 - Format utilisé : fichier CSV (environ 1,2 Go, plus d'un million de notices, séparateur `|`). L'ancien export JSON de l'API Opendatasoft n'existe plus ; l'import d'un fichier JSON reste supporté, le format est déduit de l'extension du fichier.
 
-L'URL de la source se règle dans `JocondeData:SourceUrl` (synchronisation manuelle) et `JocondeSync:DataSourceUrl` (synchronisation automatique) de `src/Backend/OpenJoconde.API/appsettings.json`. Le parsing du fichier complet prend environ une minute et occupe environ 1,4 Go de mémoire.
+L'URL de la source se règle dans `JocondeData:SourceUrl` (synchronisations manuelle et automatique) de `src/Backend/OpenJoconde.API/appsettings.json`. Le parsing du fichier complet prend environ une minute et occupe environ 1,4 Go de mémoire.
 
 ## Prérequis
 
@@ -50,7 +50,7 @@ dotnet run
 
 L'API écoute sur `https://localhost:5001` et `http://localhost:5000`. Swagger est disponible sur `https://localhost:5001/swagger` en développement.
 
-Si `JocondeData:CheckForUpdatesOnStartup` vaut `true`, un service d'arrière-plan synchronise les données au démarrage puis toutes les `JocondeSync:IntervalHours` heures.
+Si `JocondeData:CheckForUpdatesOnStartup` vaut `true`, un service d'arrière-plan synchronise les données au démarrage puis toutes les `JocondeSync:IntervalHours` heures, par le même chemin que `POST /api/sync/start`. Chaque synchronisation laisse une ligne dans la table `DataSyncLog` ; une synchronisation interrompue par l'arrêt du serveur est marquée `Interrupted` au démarrage suivant.
 
 ### Frontend
 
@@ -80,7 +80,8 @@ Depuis VS Code :
 | `GET /api/artworks`, `GET /api/artworks/{id}` | Œuvres, paginées, avec recherche (`search`) |
 | `GET /api/artists`, `GET /api/museums` | Artistes et musées |
 | `POST /api/import/from-file` | Importe un fichier Joconde envoyé par l'appelant (CSV ou JSON selon l'extension) |
-| `GET /api/sync/status`, `POST /api/sync/start` | Suivi et lancement de la synchronisation (télécharge la source configurée et l'importe) |
+| `GET /api/sync/status`, `POST /api/sync/start` | Statut de la dernière synchronisation ; lancement (télécharge la source configurée et l'importe). Une seule à la fois : `409` si une autre tourne |
+| `POST /api/sync/cancel/{id}`, `GET /api/sync/history` | Annulation d'une synchronisation en cours ; historique avec messages d'erreur (clé d'API) |
 | `GET /api/health` | État de l'API et de la base |
 
 Les routes d'écriture et d'import (`POST`, `PUT`, `DELETE`) exigent l'en-tête `X-Api-Key` égal à `Security:ApiKey`. Tant que cette clé n'est pas configurée, ces routes répondent `401`. Elles sont aussi limitées à 20 requêtes par minute et par adresse IP (`429` au-delà). Définir la clé hors du dépôt, par exemple :

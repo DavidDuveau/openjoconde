@@ -224,14 +224,11 @@ namespace OpenJoconde.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("EndTime")
-                        .HasColumnType("datetime2");
+                    b.Property<int>("ErrorCount")
+                        .HasColumnType("int");
 
                     b.Property<string>("ErrorMessage")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("StartTime")
-                        .HasColumnType("datetime2");
 
                     b.Property<DateTime>("StartedAt")
                         .HasColumnType("datetime2");
@@ -249,7 +246,14 @@ namespace OpenJoconde.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("TriggeredBy")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("StartedAt");
 
                     b.ToTable("DataSyncLog", (string)null);
                 });
