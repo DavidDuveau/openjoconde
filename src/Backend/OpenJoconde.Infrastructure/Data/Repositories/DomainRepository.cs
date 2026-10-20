@@ -112,89 +112,88 @@ namespace OpenJoconde.Infrastructure.Data
         }
         
         /// <summary>
-        /// Bulk upsert domains (insert or update) with individual fallback
+        /// Insère ou met à jour des domains, identifiés par leur nom. Les existants de chaque lot de 100 sont lus en une
+        /// requête ; un lot refusé par la base est rejoué élément par élément.
         /// </summary>
+        /// <returns>Nombre d'éléments enregistrés</returns>
         public async Task<int> BulkUpsertAsync(IEnumerable<Domain> domains)
         {
-            var domainList = domains.ToList();
-            _logger.LogInformation("Starting bulk upsert of {Count} domains", domainList.Count);
-            
+            const int batchSize = 100;
+            var items = domains.ToList();
+            _logger.LogInformation("Starting bulk upsert of {Count} domains", items.Count);
+
             int successCount = 0;
             int errorCount = 0;
-            var pendingDomains = new List<Domain>();
-            
-            foreach (var domain in domainList)
+
+            foreach (var chunk in items.Chunk(batchSize))
             {
+                var pending = new List<Domain>();
+                var names = chunk.Where(i => i.Name != null).Select(i => i.Name).Distinct().ToList();
+                Dictionary<string, Domain> known;
                 try
                 {
-                    var existingDomain = await _context.Domains
-                        .FirstOrDefaultAsync(d => d.Name == domain.Name);
-
-                    if (existingDomain != null)
+                    known = new Dictionary<string, Domain>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var existing in await _context.Domains.Where(e => names.Contains(e.Name)).ToListAsync())
                     {
-                        // Update existing domain
-                        domain.Id = existingDomain.Id;
-                        existingDomain.Description = domain.Description;
-                        existingDomain.UpdatedAt = DateTime.UtcNow;
-                        
-                        _context.Domains.Update(existingDomain);
-                        pendingDomains.Add(existingDomain);
-                    }
-                    else
-                    {
-                        // Add new domain
-                        if (domain.Id == Guid.Empty)
-                        {
-                            domain.Id = Guid.NewGuid();
-                        }
-                        
-                        domain.CreatedAt = DateTime.UtcNow;
-                        domain.UpdatedAt = DateTime.UtcNow;
-                        
-                        _context.Domains.Add(domain);
-                        pendingDomains.Add(domain);
-                    }
-                    
-                    successCount++;
-                    
-                    // Save in batches of 100 to avoid memory issues
-                    if (pendingDomains.Count >= 100)
-                    {
-                        var batchResult = await SaveBatchWithIndividualFallback(pendingDomains);
-                        errorCount += batchResult.ErrorCount;
-                        
-                        if (batchResult.ErrorCount > 0)
-                        {
-                            _logger.LogWarning("Batch had {ErrorCount} errors out of {BatchSize} domains", 
-                                batchResult.ErrorCount, pendingDomains.Count);
-                        }
-                        
-                        pendingDomains.Clear();
-                        _context.ChangeTracker.Clear();
+                        known.TryAdd(existing.Name, existing);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Error processing domain {Name}: {Message}", 
-                        domain.Name, ex.Message);
-                    errorCount++;
+                    _logger.LogError(ex, "Lecture des domains existants impossible pour un lot de {Count}", chunk.Length);
+                    errorCount += chunk.Length;
+                    _context.ChangeTracker.Clear();
+                    continue;
                 }
-            }
-            
-            // Save any remaining changes
-            if (pendingDomains.Count > 0)
-            {
-                var batchResult = await SaveBatchWithIndividualFallback(pendingDomains);
+
+                foreach (var item in chunk)
+                {
+                    if (item.Name != null && known.TryGetValue(item.Name, out var existing))
+                    {
+                        // Aussi pour un élément ajouté plus tôt dans ce lot sous une casse différente
+                        item.Id = existing.Id;
+                        if (!ReferenceEquals(existing, item))
+                        {
+                            existing.Description = item.Description;
+                            existing.UpdatedAt = DateTime.UtcNow;
+                            pending.Add(existing);
+                        }
+                    }
+                    else
+                    {
+                        if (item.Id == Guid.Empty)
+                        {
+                            item.Id = Guid.NewGuid();
+                        }
+
+                        item.CreatedAt = DateTime.UtcNow;
+                        item.UpdatedAt = DateTime.UtcNow;
+                        _context.Domains.Add(item);
+                        pending.Add(item);
+                        if (item.Name != null)
+                            known[item.Name] = item;
+                    }
+
+                    successCount++;
+                }
+
+                var batchResult = await SaveBatchWithIndividualFallback(pending);
                 errorCount += batchResult.ErrorCount;
+                if (batchResult.ErrorCount > 0)
+                {
+                    _logger.LogWarning("Batch had {ErrorCount} errors out of {BatchSize} domains", batchResult.ErrorCount, pending.Count);
+                }
+
+                _context.ChangeTracker.Clear();
             }
-            
+
             var finalSuccessCount = successCount - errorCount;
-            _logger.LogInformation("Bulk upsert completed: {Success}/{Total} domains processed successfully, {Errors} errors", 
+            _logger.LogInformation("Bulk upsert completed: {Success}/{Total} domains processed successfully, {Errors} errors",
                 finalSuccessCount, successCount, errorCount);
-            
+
             return finalSuccessCount;
         }
-        
+
         /// <summary>
         /// Saves a batch of domains with individual fallback on failure
         /// </summary>

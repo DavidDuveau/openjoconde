@@ -112,91 +112,90 @@ namespace OpenJoconde.Infrastructure.Data
         }
         
         /// <summary>
-        /// Bulk upsert periods (insert or update) with individual fallback
+        /// Insère ou met à jour des periods, identifiés par leur nom. Les existants de chaque lot de 100 sont lus en une
+        /// requête ; un lot refusé par la base est rejoué élément par élément.
         /// </summary>
+        /// <returns>Nombre d'éléments enregistrés</returns>
         public async Task<int> BulkUpsertAsync(IEnumerable<Period> periods)
         {
-            var periodList = periods.ToList();
-            _logger.LogInformation("Starting bulk upsert of {Count} periods", periodList.Count);
-            
+            const int batchSize = 100;
+            var items = periods.ToList();
+            _logger.LogInformation("Starting bulk upsert of {Count} periods", items.Count);
+
             int successCount = 0;
             int errorCount = 0;
-            var pendingPeriods = new List<Period>();
-            
-            foreach (var period in periodList)
+
+            foreach (var chunk in items.Chunk(batchSize))
             {
+                var pending = new List<Period>();
+                var names = chunk.Where(i => i.Name != null).Select(i => i.Name).Distinct().ToList();
+                Dictionary<string, Period> known;
                 try
                 {
-                    var existingPeriod = await _context.Periods
-                        .FirstOrDefaultAsync(p => p.Name == period.Name);
-
-                    if (existingPeriod != null)
+                    known = new Dictionary<string, Period>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var existing in await _context.Periods.Where(e => names.Contains(e.Name)).ToListAsync())
                     {
-                        // Update existing period
-                        period.Id = existingPeriod.Id;
-                        existingPeriod.StartYear = period.StartYear;
-                        existingPeriod.EndYear = period.EndYear;
-                        existingPeriod.Description = period.Description;
-                        existingPeriod.UpdatedAt = DateTime.UtcNow;
-                        
-                        _context.Periods.Update(existingPeriod);
-                        pendingPeriods.Add(existingPeriod);
-                    }
-                    else
-                    {
-                        // Add new period
-                        if (period.Id == Guid.Empty)
-                        {
-                            period.Id = Guid.NewGuid();
-                        }
-                        
-                        period.CreatedAt = DateTime.UtcNow;
-                        period.UpdatedAt = DateTime.UtcNow;
-                        
-                        _context.Periods.Add(period);
-                        pendingPeriods.Add(period);
-                    }
-                    
-                    successCount++;
-                    
-                    // Save in batches of 100 to avoid memory issues
-                    if (pendingPeriods.Count >= 100)
-                    {
-                        var batchResult = await SaveBatchWithIndividualFallback(pendingPeriods);
-                        errorCount += batchResult.ErrorCount;
-                        
-                        if (batchResult.ErrorCount > 0)
-                        {
-                            _logger.LogWarning("Batch had {ErrorCount} errors out of {BatchSize} periods", 
-                                batchResult.ErrorCount, pendingPeriods.Count);
-                        }
-                        
-                        pendingPeriods.Clear();
-                        _context.ChangeTracker.Clear();
+                        known.TryAdd(existing.Name, existing);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Error processing period {Name}: {Message}", 
-                        period.Name, ex.Message);
-                    errorCount++;
+                    _logger.LogError(ex, "Lecture des periods existants impossible pour un lot de {Count}", chunk.Length);
+                    errorCount += chunk.Length;
+                    _context.ChangeTracker.Clear();
+                    continue;
                 }
-            }
-            
-            // Save any remaining changes
-            if (pendingPeriods.Count > 0)
-            {
-                var batchResult = await SaveBatchWithIndividualFallback(pendingPeriods);
+
+                foreach (var item in chunk)
+                {
+                    if (item.Name != null && known.TryGetValue(item.Name, out var existing))
+                    {
+                        // Aussi pour un élément ajouté plus tôt dans ce lot sous une casse différente
+                        item.Id = existing.Id;
+                        if (!ReferenceEquals(existing, item))
+                        {
+                            existing.Description = item.Description;
+                            existing.StartYear = item.StartYear;
+                            existing.EndYear = item.EndYear;
+                            existing.UpdatedAt = DateTime.UtcNow;
+                            pending.Add(existing);
+                        }
+                    }
+                    else
+                    {
+                        if (item.Id == Guid.Empty)
+                        {
+                            item.Id = Guid.NewGuid();
+                        }
+
+                        item.CreatedAt = DateTime.UtcNow;
+                        item.UpdatedAt = DateTime.UtcNow;
+                        _context.Periods.Add(item);
+                        pending.Add(item);
+                        if (item.Name != null)
+                            known[item.Name] = item;
+                    }
+
+                    successCount++;
+                }
+
+                var batchResult = await SaveBatchWithIndividualFallback(pending);
                 errorCount += batchResult.ErrorCount;
+                if (batchResult.ErrorCount > 0)
+                {
+                    _logger.LogWarning("Batch had {ErrorCount} errors out of {BatchSize} periods", batchResult.ErrorCount, pending.Count);
+                }
+
+                _context.ChangeTracker.Clear();
             }
-            
+
             var finalSuccessCount = successCount - errorCount;
-            _logger.LogInformation("Bulk upsert completed: {Success}/{Total} periods processed successfully, {Errors} errors", 
+            _logger.LogInformation("Bulk upsert completed: {Success}/{Total} periods processed successfully, {Errors} errors",
                 finalSuccessCount, successCount, errorCount);
-            
+
             return finalSuccessCount;
         }
-        
+
         /// <summary>
         /// Saves a batch of periods with individual fallback on failure
         /// </summary>

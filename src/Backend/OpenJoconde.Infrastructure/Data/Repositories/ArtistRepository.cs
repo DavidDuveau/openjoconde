@@ -144,77 +144,92 @@ namespace OpenJoconde.Infrastructure.Data
             var artistList = artists.ToList();
             _logger.LogInformation("Starting bulk upsert of {Count} artists", artistList.Count);
 
-            int successCount = 0;
-            int errorCount = 0;
-
+            int saved = 0;
             foreach (var batch in artistList.Chunk(batchSize))
             {
-                try
-                {
-                    var lastNames = batch.Select(a => TruncateString(a.LastName ?? "Unknown", 500)).Distinct().ToList();
-                    var known = new Dictionary<(string, string), Artist>();
-                    foreach (var existing in await _context.Artists.Where(a => lastNames.Contains(a.LastName)).ToListAsync())
-                    {
-                        known.TryAdd(NameKey(existing.LastName, existing.FirstName), existing);
-                    }
-
-                    foreach (var artist in batch)
-                    {
-                        artist.LastName = TruncateString(artist.LastName ?? "Unknown", 500);
-                        artist.FirstName = TruncateString(artist.FirstName, 500);
-                        var key = NameKey(artist.LastName, artist.FirstName);
-
-                        if (known.TryGetValue(key, out var existing))
-                        {
-                            // Aussi pour un artiste ajouté plus tôt dans ce lot sous une casse différente
-                            artist.Id = existing.Id;
-                            if (!ReferenceEquals(existing, artist))
-                            {
-                                existing.Nationality = TruncateString(artist.Nationality, 200);
-                                existing.BirthDate = TruncateString(artist.BirthDate, 100);
-                                existing.DeathDate = TruncateString(artist.DeathDate, 100);
-                                existing.Biography = artist.Biography;
-                                existing.UpdatedAt = DateTime.UtcNow;
-                            }
-                        }
-                        else
-                        {
-                            if (artist.Id == Guid.Empty)
-                            {
-                                artist.Id = Guid.NewGuid();
-                            }
-
-                            artist.Nationality = TruncateString(artist.Nationality, 200);
-                            artist.BirthDate = TruncateString(artist.BirthDate, 100);
-                            artist.DeathDate = TruncateString(artist.DeathDate, 100);
-                            artist.CreatedAt = DateTime.UtcNow;
-                            artist.UpdatedAt = DateTime.UtcNow;
-
-                            _context.Artists.Add(artist);
-                            known[key] = artist;
-                        }
-
-                        successCount++;
-                    }
-
-                    await _context.SaveChangesAsync();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Batch of {Count} artists could not be saved: {Message}", batch.Length, ex.Message);
-                    errorCount += batch.Length;
-                }
-                finally
-                {
-                    _context.ChangeTracker.Clear();
-                }
+                saved += await SaveBatchAsync(batch);
             }
 
-            var finalSuccessCount = successCount - errorCount;
+            var errorCount = artistList.Count - saved;
             _logger.LogInformation("Bulk upsert completed: {Success}/{Total} artists processed successfully, {Errors} errors",
-                finalSuccessCount, artistList.Count, errorCount);
+                saved, artistList.Count, errorCount);
 
-            return finalSuccessCount;
+            return saved;
+        }
+
+        /// <summary>
+        /// Enregistre un lot ; s'il est refusé (délai dépassé sous charge, par exemple), le rejoue en deux moitiés,
+        /// jusqu'à isoler l'artiste fautif. Renvoie le nombre d'artistes enregistrés.
+        /// </summary>
+        private async Task<int> SaveBatchAsync(Artist[] batch)
+        {
+            try
+            {
+                var lastNames = batch.Select(a => TruncateString(a.LastName ?? "Unknown", 500)).Distinct().ToList();
+                var known = new Dictionary<(string, string), Artist>();
+                foreach (var existing in await _context.Artists.Where(a => lastNames.Contains(a.LastName)).ToListAsync())
+                {
+                    known.TryAdd(NameKey(existing.LastName, existing.FirstName), existing);
+                }
+
+                foreach (var artist in batch)
+                {
+                    artist.LastName = TruncateString(artist.LastName ?? "Unknown", 500);
+                    artist.FirstName = TruncateString(artist.FirstName, 500);
+                    var key = NameKey(artist.LastName, artist.FirstName);
+
+                    if (known.TryGetValue(key, out var existing))
+                    {
+                        // Aussi pour un artiste ajouté plus tôt dans ce lot sous une casse différente
+                        artist.Id = existing.Id;
+                        if (!ReferenceEquals(existing, artist))
+                        {
+                            existing.Nationality = TruncateString(artist.Nationality, 200);
+                            existing.BirthDate = TruncateString(artist.BirthDate, 100);
+                            existing.DeathDate = TruncateString(artist.DeathDate, 100);
+                            existing.Biography = artist.Biography;
+                            existing.UpdatedAt = DateTime.UtcNow;
+                        }
+                    }
+                    else
+                    {
+                        if (artist.Id == Guid.Empty)
+                        {
+                            artist.Id = Guid.NewGuid();
+                        }
+
+                        artist.Nationality = TruncateString(artist.Nationality, 200);
+                        artist.BirthDate = TruncateString(artist.BirthDate, 100);
+                        artist.DeathDate = TruncateString(artist.DeathDate, 100);
+                        artist.CreatedAt = DateTime.UtcNow;
+                        artist.UpdatedAt = DateTime.UtcNow;
+
+                        _context.Artists.Add(artist);
+                        known[key] = artist;
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                return batch.Length;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _context.ChangeTracker.Clear();
+
+                if (batch.Length == 1)
+                {
+                    _logger.LogError(ex, "Artist {LastName} {FirstName} could not be saved: {Message}", batch[0].LastName, batch[0].FirstName, ex.Message);
+                    return 0;
+                }
+
+                _logger.LogWarning(ex, "Batch of {Count} artists could not be saved ({Message}) : retry in two halves", batch.Length, ex.Message);
+                var half = batch.Length / 2;
+                return await SaveBatchAsync(batch[..half]) + await SaveBatchAsync(batch[half..]);
+            }
+            finally
+            {
+                _context.ChangeTracker.Clear();
+            }
         }
 
         private static (string, string) NameKey(string lastName, string firstName) =>
