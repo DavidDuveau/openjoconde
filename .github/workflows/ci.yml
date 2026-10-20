@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "Test_Passw0rd!"
+        ports:
+          - 1433:1433
+    env:
+      OPENJOCONDE_TEST_SQLSERVER: "Server=localhost,1433;User Id=sa;Password=Test_Passw0rd!;TrustServerCertificate=True"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - run: dotnet restore OpenJoconde.sln
+      - run: dotnet build OpenJoconde.sln --no-restore --configuration Release
+      - run: dotnet test OpenJoconde.sln --no-build --configuration Release
+
+  # Le job frontend (npm ci && npm run build) viendra avec TECH-13 : le build échoue tant que
+  # les vues MuseumsView et MuseumDetailView, référencées par le routeur, n'existent pas.

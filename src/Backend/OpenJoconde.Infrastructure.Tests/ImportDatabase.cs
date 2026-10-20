@@ -16,8 +16,13 @@ public sealed class ImportDatabase : IAsyncLifetime
 {
     private readonly string _databaseName = $"OpenJoconde_Tests_{Guid.NewGuid():N}";
 
-    public string ConnectionString =>
-        $@"Server=(localdb)\MSSQLLocalDB;Database={_databaseName};Integrated Security=True;TrustServerCertificate=True;MultipleActiveResultSets=true";
+    // Variable d'environnement OPENJOCONDE_TEST_SQLSERVER : connexion à un serveur SQL Server sans nom de base
+    // (intégration continue). Par défaut, LocalDB avec l'authentification Windows.
+    private static readonly string ServerConnection =
+        Environment.GetEnvironmentVariable("OPENJOCONDE_TEST_SQLSERVER")?.TrimEnd(';')
+        ?? @"Server=(localdb)\MSSQLLocalDB;Integrated Security=True;TrustServerCertificate=True";
+
+    public string ConnectionString => $"{ServerConnection};Database={_databaseName};MultipleActiveResultSets=true";
 
     public static string FixturePath(string name) =>
         Path.Combine(AppContext.BaseDirectory, "Fixtures", name);
