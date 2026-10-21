@@ -4,7 +4,7 @@
       <img :src="imageUrl" :alt="title" />
     </div>
     <div class="artwork-info">
-      <h3>{{ title || 'Sans titre' }}</h3>
+      <h3 :title="title">{{ shownTitle }}</h3>
       <p v-if="artists && artists.length">
         {{ formattedArtists }}
       </p>
@@ -15,6 +15,7 @@
 
 <script lang="ts">
 import { defineComponent, computed } from 'vue';
+import { displayTitle } from '@/utils/title';
 
 export default defineComponent({
   name: 'ArtworkCard',
@@ -48,8 +49,11 @@ export default defineComponent({
         .join(', ');
     });
 
+    const shownTitle = computed(() => displayTitle(props.title));
+
     return {
-      formattedArtists
+      formattedArtists,
+      shownTitle
     };
   }
 });

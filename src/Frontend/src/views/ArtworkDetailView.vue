@@ -28,7 +28,7 @@
         </div>
 
         <div class="artwork-info">
-          <h1>{{ artwork.title || 'Sans titre' }}</h1>
+          <h1>{{ displayTitle(artwork.title, Infinity) }}</h1>
           
           <div class="metadata">
             <div class="metadata-item" v-if="artwork.artists && artwork.artists.length">
@@ -145,6 +145,7 @@
 import { defineComponent, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ApiService from '@/services/api';
+import { displayTitle } from '@/utils/title';
 import { ArtworkDetail } from '@/types/artwork';
 
 export default defineComponent({
@@ -188,6 +189,7 @@ export default defineComponent({
     }, { immediate: true });
 
     return {
+      displayTitle,
       artwork,
       loading,
       error,

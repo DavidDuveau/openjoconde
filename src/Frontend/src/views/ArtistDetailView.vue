@@ -69,7 +69,7 @@
                 <img :src="artwork.artwork.imageUrl" :alt="artwork.artwork.title" />
               </div>
               <div class="artwork-info">
-                <h3>{{ artwork.artwork ? artwork.artwork.title : 'Œuvre sans titre' }}</h3>
+                <h3>{{ displayTitle(artwork.artwork?.title) }}</h3>
                 <p class="artwork-date" v-if="artwork.artwork && artwork.artwork.creationDate">
                   {{ artwork.artwork.creationDate }}
                 </p>
@@ -89,6 +89,7 @@
 import { defineComponent, ref, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ApiService from '@/services/api';
+import { displayTitle } from '@/utils/title';
 import { Artist } from '@/types/models';
 
 export default defineComponent({
@@ -147,6 +148,7 @@ export default defineComponent({
     };
     
     return {
+      displayTitle,
       artist,
       loading,
       error,
