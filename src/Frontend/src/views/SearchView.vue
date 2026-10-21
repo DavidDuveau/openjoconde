@@ -329,8 +329,8 @@ export default defineComponent({
       }
     };
     
-    // Search function
-    const search = () => {
+    // Search function (déclaration de fonction : le watch immédiat ci-dessus l'appelle avant cette ligne)
+    function search() {
       // Mettre à jour les paramètres de tri
       searchParams.sortBy = sortBy.value;
       
@@ -350,7 +350,7 @@ export default defineComponent({
       
       // Perform search
       artworkStore.searchArtworks(searchParams);
-    };
+    }
     
     // Reset filters
     const resetFilters = () => {
