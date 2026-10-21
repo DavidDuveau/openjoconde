@@ -31,6 +31,9 @@ export interface ArtworkDetail {
   creationPlace: string | null;
   conservationPlace: string | null;
   copyright: string | null;
+  associatedSiteUrl: string | null;
+  artistUnderCopyright: boolean | null;
+  publicDomainYear: number | null;
   museum: {
     id: string;
     name: string;
