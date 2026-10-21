@@ -50,8 +50,7 @@ namespace OpenJoconde.API.Controllers
                 if (pageSize > 100) pageSize = 100;
 
                 // Query de base
-                IQueryable<Artwork> query = _context.Artworks
-                    .OrderBy(a => a.Title);
+                IQueryable<Artwork> query = _context.Artworks;
 
                 if (museumId.HasValue)
                 {
@@ -59,10 +58,15 @@ namespace OpenJoconde.API.Controllers
                 }
 
                 // Appliquer la recherche si nécessaire
-                if (!string.IsNullOrWhiteSpace(search))
+                var searching = !string.IsNullOrWhiteSpace(search);
+                if (searching)
                 {
-                    query = ArtworkSearch.Apply(query, search);
+                    query = ArtworkSearch.Apply(query, search!);
                 }
+
+                // Sans recherche, le tri suit l'index sur le titre. Avec une recherche, il porte sur lower(titre), sans
+                // index : sinon PostgreSQL parcourt tout l'index du titre en filtrant, 5 s pour un terme rare
+                query = searching ? query.OrderBy(a => a.Title!.ToLower()) : query.OrderBy(a => a.Title);
 
                 // Calculer le nombre total d'éléments
                 var totalItems = await query.CountAsync();
