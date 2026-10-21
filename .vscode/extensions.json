@@ -10,7 +10,7 @@
         "dbaeumer.vscode-eslint",
         
         // Base de données
-        "ms-mssql.mssql",
+        "ckolkman.vscode-postgres",
         
         // Git
         "eamodio.gitlens",
