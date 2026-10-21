@@ -69,8 +69,33 @@ namespace OpenJoconde.Infrastructure.Services
             }
             catch
             {
-                await lockConnection.DisposeAsync();
+                await ReleaseLockAsync(lockConnection);
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// Libère le verrou puis rend la connexion. Fermer une connexion Npgsql la remet dans le pool sans terminer la
+        /// session : le verrou resterait tenu par une connexion inactive, et la synchronisation suivante serait refusée
+        /// </summary>
+        private static async Task ReleaseLockAsync(NpgsqlConnection connection)
+        {
+            try
+            {
+                if (connection.State == System.Data.ConnectionState.Open)
+                {
+                    await using var command = new NpgsqlCommand("SELECT pg_advisory_unlock(@key)", connection);
+                    command.Parameters.AddWithValue("key", LockKey);
+                    await command.ExecuteScalarAsync();
+                }
+            }
+            catch
+            {
+                // Connexion perdue : la base a déjà libéré le verrou avec la session
+            }
+            finally
+            {
+                await connection.DisposeAsync();
             }
         }
 
@@ -241,7 +266,7 @@ namespace OpenJoconde.Infrastructure.Services
                 await CloseLogAsync(syncId, outcome);
                 _running.TryRemove(syncId, out _);
                 cancellation.Dispose();
-                await lockConnection.DisposeAsync();
+                await ReleaseLockAsync(lockConnection);
             }
         }
 
