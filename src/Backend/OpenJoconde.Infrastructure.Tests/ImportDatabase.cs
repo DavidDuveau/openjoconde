@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Infrastructure.Data;
@@ -9,29 +10,42 @@ using Xunit;
 namespace OpenJoconde.Infrastructure.Tests;
 
 /// <summary>
-/// Base SQL Server LocalDB jetable et chaîne d'import réelle (parseur streaming, repositories, service d'import).
+/// Base PostgreSQL jetable et chaîne d'import réelle (parseur streaming, repositories, service d'import).
 /// SQLite est exclu : <see cref="ArtworkRelationsRepository"/> utilise SqlConnection directement.
 /// </summary>
 public sealed class ImportDatabase : IAsyncLifetime
 {
-    private readonly string _databaseName = $"OpenJoconde_Tests_{Guid.NewGuid():N}";
+    private readonly string _databaseName = $"openjoconde_tests_{Guid.NewGuid():N}";
 
-    // Variable d'environnement OPENJOCONDE_TEST_SQLSERVER : connexion à un serveur SQL Server sans nom de base
-    // (intégration continue). Par défaut, LocalDB avec l'authentification Windows.
+    // Variable d'environnement OPENJOCONDE_TEST_POSTGRES : connexion à un serveur PostgreSQL sans nom de base
+    // (intégration continue). Par défaut, le serveur local, utilisateur postgres, mot de passe lu dans pgpass.conf.
     private static readonly string ServerConnection =
-        Environment.GetEnvironmentVariable("OPENJOCONDE_TEST_SQLSERVER")?.TrimEnd(';')
-        ?? @"Server=(localdb)\MSSQLLocalDB;Integrated Security=True;TrustServerCertificate=True";
+        Environment.GetEnvironmentVariable("OPENJOCONDE_TEST_POSTGRES")?.TrimEnd(';')
+        ?? "Host=localhost;Port=5432;Username=postgres";
 
-    public string ConnectionString => $"{ServerConnection};Database={_databaseName};MultipleActiveResultSets=true";
+    public string ConnectionString => $"{ServerConnection};Database={_databaseName}";
+
+    /// <summary>Options du contexte comme dans l'API : PostgreSQL, noms en snake_case</summary>
+    public static DbContextOptionsBuilder<OpenJocondeDbContext> Configure(DbContextOptionsBuilder<OpenJocondeDbContext> builder, string connectionString) =>
+        builder.UseNpgsql(connectionString).UseSnakeCaseNamingConvention();
 
     public static string FixturePath(string name) =>
         Path.Combine(AppContext.BaseDirectory, "Fixtures", name);
 
     public OpenJocondeDbContext CreateContext() =>
-        new(new DbContextOptionsBuilder<OpenJocondeDbContext>().UseSqlServer(ConnectionString).Options);
+        new(Configure(new DbContextOptionsBuilder<OpenJocondeDbContext>(), ConnectionString).Options);
+
+    private async Task RunOnServerAsync(string sql)
+    {
+        await using var connection = new NpgsqlConnection($"{ServerConnection};Database=postgres;Pooling=false");
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(sql, connection);
+        await command.ExecuteNonQueryAsync();
+    }
 
     public async Task InitializeAsync()
     {
+        await RunOnServerAsync($"CREATE DATABASE {_databaseName}");
         await using var context = CreateContext();
         // Les migrations, pas EnsureCreated : c'est le schéma que créera vraiment `dotnet ef database update`
         await context.Database.MigrateAsync();
@@ -39,8 +53,9 @@ public sealed class ImportDatabase : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        await using var context = CreateContext();
-        await context.Database.EnsureDeletedAsync();
+        // Les connexions poolées de la base empêcheraient de la supprimer
+        NpgsqlConnection.ClearAllPools();
+        await RunOnServerAsync($"DROP DATABASE IF EXISTS {_databaseName} WITH (FORCE)");
     }
 
     /// <summary>Assemble le service d'import comme le fait l'injection de dépendances de l'API.</summary>

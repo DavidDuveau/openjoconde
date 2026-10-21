@@ -1,4 +1,4 @@
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,14 +16,15 @@ using System.Threading.Tasks;
 namespace OpenJoconde.Infrastructure.Services
 {
     /// <summary>
-    /// Lance, suit et annule les synchronisations. L'exclusion mutuelle repose sur un verrou applicatif SQL Server
+    /// Lance, suit et annule les synchronisations. L'exclusion mutuelle repose sur un verrou consultatif PostgreSQL
     /// tenu par une connexion pendant toute la synchronisation : il vaut pour tous les processus qui partagent la base,
     /// et la base le libère d'elle-même si le processus meurt. Une ligne « Running » laissée par un processus mort
     /// est donc reconnaissable dès qu'on obtient le verrou.
     /// </summary>
     public sealed class SyncCoordinator : ISyncCoordinator
     {
-        private const string LockResource = "OpenJoconde.Sync";
+        // Identifiant du verrou consultatif PostgreSQL : « OJSY » en ASCII
+        private const long LockKey = 0x4F4A5359;
         private const string FailureMessage = "La synchronisation a échoué, voir les journaux du serveur";
         private const int MaxStoredMessageLength = 2000;
 
@@ -47,7 +48,7 @@ namespace OpenJoconde.Infrastructure.Services
             var connectionString = _configuration.GetConnectionString("DefaultConnection")
                 ?? throw new InvalidOperationException("La chaîne de connexion 'DefaultConnection' n'est pas configurée");
 
-            var lockConnection = new SqlConnection(connectionString);
+            var lockConnection = new NpgsqlConnection(connectionString);
             try
             {
                 await lockConnection.OpenAsync(cancellationToken);
@@ -83,15 +84,13 @@ namespace OpenJoconde.Infrastructure.Services
             return true;
         }
 
-        private static async Task<bool> TryAcquireLockAsync(SqlConnection connection, CancellationToken cancellationToken)
+        private static async Task<bool> TryAcquireLockAsync(NpgsqlConnection connection, CancellationToken cancellationToken)
         {
-            await using var command = new SqlCommand(
-                "DECLARE @result int; EXEC @result = sp_getapplock @Resource = @resource, @LockMode = 'Exclusive', @LockOwner = 'Session', @LockTimeout = 0; SELECT @result;",
-                connection);
-            command.Parameters.AddWithValue("@resource", LockResource);
+            // Verrou consultatif de session : tenu par la connexion, libéré par la base si elle se ferme ou meurt
+            await using var command = new NpgsqlCommand("SELECT pg_try_advisory_lock(@key)", connection);
+            command.Parameters.AddWithValue("key", LockKey);
 
-            // 0 et 1 : verrou obtenu (tout de suite, ou après attente) ; négatif : refusé
-            return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken)) >= 0;
+            return (bool)(await command.ExecuteScalarAsync(cancellationToken))!;
         }
 
         /// <summary>
@@ -168,7 +167,7 @@ namespace OpenJoconde.Infrastructure.Services
             return log.Id;
         }
 
-        private async Task RunAsync(Guid syncId, SqlConnection lockConnection, CancellationTokenSource cancellation, bool force)
+        private async Task RunAsync(Guid syncId, NpgsqlConnection lockConnection, CancellationTokenSource cancellation, bool force)
         {
             var outcome = new SyncOutcome { Status = "Failed", ErrorMessage = FailureMessage };
 

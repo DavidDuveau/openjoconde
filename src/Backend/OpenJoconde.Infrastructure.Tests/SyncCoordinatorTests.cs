@@ -34,7 +34,7 @@ public class SyncCoordinatorTests : IAsyncLifetime
         }).Build();
 
         var services = new ServiceCollection()
-            .AddDbContext<OpenJocondeDbContext>(options => options.UseSqlServer(_db.ConnectionString))
+            .AddDbContext<OpenJocondeDbContext>(options => options.UseNpgsql(_db.ConnectionString).UseSnakeCaseNamingConvention())
             .AddSingleton<IJocondeDataService>(_download)
             .AddSingleton<IDataImportService>(_import)
             .BuildServiceProvider();

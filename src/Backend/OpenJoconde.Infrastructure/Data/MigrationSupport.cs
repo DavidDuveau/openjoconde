@@ -6,7 +6,7 @@ using System.IO;
 namespace OpenJoconde.Infrastructure.Data
 {
     /// <summary>
-    /// Classe utilisée pour générer les migrations SQL Server.
+    /// Classe utilisée pour générer les migrations PostgreSQL.
     /// Note: Cette classe n'est pas utilisée en production, seulement pour la génération des migrations.
     /// </summary>
     public class OpenJocondeDbContextFactory : IDesignTimeDbContextFactory<OpenJocondeDbContext>
@@ -22,10 +22,9 @@ namespace OpenJoconde.Infrastructure.Data
                 .Build();
 
             var optionsBuilder = new DbContextOptionsBuilder<OpenJocondeDbContext>();
-            optionsBuilder.UseSqlServer(
-                configuration.GetConnectionString("DefaultConnection"),
-                sqlServerOptions => sqlServerOptions.EnableRetryOnFailure()
-            );
+            optionsBuilder
+                .UseNpgsql(configuration.GetConnectionString("DefaultConnection"))
+                .UseSnakeCaseNamingConvention();
 
             return new OpenJocondeDbContext(optionsBuilder.Options);
         }

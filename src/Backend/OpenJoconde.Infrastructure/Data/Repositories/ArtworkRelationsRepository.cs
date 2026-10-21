@@ -1,10 +1,10 @@
-using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
+using Npgsql;
+using NpgsqlTypes;
 using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Core.Models;
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -12,14 +12,14 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
 {
     /// <summary>
     /// Implémentation du repository pour la gestion des relations entre les œuvres et les autres entités.
-    /// Les relations d'un lot d'œuvres sont écrites par SqlBulkCopy dans une seule transaction.
+    /// Les relations d'un lot d'œuvres sont écrites par COPY binaire dans une seule transaction.
     /// </summary>
     public class ArtworkRelationsRepository : IArtworkRelationsRepository
     {
-        // ArtworkArtist est une entité explicite ; les autres tables de jonction sont générées par EF
-        // (relations many-to-many) et suivent sa convention de nommage : ArtworksId, DomainsId, etc.
-        private const string ArtworkIdColumn = "ArtworkId";
-        private const string JoinArtworkIdColumn = "ArtworksId";
+        // artwork_artist est une entité explicite ; les autres tables de jonction sont générées par EF
+        // (relations many-to-many) et suivent sa convention de nommage : artworks_id, domains_id, etc.
+        private const string ArtworkIdColumn = "artwork_id";
+        private const string JoinArtworkIdColumn = "artworks_id";
 
         // Un lot de 500 œuvres peut dépasser les 30 secondes par défaut quand les tables comptent des millions de lignes
         private const int TimeoutSeconds = 600;
@@ -45,31 +45,27 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
 
             try
             {
-                await using var connection = new SqlConnection(_connectionString);
+                await using var connection = new NpgsqlConnection(_connectionString);
                 await connection.OpenAsync();
-                await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
+                await using var transaction = await connection.BeginTransactionAsync();
 
-                await CreateArtworkIdTableAsync(connection, transaction, relations.Select(r => r.ArtworkId));
-                await DeleteRelationsAsync(connection, transaction, "ArtworkArtist", ArtworkIdColumn);
-                await DeleteRelationsAsync(connection, transaction, "ArtworkDomain", JoinArtworkIdColumn);
-                await DeleteRelationsAsync(connection, transaction, "ArtworkTechnique", JoinArtworkIdColumn);
-                await DeleteRelationsAsync(connection, transaction, "ArtworkPeriod", JoinArtworkIdColumn);
+                await DeleteAllRelationsAsync(connection, relations.Select(r => r.ArtworkId));
 
                 var written = 0;
 
-                var artists = NewTable(ArtworkIdColumn, "ArtistId", "Role");
+                var artists = new List<object?[]>();
                 foreach (var set in relations)
                 {
                     foreach (var link in set.Artists.GroupBy(a => a.ArtistId).Select(g => g.First()))
                     {
-                        artists.Rows.Add(set.ArtworkId, link.ArtistId, (object?)link.Role ?? DBNull.Value);
+                        artists.Add(new object?[] { set.ArtworkId, link.ArtistId, link.Role });
                     }
                 }
-                written += await BulkInsertAsync(connection, transaction, "ArtworkArtist", artists);
+                written += await CopyAsync(connection, "artwork_artist", new[] { ArtworkIdColumn, "artist_id", "role" }, artists);
 
-                written += await BulkInsertJoinAsync(connection, transaction, "ArtworkDomain", "DomainsId", relations, r => r.DomainIds);
-                written += await BulkInsertJoinAsync(connection, transaction, "ArtworkTechnique", "TechniquesId", relations, r => r.TechniqueIds);
-                written += await BulkInsertJoinAsync(connection, transaction, "ArtworkPeriod", "PeriodsId", relations, r => r.PeriodIds);
+                written += await CopyJoinAsync(connection, "artwork_domain", "domains_id", relations, r => r.DomainIds);
+                written += await CopyJoinAsync(connection, "artwork_technique", "techniques_id", relations, r => r.TechniqueIds);
+                written += await CopyJoinAsync(connection, "artwork_period", "periods_id", relations, r => r.PeriodIds);
 
                 await transaction.CommitAsync();
                 return written;
@@ -88,15 +84,11 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
         {
             try
             {
-                await using var connection = new SqlConnection(_connectionString);
+                await using var connection = new NpgsqlConnection(_connectionString);
                 await connection.OpenAsync();
-                await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
+                await using var transaction = await connection.BeginTransactionAsync();
 
-                await CreateArtworkIdTableAsync(connection, transaction, new[] { artworkId });
-                await DeleteRelationsAsync(connection, transaction, "ArtworkArtist", ArtworkIdColumn);
-                await DeleteRelationsAsync(connection, transaction, "ArtworkDomain", JoinArtworkIdColumn);
-                await DeleteRelationsAsync(connection, transaction, "ArtworkTechnique", JoinArtworkIdColumn);
-                await DeleteRelationsAsync(connection, transaction, "ArtworkPeriod", JoinArtworkIdColumn);
+                await DeleteAllRelationsAsync(connection, new[] { artworkId });
 
                 await transaction.CommitAsync();
                 return true;
@@ -108,85 +100,91 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
             }
         }
 
-        private static DataTable NewTable(params string[] columns)
+        private static async Task DeleteAllRelationsAsync(NpgsqlConnection connection, IEnumerable<Guid> artworkIds)
         {
-            var table = new DataTable();
-            foreach (var column in columns)
-            {
-                table.Columns.Add(column, column == "Role" ? typeof(string) : typeof(Guid));
-            }
-            return table;
+            await CreateArtworkIdTableAsync(connection, artworkIds);
+            await DeleteRelationsAsync(connection, "artwork_artist", ArtworkIdColumn);
+            await DeleteRelationsAsync(connection, "artwork_domain", JoinArtworkIdColumn);
+            await DeleteRelationsAsync(connection, "artwork_technique", JoinArtworkIdColumn);
+            await DeleteRelationsAsync(connection, "artwork_period", JoinArtworkIdColumn);
         }
 
-        private static Task<int> BulkInsertJoinAsync(
-            SqlConnection connection,
-            SqlTransaction transaction,
+        private static Task<int> CopyJoinAsync(
+            NpgsqlConnection connection,
             string tableName,
             string foreignKeyName,
             IReadOnlyCollection<ArtworkRelationSet> relations,
             Func<ArtworkRelationSet, IEnumerable<Guid>> selectIds)
         {
-            var table = NewTable(JoinArtworkIdColumn, foreignKeyName);
+            var rows = new List<object?[]>();
             foreach (var set in relations)
             {
                 foreach (var id in selectIds(set).Distinct())
                 {
-                    table.Rows.Add(set.ArtworkId, id);
+                    rows.Add(new object?[] { set.ArtworkId, id });
                 }
             }
 
-            return BulkInsertAsync(connection, transaction, tableName, table);
-        }
-
-        private static async Task<int> BulkInsertAsync(SqlConnection connection, SqlTransaction transaction, string tableName, DataTable table)
-        {
-            if (table.Rows.Count == 0)
-                return 0;
-
-            using var bulkCopy = new SqlBulkCopy(connection, SqlBulkCopyOptions.Default, transaction)
-            {
-                DestinationTableName = tableName,
-                BulkCopyTimeout = TimeoutSeconds
-            };
-            foreach (DataColumn column in table.Columns)
-            {
-                bulkCopy.ColumnMappings.Add(column.ColumnName, column.ColumnName);
-            }
-
-            await bulkCopy.WriteToServerAsync(table);
-            return table.Rows.Count;
+            return CopyAsync(connection, tableName, new[] { JoinArtworkIdColumn, foreignKeyName }, rows);
         }
 
         /// <summary>
-        /// Crée la table temporaire #ArtworkIds avec les œuvres à traiter, pour que les suppressions passent par une
-        /// jointure sur la clé des tables de relations plutôt que par un balayage
+        /// Écrit les lignes par COPY binaire ; un Guid devient un uuid, une chaîne du texte, null une valeur absente
         /// </summary>
-        private static async Task CreateArtworkIdTableAsync(SqlConnection connection, SqlTransaction transaction, IEnumerable<Guid> artworkIds)
+        private static async Task<int> CopyAsync(NpgsqlConnection connection, string tableName, string[] columns, List<object?[]> rows)
         {
-            await using (var create = new SqlCommand("CREATE TABLE #ArtworkIds (Id uniqueidentifier NOT NULL PRIMARY KEY)", connection, transaction))
+            if (rows.Count == 0)
+                return 0;
+
+            await using var writer = await connection.BeginBinaryImportAsync(
+                $"COPY {tableName} ({string.Join(", ", columns)}) FROM STDIN (FORMAT BINARY)");
+            foreach (var row in rows)
+            {
+                await writer.StartRowAsync();
+                foreach (var value in row)
+                {
+                    switch (value)
+                    {
+                        case null:
+                            await writer.WriteNullAsync();
+                            break;
+                        case Guid guid:
+                            await writer.WriteAsync(guid, NpgsqlDbType.Uuid);
+                            break;
+                        default:
+                            await writer.WriteAsync((string)value, NpgsqlDbType.Text);
+                            break;
+                    }
+                }
+            }
+
+            await writer.CompleteAsync();
+            return rows.Count;
+        }
+
+        /// <summary>
+        /// Crée la table temporaire artwork_ids avec les œuvres à traiter, pour que les suppressions passent par une
+        /// jointure sur la clé des tables de relations plutôt que par un balayage. Elle disparaît avec la transaction.
+        /// </summary>
+        private static async Task CreateArtworkIdTableAsync(NpgsqlConnection connection, IEnumerable<Guid> artworkIds)
+        {
+            await using (var create = new NpgsqlCommand("CREATE TEMP TABLE artwork_ids (id uuid NOT NULL PRIMARY KEY) ON COMMIT DROP", connection))
             {
                 create.CommandTimeout = TimeoutSeconds;
                 await create.ExecuteNonQueryAsync();
             }
 
-            var table = NewTable("Id");
-            foreach (var id in artworkIds.Distinct())
-            {
-                table.Rows.Add(id);
-            }
-
-            await BulkInsertAsync(connection, transaction, "#ArtworkIds", table);
+            await CopyAsync(connection, "artwork_ids", new[] { "id" }, artworkIds.Distinct().Select(id => new object?[] { id }).ToList());
         }
 
         /// <summary>
-        /// Supprime les relations des œuvres de #ArtworkIds
+        /// Supprime les relations des œuvres de artwork_ids
         /// </summary>
-        private static async Task DeleteRelationsAsync(SqlConnection connection, SqlTransaction transaction, string tableName, string artworkIdColumn)
+        private static async Task DeleteRelationsAsync(NpgsqlConnection connection, string tableName, string artworkIdColumn)
         {
-            await using var command = new SqlCommand(
-                $"DELETE relation FROM {tableName} AS relation INNER JOIN #ArtworkIds AS selected ON selected.Id = relation.{artworkIdColumn}",
-                connection,
-                transaction);
+            await using var command = new NpgsqlCommand(
+                $"DELETE FROM {tableName} AS relation USING artwork_ids AS selected WHERE selected.id = relation.{artworkIdColumn}",
+                connection);
             command.CommandTimeout = TimeoutSeconds;
             await command.ExecuteNonQueryAsync();
         }

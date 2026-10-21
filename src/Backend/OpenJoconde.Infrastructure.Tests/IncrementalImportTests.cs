@@ -80,7 +80,7 @@ public class IncrementalImportTests : IAsyncLifetime
         Assert.Equal("titre modifié 7", oeuvre.Title);
         Assert.Equal(2, oeuvre.Domains.Count);
         Assert.Single(oeuvre.Artists);
-        Assert.Equal(Notices * 2, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM ArtworkDomain").SingleAsync());
+        Assert.Equal(Notices * 2, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*)::int AS \"Value\" FROM artwork_domain").SingleAsync());
     }
 
     [Fact]
@@ -124,8 +124,8 @@ public class IncrementalImportTests : IAsyncLifetime
         Assert.Equal(Notices - 1, await context.Artworks.CountAsync());
         Assert.False(await context.Artworks.AnyAsync(a => a.Reference == "L000005"));
         // Les liens de l'œuvre supprimée sont partis avec elle
-        Assert.Equal((Notices - 1) * 2, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM ArtworkDomain").SingleAsync());
-        Assert.Equal(Notices - 1, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM ArtworkArtist").SingleAsync());
+        Assert.Equal((Notices - 1) * 2, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*)::int AS \"Value\" FROM artwork_domain").SingleAsync());
+        Assert.Equal(Notices - 1, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*)::int AS \"Value\" FROM artwork_artist").SingleAsync());
     }
 
     [Fact]
@@ -163,7 +163,7 @@ public class IncrementalImportTests : IAsyncLifetime
         var fichier = Csv(Enumerable.Range(1, Notices));
         await ImporterAsync(fichier, onlyChanges: false);
         await using (var context = _db.CreateContext())
-            await context.Database.ExecuteSqlRawAsync("UPDATE Artwork SET ContentHash = NULL"); // base d'avant les empreintes
+            await context.Database.ExecuteSqlRawAsync("UPDATE artwork SET content_hash = NULL"); // base d'avant les empreintes
 
         var premiere = await ImporterAsync(fichier);
         var seconde = await ImporterAsync(fichier);
