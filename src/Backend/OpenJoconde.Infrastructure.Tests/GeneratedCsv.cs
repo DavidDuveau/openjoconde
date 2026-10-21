@@ -11,7 +11,8 @@ internal static class GeneratedCsv
         Func<int, string> title,
         string suffix = "",
         Func<int, string>? author = null,
-        Func<int, string>? domain = null)
+        Func<int, string>? domain = null,
+        Func<int, IDictionary<string, string>>? extra = null)
     {
         var columns = File.ReadLines(ImportDatabase.FixturePath("joconde_cas_particuliers.csv")).First().Split('|');
 
@@ -29,6 +30,8 @@ internal static class GeneratedCsv
                 ["nom_officiel_musee"] = $"musée {i % 3}",
                 ["localisation"] = $"lieu {i}{suffix}"
             };
+            foreach (var (column, value) in extra?.Invoke(i) ?? new Dictionary<string, string>())
+                values[column.ToLowerInvariant()] = value;
             return string.Join('|', columns.Select(c => "\"" + values.GetValueOrDefault(c.ToLowerInvariant(), "").Replace("\"", "\"\"") + "\""));
         }
 

@@ -64,6 +64,21 @@ namespace OpenJoconde.Core.Models
         public string? Copyright { get; set; }
 
         /// <summary>
+        /// Page de l'œuvre sur le site associé (le plus souvent celui du musée) ; une adresse http ou https
+        /// </summary>
+        public string? AssociatedSiteUrl { get; set; }
+
+        /// <summary>
+        /// L'artiste est encore sous droits d'auteur ; null quand la notice ne le dit pas
+        /// </summary>
+        public bool? ArtistUnderCopyright { get; set; }
+
+        /// <summary>
+        /// Année d'entrée de l'œuvre dans le domaine public ; la plus tardive quand la notice en cite plusieurs
+        /// </summary>
+        public int? PublicDomainYear { get; set; }
+
+        /// <summary>
         /// URL to the image of the artwork
         /// </summary>
         public string? ImageUrl { get; set; }

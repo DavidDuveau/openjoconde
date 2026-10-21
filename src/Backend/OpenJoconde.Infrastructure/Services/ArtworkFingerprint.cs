@@ -17,7 +17,7 @@ namespace OpenJoconde.Infrastructure.Services
         /// À incrémenter dès que le mappage d'une notice change ce qu'il écrit en base : toutes les œuvres
         /// sont alors réécrites une fois à la synchronisation suivante.
         /// </summary>
-        private const string MappingVersion = "1";
+        private const string MappingVersion = "2";
 
         public const int Length = 16;
 
@@ -44,6 +44,9 @@ namespace OpenJoconde.Infrastructure.Services
             Add(artwork.ConservationPlace);
             Add(artwork.Copyright);
             Add(artwork.ImageUrl);
+            Add(artwork.AssociatedSiteUrl);
+            Add(artwork.ArtistUnderCopyright);
+            Add(artwork.PublicDomainYear);
 
             var museum = artwork.Museum;
             Add(museum?.Name);

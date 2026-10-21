@@ -141,6 +141,14 @@ namespace OpenJoconde.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<bool?>("ArtistUnderCopyright")
+                        .HasColumnType("boolean")
+                        .HasColumnName("artist_under_copyright");
+
+                    b.Property<string>("AssociatedSiteUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("associated_site_url");
+
                     b.Property<string>("ConservationPlace")
                         .HasColumnType("text")
                         .HasColumnName("conservation_place");
@@ -188,6 +196,10 @@ namespace OpenJoconde.Infrastructure.Migrations
                     b.Property<Guid?>("MuseumId")
                         .HasColumnType("uuid")
                         .HasColumnName("museum_id");
+
+                    b.Property<int?>("PublicDomainYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("public_domain_year");
 
                     b.Property<string>("Reference")
                         .IsRequired()
