@@ -122,6 +122,9 @@ namespace OpenJoconde.API.Controllers
                         ConservationPlace = a.ConservationPlace,
                         Copyright = a.Copyright,
                         ImageUrl = a.ImageUrl,
+                        AssociatedSiteUrl = a.AssociatedSiteUrl,
+                        ArtistUnderCopyright = a.ArtistUnderCopyright,
+                        PublicDomainYear = a.PublicDomainYear,
                         Museum = a.Museum == null ? null : new NamedItemDto { Id = a.Museum.Id, Name = a.Museum.Name },
                         Artists = a.Artists
                             .Select(aa => new ArtworkArtistDto

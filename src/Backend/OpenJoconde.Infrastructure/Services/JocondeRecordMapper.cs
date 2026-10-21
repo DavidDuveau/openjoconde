@@ -36,6 +36,7 @@ namespace OpenJoconde.Infrastructure.Services
         private const int LongNameMax = 500;
         private const int ShortNameMax = 200;
         private const int DateMax = 100;
+        private const int UrlMax = 2000;
 
         private static readonly Regex ArtistDatesInParentheses = new(@"\(([^)]+)\)", RegexOptions.Compiled);
 
@@ -88,6 +89,9 @@ namespace OpenJoconde.Infrastructure.Services
                 CreationDate = creationDate,
                 CreationPlace = record.GetString("lieu_de_creation_utilisation") ?? record.GetString("ecole_pays"),
                 ConservationPlace = record.GetString("localisation") ?? record.GetString("lieu_de_depot"),
+                AssociatedSiteUrl = HttpUrl(record.GetString("lien_site_associe")),
+                ArtistUnderCopyright = UnderCopyright(record.GetValues("artiste_sous_droits")),
+                PublicDomainYear = LatestYear(record.GetString("date_entree_dans_le_domaine_public")),
                 // L'export ne fournit ni URL d'image (seulement presence_image) ni texte de droits.
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -244,6 +248,38 @@ namespace OpenJoconde.Infrastructure.Services
         }
 
         /// <summary>Découpe un champ multivalué texte (« a;b;c »).</summary>
+        /// <summary>
+        /// Une adresse web que la page peut proposer en lien. Tout autre schéma (javascript:, data:…) est écarté,
+        /// comme une adresse démesurée.
+        /// </summary>
+        internal static string? HttpUrl(string? text) =>
+            text != null && text.Length <= UrlMax
+                && Uri.TryCreate(text, UriKind.Absolute, out var uri)
+                && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+                ? text
+                : null;
+
+        /// <summary>« oui » pour un des auteurs suffit ; « non » seulement quand aucun n'est sous droits ; sinon inconnu.</summary>
+        internal static bool? UnderCopyright(List<string> values)
+        {
+            if (values.Any(v => v.Equals("oui", StringComparison.OrdinalIgnoreCase)))
+                return true;
+            return values.Any(v => v.Equals("non", StringComparison.OrdinalIgnoreCase)) ? false : null;
+        }
+
+        /// <summary>
+        /// L'œuvre est libre quand tous ses auteurs le sont : on retient l'année la plus tardive de la notice
+        /// </summary>
+        internal static int? LatestYear(string? text)
+        {
+            if (text == null)
+                return null;
+
+            var years = Regex.Matches(text, @"\b\d{4}\b").Select(m => int.Parse(m.Value))
+                .Where(y => y is >= 1000 and <= 2300).ToList();
+            return years.Count == 0 ? null : years.Max();
+        }
+
         internal static List<string> SplitValues(string? text) =>
             text == null
                 ? new List<string>()

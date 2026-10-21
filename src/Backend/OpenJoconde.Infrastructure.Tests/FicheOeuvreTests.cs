@@ -47,6 +47,9 @@ public class FicheOeuvreTests : IAsyncLifetime
         var fiche = Assert.IsType<ArtworkDetailDto>(Assert.IsType<OkObjectResult>(reponse.Result).Value);
         Assert.Equal(attendu.Reference, fiche.Reference);
         Assert.Equal(attendu.Title, fiche.Title);
+        Assert.Equal(attendu.AssociatedSiteUrl, fiche.AssociatedSiteUrl);
+        Assert.Equal(attendu.ArtistUnderCopyright, fiche.ArtistUnderCopyright);
+        Assert.Equal(attendu.PublicDomainYear, fiche.PublicDomainYear);
         Assert.Equal(attendu.Museum?.Name, fiche.Museum?.Name);
         Assert.Equal(attendu.Museum?.Id, fiche.Museum?.Id);
         Assert.Equal(attendu.Artists.Select(a => (a.Artist.LastName, (string?)a.Role)).OrderBy(n => n), fiche.Artists.Select(a => (a.LastName, a.Role)).OrderBy(n => n));

@@ -88,6 +88,18 @@
               <h3>Droits</h3>
               <p>{{ artwork.copyright }}</p>
             </div>
+
+            <div class="metadata-item" v-if="rightsText">
+              <h3>Droits d'auteur</h3>
+              <p>{{ rightsText }}</p>
+            </div>
+
+            <div class="metadata-item" v-if="siteUrl">
+              <h3>Site associé</h3>
+              <p>
+                <a :href="siteUrl" target="_blank" rel="noopener noreferrer">Voir sur le site du musée</a>
+              </p>
+            </div>
           </div>
 
           <div class="description" v-if="artwork.description">
@@ -142,10 +154,11 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, watch } from 'vue';
+import { defineComponent, ref, watch, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import ApiService from '@/services/api';
 import { displayTitle } from '@/utils/title';
+import { rightsSummary, safeWebUrl } from '@/utils/rights';
 import { ArtworkDetail } from '@/types/artwork';
 
 export default defineComponent({
@@ -188,8 +201,13 @@ export default defineComponent({
       }
     }, { immediate: true });
 
+    const rightsText = computed(() => artwork.value ? rightsSummary(artwork.value.artistUnderCopyright, artwork.value.publicDomainYear) : null);
+    const siteUrl = computed(() => artwork.value ? safeWebUrl(artwork.value.associatedSiteUrl) : null);
+
     return {
       displayTitle,
+      rightsText,
+      siteUrl,
       artwork,
       loading,
       error,
