@@ -31,42 +31,46 @@
 
           <div class="form-group">
             <label>Domaine</label>
-            <select v-model="searchParams.domainId">
-              <option value="">Tous les domaines</option>
-              <option v-for="domain in domains" :key="domain.id" :value="domain.id">
-                {{ domain.name }}
-              </option>
-            </select>
+            <FilterPicker
+              v-model="searchParams.domainId"
+              v-model:label="searchParams.domainName"
+              placeholder="Rechercher un domaine"
+              :fetchOptions="findDomains"
+              @update:modelValue="applyFilters"
+            />
           </div>
 
           <div class="form-group">
             <label>Technique</label>
-            <select v-model="searchParams.techniqueId">
-              <option value="">Toutes les techniques</option>
-              <option v-for="technique in techniques" :key="technique.id" :value="technique.id">
-                {{ technique.name }}
-              </option>
-            </select>
+            <FilterPicker
+              v-model="searchParams.techniqueId"
+              v-model:label="searchParams.techniqueName"
+              placeholder="Rechercher une technique"
+              :fetchOptions="findTechniques"
+              @update:modelValue="applyFilters"
+            />
           </div>
 
           <div class="form-group">
             <label>Période</label>
-            <select v-model="searchParams.periodId">
-              <option value="">Toutes les périodes</option>
-              <option v-for="period in periods" :key="period.id" :value="period.id">
-                {{ period.name }}
-              </option>
-            </select>
+            <FilterPicker
+              v-model="searchParams.periodId"
+              v-model:label="searchParams.periodName"
+              placeholder="Rechercher une période"
+              :fetchOptions="findPeriods"
+              @update:modelValue="applyFilters"
+            />
           </div>
 
           <div class="form-group">
             <label>Artiste</label>
-            <select v-model="searchParams.artistId">
-              <option value="">Tous les artistes</option>
-              <option v-for="artist in artists" :key="artist.id" :value="artist.id">
-                {{ artist.firstName }} {{ artist.lastName }}
-              </option>
-            </select>
+            <FilterPicker
+              v-model="searchParams.artistId"
+              v-model:label="searchParams.artistName"
+              placeholder="Rechercher un artiste"
+              :fetchOptions="findArtists"
+              @update:modelValue="applyFilters"
+            />
           </div>
 
           <div class="filter-buttons">
@@ -119,12 +123,8 @@
             <div class="results-sort">
               <label>Trier par :</label>
               <select v-model="sortBy" @change="search">
-                <option value="relevance">Pertinence</option>
                 <option value="title">Titre (A-Z)</option>
                 <option value="title_desc">Titre (Z-A)</option>
-                <option value="date">Date (ancienne → récente)</option>
-                <option value="date_desc">Date (récente → ancienne)</option>
-                <option value="artist">Artiste (A-Z)</option>
               </select>
             </div>
           </div>
@@ -182,28 +182,26 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted, computed, reactive, watch } from 'vue';
+import { defineComponent, ref, computed, reactive, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useArtworkStore } from '@/store/artworkStore';
-import { SearchParams, Artist, Domain, Technique, Period } from '@/types/models';
+import { SearchParams, NamedItem } from '@/types/models';
 import ApiService from '@/services/api';
 import ArtworkCard from '@/components/ArtworkCard.vue';
+import FilterPicker, { PickerOption } from '@/components/FilterPicker.vue';
 
 export default defineComponent({
   name: 'SearchView',
   components: {
-    ArtworkCard
+    ArtworkCard,
+    FilterPicker
   },
   setup() {
     const artworkStore = useArtworkStore();
     const route = useRoute();
     const router = useRouter();
     
-    const artists = ref<Artist[]>([]);
-    const domains = ref<Domain[]>([]);
-    const techniques = ref<Technique[]>([]);
-    const periods = ref<Period[]>([]);
-    const sortBy = ref('relevance');
+    const sortBy = ref('title');
     
     const searchParams = reactive<SearchParams>({
       searchText: '',
@@ -212,9 +210,13 @@ export default defineComponent({
       techniqueId: '',
       periodId: '',
       museumId: '',
+      artistName: '',
+      domainName: '',
+      techniqueName: '',
+      periodName: '',
       page: 1,
       pageSize: 12,
-      sortBy: 'relevance'
+      sortBy: 'title'
     });
 
     // Vérifier si des filtres sont activés
@@ -264,6 +266,11 @@ export default defineComponent({
         searchParams.museumId = '';
       }
       
+      searchParams.artistName = typeof newQuery.artistName === 'string' ? newQuery.artistName : '';
+      searchParams.domainName = typeof newQuery.domainName === 'string' ? newQuery.domainName : '';
+      searchParams.techniqueName = typeof newQuery.techniqueName === 'string' ? newQuery.techniqueName : '';
+      searchParams.periodName = typeof newQuery.periodName === 'string' ? newQuery.periodName : '';
+
       if (typeof newQuery.page === 'string') {
         searchParams.page = parseInt(newQuery.page, 10);
       } else {
@@ -274,8 +281,8 @@ export default defineComponent({
         sortBy.value = newQuery.sortBy;
         searchParams.sortBy = newQuery.sortBy;
       } else {
-        sortBy.value = 'relevance';
-        searchParams.sortBy = 'relevance';
+        sortBy.value = 'title';
+        searchParams.sortBy = 'title';
       }
       
       // Effectuer la recherche uniquement si nous venons d'arriver sur la page
@@ -283,52 +290,17 @@ export default defineComponent({
       search();
     }, { immediate: true });
 
-    // Initialize from route query params
-    onMounted(async () => {
-      // Note: Filter options loading is commented out as the backend APIs are not implemented yet
-      // TODO: Uncomment when backend APIs are ready
-      // await Promise.all([
-      //   loadArtists(),
-      //   loadDomains(),
-      //   loadTechniques(),
-      //   loadPeriods()
-      // ]);
-    });
-    
-    // Methods to load filter options
-    const loadArtists = async () => {
-      try {
-        const result = await ApiService.getArtists(1, 100);
-        artists.value = result.items;
-      } catch (error) {
-        console.error('Error loading artists:', error);
-      }
-    };
-    
-    const loadDomains = async () => {
-      try {
-        domains.value = await ApiService.getDomains();
-      } catch (error) {
-        console.error('Error loading domains:', error);
-      }
-    };
-    
-    const loadTechniques = async () => {
-      try {
-        techniques.value = await ApiService.getTechniques();
-      } catch (error) {
-        console.error('Error loading techniques:', error);
-      }
-    };
-    
-    const loadPeriods = async () => {
-      try {
-        periods.value = await ApiService.getPeriods();
-      } catch (error) {
-        console.error('Error loading periods:', error);
-      }
-    };
-    
+    // Propositions des filtres : une page courte de résultats pour le texte saisi
+    const asOptions = (items: NamedItem[]): PickerOption[] => items.map(item => ({ id: item.id, label: item.name }));
+    const findDomains = async (text: string) => asOptions((await ApiService.getDomains(text)).items);
+    const findTechniques = async (text: string) => asOptions((await ApiService.getTechniques(text)).items);
+    const findPeriods = async (text: string) => asOptions((await ApiService.getPeriods(text)).items);
+    const findArtists = async (text: string) =>
+      (await ApiService.getArtists(1, 20, text)).items.map(artist => ({
+        id: artist.id,
+        label: `${artist.firstName ?? ''} ${artist.lastName}`.trim()
+      }));
+
     // Search function (déclaration de fonction : le watch immédiat ci-dessus l'appelle avant cette ligne)
     function search() {
       // Mettre à jour les paramètres de tri
@@ -343,8 +315,12 @@ export default defineComponent({
           techniqueId: searchParams.techniqueId || undefined,
           periodId: searchParams.periodId || undefined,
           museumId: searchParams.museumId || undefined,
+          artistName: searchParams.artistId ? searchParams.artistName || undefined : undefined,
+          domainName: searchParams.domainId ? searchParams.domainName || undefined : undefined,
+          techniqueName: searchParams.techniqueId ? searchParams.techniqueName || undefined : undefined,
+          periodName: searchParams.periodId ? searchParams.periodName || undefined : undefined,
           page: searchParams.page > 1 ? searchParams.page.toString() : undefined,
-          sortBy: searchParams.sortBy !== 'relevance' ? searchParams.sortBy : undefined
+          sortBy: searchParams.sortBy !== 'title' ? searchParams.sortBy : undefined
         }
       });
       
@@ -352,6 +328,14 @@ export default defineComponent({
       artworkStore.searchArtworks(searchParams);
     }
     
+    // Un filtre posé ou retiré relance la recherche à la première page, une fois la valeur reportée dans les paramètres
+    const applyFilters = () => {
+      nextTick(() => {
+        searchParams.page = 1;
+        search();
+      });
+    };
+
     // Reset filters
     const resetFilters = () => {
       searchParams.artistId = '';
@@ -359,9 +343,13 @@ export default defineComponent({
       searchParams.techniqueId = '';
       searchParams.periodId = '';
       searchParams.museumId = '';
+      searchParams.artistName = '';
+      searchParams.domainName = '';
+      searchParams.techniqueName = '';
+      searchParams.periodName = '';
       searchParams.page = 1;
-      sortBy.value = 'relevance';
-      searchParams.sortBy = 'relevance';
+      sortBy.value = 'title';
+      searchParams.sortBy = 'title';
       
       search();
     };
@@ -408,10 +396,11 @@ export default defineComponent({
     return {
       artworkStore,
       searchParams,
-      artists,
-      domains,
-      techniques,
-      periods,
+      applyFilters,
+      findArtists,
+      findDomains,
+      findTechniques,
+      findPeriods,
       sortBy,
       hasFiltersEnabled,
       search,
