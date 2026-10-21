@@ -48,11 +48,11 @@ namespace OpenJoconde.Infrastructure.Data
 
             if (!string.IsNullOrWhiteSpace(name))
             {
-                name = name.ToLower();
-                query = query.Where(m => 
-                    m.Name.ToLower().Contains(name) || 
-                    m.City.ToLower().Contains(name) ||
-                    m.Department.ToLower().Contains(name));
+                var pattern = SearchPatterns.Contains(name.Trim());
+                query = query.Where(m =>
+                    EF.Functions.ILike(m.Name, pattern) ||
+                    (m.City != null && EF.Functions.ILike(m.City, pattern)) ||
+                    (m.Department != null && EF.Functions.ILike(m.Department, pattern)));
             }
 
             var ordered = query

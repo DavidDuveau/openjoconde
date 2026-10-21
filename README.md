@@ -2,13 +2,13 @@
 
 Application web pour explorer la base Joconde, le catalogue collectif des collections des musées de France, publiée en données ouvertes par le ministère de la Culture.
 
-Le backend télécharge et importe les données Joconde dans SQL Server, puis les expose via une API REST. Le frontend permet de parcourir et rechercher les œuvres.
+Le backend télécharge et importe les données Joconde dans PostgreSQL, puis les expose via une API REST. Le frontend permet de parcourir et rechercher les œuvres.
 
 ## Stack
 
-- **Backend** : .NET 10, ASP.NET Core, Entity Framework Core 10 (SQL Server)
+- **Backend** : .NET 10, ASP.NET Core, Entity Framework Core 10 (Npgsql, noms de tables et de colonnes en snake_case)
 - **Frontend** : Vue 3, TypeScript, Pinia, Vue Router, Vue CLI 5
-- **Base de données** : SQL Server 2019 ou supérieur (Express suffit)
+- **Base de données** : PostgreSQL 15 ou supérieur (gratuit). La recherche plein texte utilise les fonctions intégrées de PostgreSQL, avec les extensions `citext` et `unaccent` fournies de série
 
 ## Source des données
 
@@ -29,15 +29,22 @@ Une base importée avant l'arrivée des empreintes est réécrite une fois en en
 
 - [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [Node.js](https://nodejs.org/) 18 ou supérieur
-- SQL Server 2019 ou supérieur
+- PostgreSQL 15 ou supérieur
 - L'outil EF Core, épinglé dans `dotnet-tools.json` (`dotnet tool restore`)
 
 ## Installation
 
 ### Base de données
 
-1. Adapter la chaîne de connexion `DefaultConnection` dans `src/Backend/OpenJoconde.API/appsettings.json`. Par défaut : instance locale, base `OpenJoconde`, authentification Windows.
-2. Créer le schéma avec la migration EF Core :
+1. Créer un rôle et une base (dans `psql`, en administrateur). Le collationnement ICU français donne un tri correct des titres :
+
+   ```sql
+   CREATE ROLE openjoconde LOGIN PASSWORD '<mot de passe>';
+   CREATE DATABASE openjoconde OWNER openjoconde TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER icu ICU_LOCALE 'fr-FR';
+   ```
+
+2. Adapter si besoin la chaîne de connexion `DefaultConnection` dans `src/Backend/OpenJoconde.API/appsettings.json`. Elle ne contient pas de mot de passe : Npgsql le lit dans le fichier `pgpass.conf` (`%APPDATA%\postgresql\pgpass.conf` sous Windows, `~/.pgpass` ailleurs), avec une ligne `localhost:5432:openjoconde:openjoconde:<mot de passe>`. En production, utiliser la variable d'environnement `ConnectionStrings__DefaultConnection`.
+3. Créer le schéma avec la migration EF Core :
 
    ```bash
    dotnet tool restore
@@ -45,9 +52,9 @@ Une base importée avant l'arrivée des empreintes est réécrite une fois en en
    dotnet ef database update --project ../OpenJoconde.Infrastructure
    ```
 
-   La migration `InitialCreate` crée toutes les tables, leurs index et les déclencheurs `UpdatedAt` : il n'y a plus de scripts SQL à appliquer ensuite.
+   La migration `InitialCreate` crée les tables, leurs index, la configuration de recherche `french_unaccent` et les déclencheurs `updated_at` ; `RecherchePrefixeReference` ajoute les index de recherche par début de référence. Il n'y a pas de script SQL à appliquer ensuite.
 
-   Une base créée avec l'ancien procédé (scripts SQL `Updates/`, retirés) ne porte pas l'historique des migrations : la supprimer, relancer `dotnet ef database update`, puis la synchronisation pour recharger les données. Après une mise à jour de la source, la synchronisation réécrit aussi le rattachement des œuvres à leur musée.
+   Les tests d'intégration créent chacun une base jetable. Ils se connectent à `Host=localhost;Port=5432;Username=postgres` (mot de passe lu dans `pgpass.conf`), ou à la connexion donnée par la variable d'environnement `OPENJOCONDE_TEST_POSTGRES` (serveur sans nom de base).
 
 ### Backend
 
@@ -58,7 +65,7 @@ dotnet run
 
 L'API écoute sur `https://localhost:5001` et `http://localhost:5000`. Swagger est disponible sur `https://localhost:5001/swagger` en développement.
 
-Si `JocondeData:CheckForUpdatesOnStartup` vaut `true`, un service d'arrière-plan synchronise les données au démarrage puis toutes les `JocondeSync:IntervalHours` heures, par le même chemin que `POST /api/sync/start`. Chaque synchronisation laisse une ligne dans la table `DataSyncLog` ; une synchronisation interrompue par l'arrêt du serveur est marquée `Interrupted` au démarrage suivant.
+Si `JocondeData:CheckForUpdatesOnStartup` vaut `true`, un service d'arrière-plan synchronise les données au démarrage puis toutes les `JocondeSync:IntervalHours` heures, par le même chemin que `POST /api/sync/start`. Chaque synchronisation laisse une ligne dans la table `data_sync_log` ; une synchronisation interrompue par l'arrêt du serveur est marquée `Interrupted` au démarrage suivant.
 
 ### Frontend
 

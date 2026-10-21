@@ -46,11 +46,11 @@ public class ImportLotsTests : IAsyncLifetime
         Assert.Equal(Notices, await context.Artworks.CountAsync());
 
         // Chaque notice : 2 domaines, 1 technique, 1 période, 1 auteur
-        var liens = await context.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM ArtworkDomain").SingleAsync();
+        var liens = await context.Database.SqlQueryRaw<int>("SELECT COUNT(*)::int AS \"Value\" FROM artwork_domain").SingleAsync();
         Assert.Equal(Notices * 2, liens);
-        Assert.Equal(Notices, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM ArtworkTechnique").SingleAsync());
-        Assert.Equal(Notices, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM ArtworkPeriod").SingleAsync());
-        Assert.Equal(Notices, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM ArtworkArtist").SingleAsync());
+        Assert.Equal(Notices, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*)::int AS \"Value\" FROM artwork_technique").SingleAsync());
+        Assert.Equal(Notices, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*)::int AS \"Value\" FROM artwork_period").SingleAsync());
+        Assert.Equal(Notices, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*)::int AS \"Value\" FROM artwork_artist").SingleAsync());
 
         // Les relations pointent la bonne œuvre : celle du dernier lot en témoigne
         var derniere = await context.Artworks.Include(a => a.Domains).Include(a => a.Artists).ThenInclude(aa => aa.Artist)
@@ -74,8 +74,8 @@ public class ImportLotsTests : IAsyncLifetime
         Assert.Equal("lieu 777 v2", oeuvre.ConservationPlace);
         Assert.Equal("description 777 v2", oeuvre.Description);
 
-        Assert.Equal(Notices * 2, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM ArtworkDomain").SingleAsync());
-        Assert.Equal(Notices, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM ArtworkArtist").SingleAsync());
+        Assert.Equal(Notices * 2, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*)::int AS \"Value\" FROM artwork_domain").SingleAsync());
+        Assert.Equal(Notices, await context.Database.SqlQueryRaw<int>("SELECT COUNT(*)::int AS \"Value\" FROM artwork_artist").SingleAsync());
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public class ImportLotsTests : IAsyncLifetime
         await using var context = _db.CreateContext();
         Assert.Equal(1, await context.Artists.CountAsync());
         var artisteId = await context.Artists.Select(a => a.Id).SingleAsync();
-        var liens = await context.Database.SqlQueryRaw<Guid>("SELECT ArtistId AS Value FROM ArtworkArtist").ToListAsync();
+        var liens = await context.Database.SqlQueryRaw<Guid>("SELECT artist_id AS \"Value\" FROM artwork_artist").ToListAsync();
         Assert.Equal(new[] { artisteId, artisteId }, liens);
     }
 

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NpgsqlTypes;
 using OpenJoconde.Core.Models;
 using System;
 
@@ -14,6 +15,9 @@ namespace OpenJoconde.Infrastructure.Data
         {
         }
 
+        /// <summary>Colonne tsvector des œuvres, calculée par la base</summary>
+        public const string SearchVector = "search_vector";
+
         public DbSet<Artwork> Artworks { get; set; }
         public DbSet<Artist> Artists { get; set; }
         public DbSet<Domain> Domains { get; set; }
@@ -27,22 +31,29 @@ namespace OpenJoconde.Infrastructure.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            // citext : comparaisons et index uniques insensibles à la casse ; unaccent : plein texte sans accents
+            modelBuilder.HasPostgresExtension("citext");
+            modelBuilder.HasPostgresExtension("unaccent");
+
             // Configure Artwork entity
             modelBuilder.Entity<Artwork>(entity =>
             {
-                // Les déclencheurs UpdatedAt de la migration : EF doit le savoir pour ne pas utiliser OUTPUT dans ses UPDATE
-                entity.ToTable("Artwork", table => table.HasTrigger("update_artwork_timestamp"));
+                entity.ToTable("artwork");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
-                entity.Property(e => e.Reference).HasMaxLength(100).IsRequired();
-                entity.Property(e => e.InventoryNumber).HasMaxLength(500);
+                entity.Property(e => e.Reference).HasColumnType("citext").IsRequired();
+                entity.Property(e => e.InventoryNumber).HasColumnType("citext");
                 entity.Property(e => e.Title).HasMaxLength(500);
-                entity.Property(e => e.Description).HasColumnType("NVARCHAR(MAX)");
+                entity.Property(e => e.Description).HasColumnType("text");
                 entity.HasIndex(e => e.Reference).IsUnique();
                 entity.HasIndex(e => e.InventoryNumber);
                 entity.HasIndex(e => e.Title);
-                entity.Property(e => e.ContentHash).HasMaxLength(16).IsFixedLength();
+                entity.Property(e => e.ContentHash);
                 entity.HasIndex(e => e.MuseumId);
+                // Vecteur de recherche plein texte (titre et description), calculé par la base ; hors de l'entité
+                entity.Property<NpgsqlTsVector>(SearchVector)
+                    .HasComputedColumnSql("to_tsvector('french_unaccent', coalesce(title, '') || ' ' || coalesce(description, ''))", stored: true);
+                entity.HasIndex(SearchVector).HasMethod("GIN");
                 entity.HasOne(e => e.Museum)
                     .WithMany()
                     .HasForeignKey(e => e.MuseumId)
@@ -52,23 +63,22 @@ namespace OpenJoconde.Infrastructure.Data
             // Configure Artist entity
             modelBuilder.Entity<Artist>(entity =>
             {
-                // Les déclencheurs UpdatedAt de la migration : EF doit le savoir pour ne pas utiliser OUTPUT dans ses UPDATE
-                entity.ToTable("Artist", table => table.HasTrigger("update_artist_timestamp"));
+                entity.ToTable("artist");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
-                entity.Property(e => e.LastName).HasMaxLength(500).IsRequired();
-                entity.Property(e => e.FirstName).HasMaxLength(500);
+                entity.Property(e => e.LastName).HasColumnType("citext").IsRequired();
+                entity.Property(e => e.FirstName).HasColumnType("citext");
                 entity.Property(e => e.BirthDate).HasMaxLength(100);
                 entity.Property(e => e.DeathDate).HasMaxLength(100);
                 entity.Property(e => e.Nationality).HasMaxLength(200);
-                entity.Property(e => e.Biography).HasColumnType("NVARCHAR(MAX)");
+                entity.Property(e => e.Biography).HasColumnType("text");
                 entity.HasIndex(e => e.LastName);
             });
 
             // Configure ArtworkArtist join entity
             modelBuilder.Entity<ArtworkArtist>(entity =>
             {
-                entity.ToTable("ArtworkArtist");
+                entity.ToTable("artwork_artist");
                 entity.HasKey(e => new { e.ArtworkId, e.ArtistId });
                 
                 entity.HasOne(e => e.Artwork)
@@ -85,55 +95,51 @@ namespace OpenJoconde.Infrastructure.Data
             // Configure Domain entity
             modelBuilder.Entity<Domain>(entity =>
             {
-                // Les déclencheurs UpdatedAt de la migration : EF doit le savoir pour ne pas utiliser OUTPUT dans ses UPDATE
-                entity.ToTable("Domain", table => table.HasTrigger("update_domain_timestamp"));
+                entity.ToTable("domain");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
-                entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
-                entity.Property(e => e.Description).HasColumnType("NVARCHAR(MAX)");
+                entity.Property(e => e.Name).HasColumnType("citext").IsRequired();
+                entity.Property(e => e.Description).HasColumnType("text");
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 
             // Configure Technique entity
             modelBuilder.Entity<Technique>(entity =>
             {
-                // Les déclencheurs UpdatedAt de la migration : EF doit le savoir pour ne pas utiliser OUTPUT dans ses UPDATE
-                entity.ToTable("Technique", table => table.HasTrigger("update_technique_timestamp"));
+                entity.ToTable("technique");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
-                entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
-                entity.Property(e => e.Description).HasColumnType("NVARCHAR(MAX)");
+                entity.Property(e => e.Name).HasColumnType("citext").IsRequired();
+                entity.Property(e => e.Description).HasColumnType("text");
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 
             // Configure Period entity
             modelBuilder.Entity<Period>(entity =>
             {
-                // Les déclencheurs UpdatedAt de la migration : EF doit le savoir pour ne pas utiliser OUTPUT dans ses UPDATE
-                entity.ToTable("Period", table => table.HasTrigger("update_period_timestamp"));
+                entity.ToTable("period");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
-                entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
-                entity.Property(e => e.Description).HasColumnType("NVARCHAR(MAX)");
+                entity.Property(e => e.Name).HasColumnType("citext").IsRequired();
+                entity.Property(e => e.Description).HasColumnType("text");
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 
             // Configure Museum entity
             modelBuilder.Entity<Museum>(entity =>
             {
-                // Les déclencheurs UpdatedAt de la migration : EF doit le savoir pour ne pas utiliser OUTPUT dans ses UPDATE
-                entity.ToTable("Museum", table => table.HasTrigger("update_museum_timestamp"));
+                entity.ToTable("museum");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
-                entity.Property(e => e.Name).HasMaxLength(500).IsRequired();
+                entity.Property(e => e.Name).HasColumnType("citext").IsRequired();
                 entity.Property(e => e.City).HasMaxLength(200);
                 entity.Property(e => e.Department).HasMaxLength(200);
                 entity.Property(e => e.ZipCode).HasMaxLength(20);
                 entity.Property(e => e.Phone).HasMaxLength(50);
                 entity.Property(e => e.Email).HasMaxLength(200);
                 entity.Property(e => e.Website).HasMaxLength(500);
-                entity.Property(e => e.Address).HasColumnType("NVARCHAR(MAX)");
-                entity.Property(e => e.Description).HasColumnType("NVARCHAR(MAX)");
+                entity.Property(e => e.Address).HasColumnType("text");
+                entity.Property(e => e.Description).HasColumnType("text");
                 entity.HasIndex(e => e.Name);
                 entity.HasIndex(e => e.City);
             });
@@ -141,7 +147,7 @@ namespace OpenJoconde.Infrastructure.Data
             // Configure JocondeMetadata entity
             modelBuilder.Entity<JocondeMetadata>(entity =>
             {
-                entity.ToTable("JocondeMetadata");
+                entity.ToTable("joconde_metadata");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
                 entity.Property(e => e.SourceVersion).HasMaxLength(100);
@@ -151,7 +157,7 @@ namespace OpenJoconde.Infrastructure.Data
             // Configure DataSyncLog entity
             modelBuilder.Entity<DataSyncLog>(entity =>
             {
-                entity.ToTable("DataSyncLog");
+                entity.ToTable("data_sync_log");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
                 entity.Property(e => e.SyncType).HasMaxLength(50).IsRequired();
@@ -165,17 +171,17 @@ namespace OpenJoconde.Infrastructure.Data
             modelBuilder.Entity<Artwork>()
                 .HasMany(a => a.Domains)
                 .WithMany(d => d.Artworks)
-                .UsingEntity(j => j.ToTable("ArtworkDomain"));
+                .UsingEntity(j => j.ToTable("artwork_domain"));
 
             modelBuilder.Entity<Artwork>()
                 .HasMany(a => a.Techniques)
                 .WithMany(t => t.Artworks)
-                .UsingEntity(j => j.ToTable("ArtworkTechnique"));
+                .UsingEntity(j => j.ToTable("artwork_technique"));
 
             modelBuilder.Entity<Artwork>()
                 .HasMany(a => a.Periods)
                 .WithMany(p => p.Artworks)
-                .UsingEntity(j => j.ToTable("ArtworkPeriod"));
+                .UsingEntity(j => j.ToTable("artwork_period"));
         }
     }
 }

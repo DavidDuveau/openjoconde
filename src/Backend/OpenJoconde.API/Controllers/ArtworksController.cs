@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using OpenJoconde.API.Dtos;
 using OpenJoconde.Core.Models;
 using OpenJoconde.Infrastructure.Data;
+using OpenJoconde.Infrastructure.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -29,7 +30,7 @@ namespace OpenJoconde.API.Controllers
         /// </summary>
         /// <param name="page">Numéro de page (commence à 1)</param>
         /// <param name="pageSize">Nombre d'éléments par page</param>
-        /// <param name="search">Terme de recherche (titre, référence, etc.)</param>
+        /// <param name="search">Terme de recherche : mots du titre ou de la description (début de mot accepté), début de référence ou de numéro d'inventaire</param>
         /// <param name="museumId">Ne garder que les œuvres de ce musée</param>
         /// <returns>Liste paginée d'oeuvres d'art</returns>
         [HttpGet]
@@ -49,8 +50,7 @@ namespace OpenJoconde.API.Controllers
                 if (pageSize > 100) pageSize = 100;
 
                 // Query de base
-                IQueryable<Artwork> query = _context.Artworks
-                    .OrderBy(a => a.Title);
+                IQueryable<Artwork> query = _context.Artworks;
 
                 if (museumId.HasValue)
                 {
@@ -58,15 +58,15 @@ namespace OpenJoconde.API.Controllers
                 }
 
                 // Appliquer la recherche si nécessaire
-                if (!string.IsNullOrWhiteSpace(search))
+                var searching = !string.IsNullOrWhiteSpace(search);
+                if (searching)
                 {
-                    search = search.Trim().ToLower();
-                    query = query.Where(a =>
-                        (a.Title != null && a.Title.ToLower().Contains(search)) ||
-                        a.Reference.ToLower().Contains(search) ||
-                        (a.InventoryNumber != null && a.InventoryNumber.ToLower().Contains(search)) ||
-                        (a.Description != null && a.Description.ToLower().Contains(search)));
+                    query = ArtworkSearch.Apply(query, search!);
                 }
+
+                // Sans recherche, le tri suit l'index sur le titre. Avec une recherche, il porte sur lower(titre), sans
+                // index : sinon PostgreSQL parcourt tout l'index du titre en filtrant, 5 s pour un terme rare
+                query = searching ? query.OrderBy(a => a.Title!.ToLower()) : query.OrderBy(a => a.Title);
 
                 // Calculer le nombre total d'éléments
                 var totalItems = await query.CountAsync();

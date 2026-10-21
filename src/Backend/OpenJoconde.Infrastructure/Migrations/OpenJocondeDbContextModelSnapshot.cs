@@ -2,8 +2,9 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using NpgsqlTypes;
 using OpenJoconde.Infrastructure.Data;
 
 #nullable disable
@@ -18,474 +19,564 @@ namespace OpenJoconde.Infrastructure.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "10.0.13")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "citext");
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "unaccent");
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("ArtworkDomain", b =>
                 {
                     b.Property<Guid>("ArtworksId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid")
+                        .HasColumnName("artworks_id");
 
                     b.Property<Guid>("DomainsId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid")
+                        .HasColumnName("domains_id");
 
-                    b.HasKey("ArtworksId", "DomainsId");
+                    b.HasKey("ArtworksId", "DomainsId")
+                        .HasName("pk_artwork_domain");
 
-                    b.HasIndex("DomainsId");
+                    b.HasIndex("DomainsId")
+                        .HasDatabaseName("ix_artwork_domain_domains_id");
 
-                    b.ToTable("ArtworkDomain", (string)null);
+                    b.ToTable("artwork_domain", (string)null);
                 });
 
             modelBuilder.Entity("ArtworkPeriod", b =>
                 {
                     b.Property<Guid>("ArtworksId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid")
+                        .HasColumnName("artworks_id");
 
                     b.Property<Guid>("PeriodsId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid")
+                        .HasColumnName("periods_id");
 
-                    b.HasKey("ArtworksId", "PeriodsId");
+                    b.HasKey("ArtworksId", "PeriodsId")
+                        .HasName("pk_artwork_period");
 
-                    b.HasIndex("PeriodsId");
+                    b.HasIndex("PeriodsId")
+                        .HasDatabaseName("ix_artwork_period_periods_id");
 
-                    b.ToTable("ArtworkPeriod", (string)null);
+                    b.ToTable("artwork_period", (string)null);
                 });
 
             modelBuilder.Entity("ArtworkTechnique", b =>
                 {
                     b.Property<Guid>("ArtworksId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid")
+                        .HasColumnName("artworks_id");
 
                     b.Property<Guid>("TechniquesId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid")
+                        .HasColumnName("techniques_id");
 
-                    b.HasKey("ArtworksId", "TechniquesId");
+                    b.HasKey("ArtworksId", "TechniquesId")
+                        .HasName("pk_artwork_technique");
 
-                    b.HasIndex("TechniquesId");
+                    b.HasIndex("TechniquesId")
+                        .HasDatabaseName("ix_artwork_technique_techniques_id");
 
-                    b.ToTable("ArtworkTechnique", (string)null);
+                    b.ToTable("artwork_technique", (string)null);
                 });
 
             modelBuilder.Entity("OpenJoconde.Core.Models.Artist", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<string>("Biography")
-                        .HasColumnType("NVARCHAR(MAX)");
+                        .HasColumnType("text")
+                        .HasColumnName("biography");
 
                     b.Property<string>("BirthDate")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("birth_date");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("DeathDate")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("death_date");
 
                     b.Property<string>("FirstName")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("citext")
+                        .HasColumnName("first_name");
 
                     b.Property<string>("LastName")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("citext")
+                        .HasColumnName("last_name");
 
                     b.Property<string>("Nationality")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nationality");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_artist");
 
-                    b.HasIndex("LastName");
+                    b.HasIndex("LastName")
+                        .HasDatabaseName("ix_artist_last_name");
 
-                    b.ToTable("Artist", null, t =>
-                        {
-                            t.HasTrigger("update_artist_timestamp");
-                        });
-
-                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
+                    b.ToTable("artist", (string)null);
                 });
 
             modelBuilder.Entity("OpenJoconde.Core.Models.Artwork", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<string>("ConservationPlace")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("conservation_place");
 
                     b.Property<byte[]>("ContentHash")
-                        .HasMaxLength(16)
-                        .HasColumnType("binary(16)")
-                        .IsFixedLength();
+                        .HasColumnType("bytea")
+                        .HasColumnName("content_hash");
 
                     b.Property<string>("Copyright")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("copyright");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("CreationDate")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("creation_date");
 
                     b.Property<string>("CreationPlace")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("creation_place");
 
                     b.Property<string>("Denomination")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("denomination");
 
                     b.Property<string>("Description")
-                        .HasColumnType("NVARCHAR(MAX)");
+                        .HasColumnType("text")
+                        .HasColumnName("description");
 
                     b.Property<string>("Dimensions")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("dimensions");
 
                     b.Property<string>("ImageUrl")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("image_url");
 
                     b.Property<string>("InventoryNumber")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("citext")
+                        .HasColumnName("inventory_number");
 
                     b.Property<Guid?>("MuseumId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid")
+                        .HasColumnName("museum_id");
 
                     b.Property<string>("Reference")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("citext")
+                        .HasColumnName("reference");
 
                     b.Property<string>("Title")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("title");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
-                    b.HasKey("Id");
+                    b.Property<NpgsqlTsVector>("search_vector")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("tsvector")
+                        .HasColumnName("search_vector")
+                        .HasComputedColumnSql("to_tsvector('french_unaccent', coalesce(title, '') || ' ' || coalesce(description, ''))", true);
 
-                    b.HasIndex("InventoryNumber");
+                    b.HasKey("Id")
+                        .HasName("pk_artwork");
 
-                    b.HasIndex("MuseumId");
+                    b.HasIndex("InventoryNumber")
+                        .HasDatabaseName("ix_artwork_inventory_number");
+
+                    b.HasIndex("MuseumId")
+                        .HasDatabaseName("ix_artwork_museum_id");
 
                     b.HasIndex("Reference")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("ix_artwork_reference");
 
-                    b.HasIndex("Title");
+                    b.HasIndex("Title")
+                        .HasDatabaseName("ix_artwork_title");
 
-                    b.ToTable("Artwork", null, t =>
-                        {
-                            t.HasTrigger("update_artwork_timestamp");
-                        });
+                    b.HasIndex("search_vector")
+                        .HasDatabaseName("ix_artwork_search_vector");
 
-                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("search_vector"), "GIN");
+
+                    b.ToTable("artwork", (string)null);
                 });
 
             modelBuilder.Entity("OpenJoconde.Core.Models.ArtworkArtist", b =>
                 {
                     b.Property<Guid>("ArtworkId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid")
+                        .HasColumnName("artwork_id");
 
                     b.Property<Guid>("ArtistId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid")
+                        .HasColumnName("artist_id");
 
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("role");
 
-                    b.HasKey("ArtworkId", "ArtistId");
+                    b.HasKey("ArtworkId", "ArtistId")
+                        .HasName("pk_artwork_artist");
 
-                    b.HasIndex("ArtistId");
+                    b.HasIndex("ArtistId")
+                        .HasDatabaseName("ix_artwork_artist_artist_id");
 
-                    b.ToTable("ArtworkArtist", (string)null);
+                    b.ToTable("artwork_artist", (string)null);
                 });
 
             modelBuilder.Entity("OpenJoconde.Core.Models.DataSyncLog", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<int>("ArtistsProcessed")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("artists_processed");
 
                     b.Property<int>("ArtworksProcessed")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("artworks_processed");
 
                     b.Property<int>("ArtworksRemoved")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("artworks_removed");
 
                     b.Property<int>("ArtworksUnchanged")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("artworks_unchanged");
 
                     b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<int>("ErrorCount")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("error_count");
 
                     b.Property<string>("ErrorMessage")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("error_message");
 
                     b.Property<string>("SourceETag")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("source_e_tag");
 
                     b.Property<DateTime>("StartedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
 
                     b.Property<bool>("Success")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean")
+                        .HasColumnName("success");
 
                     b.Property<string>("SyncType")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("sync_type");
 
                     b.Property<string>("TriggeredBy")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("triggered_by");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_data_sync_log");
 
-                    b.HasIndex("StartedAt");
+                    b.HasIndex("StartedAt")
+                        .HasDatabaseName("ix_data_sync_log_started_at");
 
-                    b.ToTable("DataSyncLog", (string)null);
+                    b.ToTable("data_sync_log", (string)null);
                 });
 
             modelBuilder.Entity("OpenJoconde.Core.Models.Domain", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("Description")
-                        .HasColumnType("NVARCHAR(MAX)");
+                        .HasColumnType("text")
+                        .HasColumnName("description");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("citext")
+                        .HasColumnName("name");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_domain");
 
                     b.HasIndex("Name")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("ix_domain_name");
 
-                    b.ToTable("Domain", null, t =>
-                        {
-                            t.HasTrigger("update_domain_timestamp");
-                        });
-
-                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
+                    b.ToTable("domain", (string)null);
                 });
 
             modelBuilder.Entity("OpenJoconde.Core.Models.JocondeMetadata", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<DateTime?>("LastUpdateDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_update_date");
 
                     b.Property<string>("Notes")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("notes");
 
                     b.Property<string>("SchemaVersion")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("schema_version");
 
                     b.Property<string>("SourceVersion")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("source_version");
 
                     b.Property<int?>("TotalRecords")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("total_records");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_joconde_metadata");
 
-                    b.ToTable("JocondeMetadata", (string)null);
+                    b.ToTable("joconde_metadata", (string)null);
                 });
 
             modelBuilder.Entity("OpenJoconde.Core.Models.Museum", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<string>("Address")
-                        .HasColumnType("NVARCHAR(MAX)");
+                        .HasColumnType("text")
+                        .HasColumnName("address");
 
                     b.Property<string>("City")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("city");
 
                     b.Property<string>("Code")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("code");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("Department")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("department");
 
                     b.Property<string>("Description")
-                        .HasColumnType("NVARCHAR(MAX)");
+                        .HasColumnType("text")
+                        .HasColumnName("description");
 
                     b.Property<string>("Email")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("email");
 
                     b.Property<double?>("Latitude")
-                        .HasColumnType("float");
+                        .HasColumnType("double precision")
+                        .HasColumnName("latitude");
 
                     b.Property<double?>("Longitude")
-                        .HasColumnType("float");
+                        .HasColumnType("double precision")
+                        .HasColumnName("longitude");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("citext")
+                        .HasColumnName("name");
 
                     b.Property<string>("Phone")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("phone");
 
                     b.Property<string>("Region")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("region");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
                     b.Property<string>("Website")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("website");
 
                     b.Property<string>("ZipCode")
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("zip_code");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_museum");
 
-                    b.HasIndex("City");
+                    b.HasIndex("City")
+                        .HasDatabaseName("ix_museum_city");
 
-                    b.HasIndex("Name");
+                    b.HasIndex("Name")
+                        .HasDatabaseName("ix_museum_name");
 
-                    b.ToTable("Museum", null, t =>
-                        {
-                            t.HasTrigger("update_museum_timestamp");
-                        });
-
-                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
+                    b.ToTable("museum", (string)null);
                 });
 
             modelBuilder.Entity("OpenJoconde.Core.Models.Period", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("Description")
-                        .HasColumnType("NVARCHAR(MAX)");
+                        .HasColumnType("text")
+                        .HasColumnName("description");
 
                     b.Property<int?>("EndYear")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("end_year");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("citext")
+                        .HasColumnName("name");
 
                     b.Property<int?>("StartYear")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("start_year");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_period");
 
                     b.HasIndex("Name")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("ix_period_name");
 
-                    b.ToTable("Period", null, t =>
-                        {
-                            t.HasTrigger("update_period_timestamp");
-                        });
-
-                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
+                    b.ToTable("period", (string)null);
                 });
 
             modelBuilder.Entity("OpenJoconde.Core.Models.Technique", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("Description")
-                        .HasColumnType("NVARCHAR(MAX)");
+                        .HasColumnType("text")
+                        .HasColumnName("description");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("citext")
+                        .HasColumnName("name");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_technique");
 
                     b.HasIndex("Name")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("ix_technique_name");
 
-                    b.ToTable("Technique", null, t =>
-                        {
-                            t.HasTrigger("update_technique_timestamp");
-                        });
-
-                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
+                    b.ToTable("technique", (string)null);
                 });
 
             modelBuilder.Entity("ArtworkDomain", b =>
@@ -494,13 +585,15 @@ namespace OpenJoconde.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("ArtworksId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_artwork_domain_artworks_artworks_id");
 
                     b.HasOne("OpenJoconde.Core.Models.Domain", null)
                         .WithMany()
                         .HasForeignKey("DomainsId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_artwork_domain_domains_domains_id");
                 });
 
             modelBuilder.Entity("ArtworkPeriod", b =>
@@ -509,13 +602,15 @@ namespace OpenJoconde.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("ArtworksId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_artwork_period_artworks_artworks_id");
 
                     b.HasOne("OpenJoconde.Core.Models.Period", null)
                         .WithMany()
                         .HasForeignKey("PeriodsId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_artwork_period_periods_periods_id");
                 });
 
             modelBuilder.Entity("ArtworkTechnique", b =>
@@ -524,13 +619,15 @@ namespace OpenJoconde.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("ArtworksId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_artwork_technique_artworks_artworks_id");
 
                     b.HasOne("OpenJoconde.Core.Models.Technique", null)
                         .WithMany()
                         .HasForeignKey("TechniquesId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_artwork_technique_techniques_techniques_id");
                 });
 
             modelBuilder.Entity("OpenJoconde.Core.Models.Artwork", b =>
@@ -538,7 +635,8 @@ namespace OpenJoconde.Infrastructure.Migrations
                     b.HasOne("OpenJoconde.Core.Models.Museum", "Museum")
                         .WithMany()
                         .HasForeignKey("MuseumId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_artwork_museums_museum_id");
 
                     b.Navigation("Museum");
                 });
@@ -549,13 +647,15 @@ namespace OpenJoconde.Infrastructure.Migrations
                         .WithMany("Artworks")
                         .HasForeignKey("ArtistId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_artwork_artist_artists_artist_id");
 
                     b.HasOne("OpenJoconde.Core.Models.Artwork", "Artwork")
                         .WithMany("Artists")
                         .HasForeignKey("ArtworkId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_artwork_artist_artworks_artwork_id");
 
                     b.Navigation("Artist");
 

@@ -9,15 +9,19 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     services:
-      sqlserver:
-        image: mcr.microsoft.com/mssql/server:2022-latest
+      postgres:
+        image: postgres:17
         env:
-          ACCEPT_EULA: "Y"
-          MSSQL_SA_PASSWORD: "Test_Passw0rd!"
+          POSTGRES_PASSWORD: "Test_Passw0rd"
         ports:
-          - 1433:1433
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
-      OPENJOCONDE_TEST_SQLSERVER: "Server=localhost,1433;User Id=sa;Password=Test_Passw0rd!;TrustServerCertificate=True"
+      OPENJOCONDE_TEST_POSTGRES: "Host=localhost;Port=5432;Username=postgres;Password=Test_Passw0rd"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4

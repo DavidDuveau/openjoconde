@@ -32,7 +32,8 @@ public class ReferenceUpsertTests : IAsyncLifetime
 
     private OpenJocondeDbContext ContextRefusing(Func<DbContext, bool> refuse) =>
         new(new DbContextOptionsBuilder<OpenJocondeDbContext>()
-            .UseSqlServer(_db.ConnectionString)
+            .UseNpgsql(_db.ConnectionString)
+            .UseSnakeCaseNamingConvention()
             .AddInterceptors(new RefusingInterceptor(refuse))
             .Options);
 

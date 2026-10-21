@@ -48,14 +48,10 @@ builder.Services.AddSwaggerGen(c =>
 // Database Configuration
 builder.Services.AddDbContext<OpenJocondeDbContext>(options =>
 {
-    // Utilisation de SQL Server au lieu de PostgreSQL
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        sqlServerOptions => sqlServerOptions.EnableRetryOnFailure(
-            maxRetryCount: 5,
-            maxRetryDelay: TimeSpan.FromSeconds(30),
-            errorNumbersToAdd: null)
-    );
+    options.UseNpgsql(
+            builder.Configuration.GetConnectionString("DefaultConnection"),
+            npgsql => npgsql.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(30), errorCodesToAdd: null))
+        .UseSnakeCaseNamingConvention();
 });
 
 // Register HTTP client with extended timeout for large downloads
@@ -113,53 +109,13 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<OpenJocondeDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-    
-    // Afficher la chaîne de connexion utilisée (masquer le mot de passe si présent)
-    var connectionString = config.GetConnectionString("DefaultConnection");
-    
-    // Vérifier les options de connexion
-    logger.LogInformation("Vérification de la connexion à la base de données SQL Server...");
-    
+
     try
     {
-        // Tentative de connexion à la base de données
-        var canConnect = dbContext.Database.CanConnect();
-        if (!canConnect)
-        {
-            logger.LogError("Impossible de se connecter à la base de données SQL Server.");
-            
-            // Essayons de vérifier si le serveur SQL est accessible
-            logger.LogInformation("Vérification de l'accessibilité du serveur SQL...");
-            try
-            {
-                using (var connection = new Microsoft.Data.SqlClient.SqlConnection(
-                    connectionString.Replace("Database=OpenJoconde;", "")))
-                {
-                    connection.Open();
-                    logger.LogInformation("Serveur SQL accessible, mais la base de données 'OpenJoconde' pourrait ne pas exister.");
-                }
-            }
-            catch (Exception innerEx)
-            {
-                logger.LogError(innerEx, "Erreur lors de la vérification de l'accessibilité du serveur SQL.");
-            }
-        }
+        if (dbContext.Database.CanConnect())
+            logger.LogInformation("Connexion à la base de données PostgreSQL établie avec succès.");
         else
-        {
-            logger.LogInformation("Connexion à la base de données SQL Server établie avec succès.");
-            
-            // Vérifier le schéma de la base de données
-            try 
-            {
-                var tables = dbContext.Model.GetEntityTypes().Select(t => t.GetTableName()).ToList();
-                logger.LogInformation("Tables dans la base de données: {Tables}", string.Join(", ", tables));
-            }
-            catch (Exception schemaEx)
-            {
-                logger.LogError(schemaEx, "Erreur lors de la vérification du schéma de la base de données.");
-            }
-        }
+            logger.LogError("Impossible de se connecter à la base de données PostgreSQL : vérifier la chaîne de connexion et que la base existe.");
     }
     catch (Exception ex)
     {
