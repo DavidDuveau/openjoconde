@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Npgsql;
 using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Core.Models;
 using OpenJoconde.Infrastructure.Data;
@@ -119,6 +120,24 @@ public class SyncCoordinatorTests : IAsyncLifetime
         var third = await _coordinator.TryStartAsync("Manual");
         await third.Completion;
         Assert.True(third.Started);
+    }
+
+    [Fact]
+    public async Task LeVerrou_EstLibere_AuLieuDResterSurUneConnexionDuPool()
+    {
+        _import.OnImport = (_, _) => Task.FromResult(new ImportReport { Success = true });
+
+        var result = await _coordinator.TryStartAsync("Manual");
+        await result.Completion;
+
+        // Fermer une connexion Npgsql la rend au pool sans terminer la session : sans pg_advisory_unlock, le verrou
+        // resterait tenu par une connexion inactive et la synchronisation suivante serait refusée
+        await using var connection = new NpgsqlConnection(_db.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(
+            "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND database = (SELECT oid FROM pg_database WHERE datname = current_database())",
+            connection);
+        Assert.Equal(0L, await command.ExecuteScalarAsync());
     }
 
     [Fact]
