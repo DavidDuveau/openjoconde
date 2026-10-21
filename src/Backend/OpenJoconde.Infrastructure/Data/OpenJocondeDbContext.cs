@@ -18,6 +18,9 @@ namespace OpenJoconde.Infrastructure.Data
         /// <summary>Colonne tsvector des œuvres, calculée par la base</summary>
         public const string SearchVector = "search_vector";
 
+        /// <summary>Titre sans la ponctuation initiale, calculé par la base : clé du tri alphabétique des œuvres</summary>
+        public const string TitleSort = "title_sort";
+
         public DbSet<Artwork> Artworks { get; set; }
         public DbSet<Artist> Artists { get; set; }
         public DbSet<Domain> Domains { get; set; }
@@ -54,6 +57,11 @@ namespace OpenJoconde.Infrastructure.Data
                 entity.Property<NpgsqlTsVector>(SearchVector)
                     .HasComputedColumnSql("to_tsvector('french_unaccent', coalesce(title, '') || ' ' || coalesce(description, ''))", stored: true);
                 entity.HasIndex(SearchVector).HasMethod("GIN");
+                // Clé de tri : « - Ah ! docteur… » se range à A, pas avant tous les titres. L'identifiant départage les
+                // titres égaux, pour que la pagination ne répète ni ne saute aucune œuvre
+                entity.Property<string>(TitleSort)
+                    .HasComputedColumnSql("ltrim(title, ' -.,;:!?''\"«»([{*/_')", stored: true);
+                entity.HasIndex(TitleSort, "Id");
                 entity.HasOne(e => e.Museum)
                     .WithMany()
                     .HasForeignKey(e => e.MuseumId)

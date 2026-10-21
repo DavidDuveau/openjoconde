@@ -23,7 +23,8 @@ namespace OpenJoconde.Infrastructure.Data
 
             var optionsBuilder = new DbContextOptionsBuilder<OpenJocondeDbContext>();
             optionsBuilder
-                .UseNpgsql(configuration.GetConnectionString("DefaultConnection"))
+                // Une migration qui réécrit une table d'un million de lignes dépasse les 30 secondes par défaut
+                .UseNpgsql(configuration.GetConnectionString("DefaultConnection"), npgsql => npgsql.CommandTimeout(1800))
                 .UseSnakeCaseNamingConvention();
 
             return new OpenJocondeDbContext(optionsBuilder.Options);

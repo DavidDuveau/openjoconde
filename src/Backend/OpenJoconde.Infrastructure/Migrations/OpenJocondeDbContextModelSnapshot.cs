@@ -209,6 +209,12 @@ namespace OpenJoconde.Infrastructure.Migrations
                         .HasColumnName("search_vector")
                         .HasComputedColumnSql("to_tsvector('french_unaccent', coalesce(title, '') || ' ' || coalesce(description, ''))", true);
 
+                    b.Property<string>("title_sort")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("text")
+                        .HasColumnName("title_sort")
+                        .HasComputedColumnSql("ltrim(title, ' -.,;:!?''\"«»([{*/_')", true);
+
                     b.HasKey("Id")
                         .HasName("pk_artwork");
 
@@ -229,6 +235,9 @@ namespace OpenJoconde.Infrastructure.Migrations
                         .HasDatabaseName("ix_artwork_search_vector");
 
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("search_vector"), "GIN");
+
+                    b.HasIndex("title_sort", "Id")
+                        .HasDatabaseName("ix_artwork_title_sort_id");
 
                     b.ToTable("artwork", (string)null);
                 });

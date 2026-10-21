@@ -77,7 +77,7 @@
 
         <ul v-else class="artwork-list">
           <li v-for="artwork in artworks" :key="artwork.id">
-            <router-link :to="`/artworks/${artwork.id}`">{{ artwork.title || artwork.reference }}</router-link>
+            <router-link :to="`/artworks/${artwork.id}`">{{ displayTitle(artwork.title) }}</router-link>
             <span class="artwork-date" v-if="artwork.creationDate">{{ artwork.creationDate }}</span>
           </li>
         </ul>
@@ -92,6 +92,7 @@
 import { defineComponent, ref, computed, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ApiService from '@/services/api';
+import { displayTitle } from '@/utils/title';
 import PaginationBar from '@/components/PaginationBar.vue';
 import { Artwork } from '@/types/artwork';
 import { Museum } from '@/types/models';
@@ -182,6 +183,7 @@ export default defineComponent({
     );
 
     return {
+      displayTitle,
       museum,
       loading,
       error,
