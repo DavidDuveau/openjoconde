@@ -5,6 +5,7 @@ using OpenJoconde.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using OpenJoconde.Infrastructure.Services;
 using System.Threading.Tasks;
 
 namespace OpenJoconde.Infrastructure.Data
@@ -54,9 +55,7 @@ namespace OpenJoconde.Infrastructure.Data
                     (a.FirstName != null && EF.Functions.ILike(a.FirstName, pattern)));
             }
 
-            var ordered = query
-                .OrderBy(a => a.LastName)
-                .ThenBy(a => a.FirstName);
+            var ordered = ArtistOrdering.ByName(query);
 
             return new PaginatedResult<Artist>
             {

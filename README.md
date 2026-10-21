@@ -52,7 +52,7 @@ Une base importée avant l'arrivée des empreintes est réécrite une fois en en
    dotnet ef database update --project ../OpenJoconde.Infrastructure
    ```
 
-   La migration `InitialCreate` crée les tables, leurs index, la configuration de recherche `french_unaccent` et les déclencheurs `updated_at` ; `RecherchePrefixeReference` ajoute les index de recherche par début de référence. Il n'y a pas de script SQL à appliquer ensuite.
+   La migration `InitialCreate` crée les tables, leurs index, la configuration de recherche `french_unaccent` et les déclencheurs `updated_at` ; `RecherchePrefixeReference` ajoute les index de recherche par début de référence ; `TriTitre` ajoute la clé de tri des titres (sans la ponctuation initiale). Il n'y a pas de script SQL à appliquer ensuite.
 
    Les tests d'intégration créent chacun une base jetable. Ils se connectent à `Host=localhost;Port=5432;Username=postgres` (mot de passe lu dans `pgpass.conf`), ou à la connexion donnée par la variable d'environnement `OPENJOCONDE_TEST_POSTGRES` (serveur sans nom de base).
 

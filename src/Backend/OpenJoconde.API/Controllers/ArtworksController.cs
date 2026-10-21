@@ -64,15 +64,13 @@ namespace OpenJoconde.API.Controllers
                     query = ArtworkSearch.Apply(query, search!);
                 }
 
-                // Sans recherche, le tri suit l'index sur le titre. Avec une recherche, il porte sur lower(titre), sans
-                // index : sinon PostgreSQL parcourt tout l'index du titre en filtrant, 5 s pour un terme rare
-                query = searching ? query.OrderBy(a => a.Title!.ToLower()) : query.OrderBy(a => a.Title);
+                IQueryable<Artwork> ordered = ArtworkOrdering.ByTitle(query, searching);
 
                 // Calculer le nombre total d'éléments
-                var totalItems = await query.CountAsync();
+                var totalItems = await ordered.CountAsync();
 
                 // Appliquer la pagination
-                var items = await query
+                var items = await ordered
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToListAsync();
