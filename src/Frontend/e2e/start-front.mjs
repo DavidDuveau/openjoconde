@@ -18,5 +18,5 @@ const options = { cwd: frontendDir, env, stdio: 'inherit', shell: true };
 const build = spawnSync('npx', ['vite', 'build', '--outDir', 'dist-e2e'], options);
 if (build.status !== 0) process.exit(build.status ?? 1);
 
-const server = spawn('npx', ['serve', '-s', 'dist-e2e', '-l', String(FRONT_PORT)], options);
+const server = spawn('npx', ['vite', 'preview', '--outDir', 'dist-e2e', '--port', String(FRONT_PORT), '--strictPort'], options);
 server.on('exit', code => process.exit(code ?? 0));

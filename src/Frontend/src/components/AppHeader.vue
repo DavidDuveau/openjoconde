@@ -55,7 +55,6 @@
 import { defineComponent, ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import SearchBar from '@/components/SearchBar.vue';
-import { useArtworkStore } from '@/store/artworkStore';
 
 export default defineComponent({
   name: 'AppHeader',
@@ -65,7 +64,6 @@ export default defineComponent({
   setup() {
     const route = useRoute();
     const router = useRouter();
-    const artworkStore = useArtworkStore();
     
     const windowWidth = ref(window.innerWidth);
     const isMobile = computed(() => windowWidth.value < 768);
