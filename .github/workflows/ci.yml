@@ -92,3 +92,4 @@ jobs:
         with:
           name: e2e-traces
           path: src/Frontend/test-results
+          retention-days: 7

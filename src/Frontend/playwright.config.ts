@@ -1,5 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
+// Les chemins de la pile (e2e/pile.mjs) partent de ce dossier, d'où que la commande soit lancée
+process.chdir(__dirname);
+
 const API = 'http://localhost:5101';
 const FRONT = 'http://localhost:8101';
 

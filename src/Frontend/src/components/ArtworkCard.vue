@@ -1,10 +1,10 @@
 <template>
-  <div class="artwork-card" @click="$emit('click')">
+  <div class="artwork-card" data-testid="artwork-card" @click="$emit('click')">
     <div class="artwork-image">
       <img :src="imageUrl" :alt="title" />
     </div>
     <div class="artwork-info">
-      <h3 :title="title">{{ shownTitle }}</h3>
+      <h3 :title="title" data-testid="artwork-title">{{ shownTitle }}</h3>
       <p v-if="artists && artists.length">
         {{ formattedArtists }}
       </p>

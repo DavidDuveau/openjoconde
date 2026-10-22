@@ -95,7 +95,7 @@
           </div>
         </div>
         
-        <div v-else-if="artworkStore.artworks.length === 0" class="no-results">
+        <div v-else-if="artworkStore.artworks.length === 0" class="no-results" data-testid="no-results">
           <div class="no-results-icon">🔍</div>
           <h3>Aucun résultat trouvé</h3>
           <p v-if="searchParams.searchText">Aucune œuvre ne correspond à "<strong>{{ searchParams.searchText }}</strong>".</p>
@@ -117,12 +117,12 @@
         <div v-else class="results-content">
           <div class="results-header">
             <div class="results-count">
-              <strong>{{ artworkStore.totalItems }}</strong> résultat{{ artworkStore.totalItems > 1 ? 's' : '' }} trouvé{{ artworkStore.totalItems > 1 ? 's' : '' }}
+              <strong data-testid="results-total">{{ artworkStore.totalItems }}</strong> résultat{{ artworkStore.totalItems > 1 ? 's' : '' }} trouvé{{ artworkStore.totalItems > 1 ? 's' : '' }}
               <span v-if="searchParams.searchText" class="search-terms">pour "<em>{{ searchParams.searchText }}</em>"</span>
             </div>
             <div class="results-sort">
               <label>Trier par :</label>
-              <select v-model="sortBy" @change="search">
+              <select v-model="sortBy" data-testid="sort" @change="search">
                 <option value="title">Titre (A-Z)</option>
                 <option value="title_desc">Titre (Z-A)</option>
                 <option value="date">Date (plus ancien)</option>
@@ -150,7 +150,7 @@
             </div>
           </div>
 
-          <div class="pagination" v-if="artworkStore.totalItems > searchParams.pageSize">
+          <div class="pagination" data-testid="pagination" v-if="artworkStore.totalItems > searchParams.pageSize">
             <button 
               class="pagination-button"
               :disabled="artworkStore.currentPage === 1"

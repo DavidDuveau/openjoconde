@@ -1,7 +1,7 @@
 <template>
   <div class="filter-picker">
     <div v-if="modelValue" class="selected">
-      <span class="selected-label">{{ label || 'Filtre actif' }}</span>
+      <span class="selected-label" data-testid="filter-label">{{ label || 'Filtre actif' }}</span>
       <button type="button" class="clear" :aria-label="`Retirer le filtre ${placeholder}`" @click="clear">&times;</button>
     </div>
     <div v-else class="picker">
@@ -15,7 +15,7 @@
         @blur="close"
       />
       <ul v-if="open && options.length" class="options">
-        <li v-for="option in options" :key="option.id" @mousedown.prevent="choose(option)">{{ option.label }}</li>
+        <li v-for="option in options" :key="option.id" data-testid="filter-option" @mousedown.prevent="choose(option)">{{ option.label }}</li>
       </ul>
       <p v-else-if="open && text && !loading" class="empty">Aucun résultat</p>
     </div>
