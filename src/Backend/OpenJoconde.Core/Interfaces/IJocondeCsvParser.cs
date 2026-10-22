@@ -11,10 +11,15 @@ namespace OpenJoconde.Core.Interfaces
     public interface IJocondeCsvParser
     {
         /// <summary>
-        /// Parse un fichier CSV Joconde et extrait toutes les entités (œuvres, artistes, domaines, etc.)
+        /// Lit un fichier CSV Joconde en flux et rend ses notices par lots de <paramref name="batchSize"/> œuvres,
+        /// chaque lot portant les entités liées vues pour la première fois (voir <see cref="ParsingResult"/>).
+        /// Le fichier n'est jamais gardé entier en mémoire : <paramref name="onBatch"/> doit consommer le lot.
         /// </summary>
-        Task<ParsingResult> ParseAsync(
+        /// <returns>Les totaux du fichier lu</returns>
+        Task<ParsingSummary> ParseInBatchesAsync(
             string csvFilePath,
+            int batchSize,
+            Func<ParsingResult, Task> onBatch,
             Action<int, int>? progressCallback = null,
             CancellationToken cancellationToken = default);
     }

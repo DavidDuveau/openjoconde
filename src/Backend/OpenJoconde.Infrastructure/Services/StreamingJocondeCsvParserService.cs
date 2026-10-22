@@ -13,7 +13,7 @@ namespace OpenJoconde.Infrastructure.Services
     /// <summary>
     /// Parse l'export CSV de la base Joconde (data.gouv.fr) : séparateur « | », valeurs entre guillemets
     /// (guillemet doublé pour échapper), une ligne d'en-tête dont les noms sont ceux de l'export.
-    /// Le fichier est lu en flux ; les entités produites restent accumulées en mémoire dans le <see cref="ParsingResult"/>.
+    /// Le fichier est lu en flux et rendu par lots : seules les entités de référence dédoublonnées restent en mémoire.
     /// </summary>
     public class StreamingJocondeCsvParserService : IJocondeCsvParser
     {
@@ -29,8 +29,10 @@ namespace OpenJoconde.Infrastructure.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task<ParsingResult> ParseAsync(
+        public async Task<ParsingSummary> ParseInBatchesAsync(
             string csvFilePath,
+            int batchSize,
+            Func<ParsingResult, Task> onBatch,
             Action<int, int>? progressCallback = null,
             CancellationToken cancellationToken = default)
         {
@@ -81,25 +83,30 @@ namespace OpenJoconde.Infrastructure.Services
                         _logger.LogWarning("Ligne {Index} rejetée: {Message}", processedItems, ex.Message);
                     }
 
+                    if (mapper.PendingArtworks >= batchSize)
+                        await onBatch(mapper.TakeBatch());
+
                     if (processedItems % ProgressInterval == 0)
                     {
                         progressCallback?.Invoke(processedItems, Math.Max(estimatedItems, processedItems));
                     }
                 }
 
+                if (mapper.PendingArtworks > 0)
+                    await onBatch(mapper.TakeBatch());
+
                 progressCallback?.Invoke(processedItems, processedItems);
 
-                var result = mapper.ToResult();
-                result.RejectedRecords = rejectedItems;
+                var result = mapper.Summary(rejectedItems);
                 _logger.LogInformation(
                     "Parsing CSV terminé: {ArtworksCount} œuvres ({RejectedCount} lignes rejetées), {ArtistsCount} artistes, {DomainsCount} domaines, {TechniquesCount} techniques, {PeriodsCount} périodes, {MuseumsCount} musées",
-                    result.Artworks.Count,
+                    result.Artworks,
                     rejectedItems,
-                    result.Artists.Count,
-                    result.Domains.Count,
-                    result.Techniques.Count,
-                    result.Periods.Count,
-                    result.Museums.Count);
+                    result.Artists,
+                    result.Domains,
+                    result.Techniques,
+                    result.Periods,
+                    result.Museums);
 
                 return result;
             }
