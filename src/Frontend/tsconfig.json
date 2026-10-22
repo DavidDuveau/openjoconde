@@ -4,16 +4,15 @@
     "module": "esnext",
     "strict": true,
     "jsx": "preserve",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "useDefineForClassFields": true,
-    "sourceMap": true,
     "baseUrl": ".",
     "types": [
-      "webpack-env"
+      "vite/client"
     ],
     "paths": {
       "@/*": [
@@ -25,7 +24,9 @@
       "dom",
       "dom.iterable",
       "scripthost"
-    ]
+    ],
+    "noEmit": true,
+    "isolatedModules": true
   },
   "include": [
     "src/**/*.ts",

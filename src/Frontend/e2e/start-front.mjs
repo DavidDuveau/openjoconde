@@ -15,7 +15,7 @@ for (let essai = 0; essai < 300; essai++) {
 const env = { ...process.env, VUE_APP_API_URL: `http://localhost:${API_PORT}/api` };
 const options = { cwd: frontendDir, env, stdio: 'inherit', shell: true };
 
-const build = spawnSync('npx', ['vue-cli-service', 'build', '--dest', 'dist-e2e'], options);
+const build = spawnSync('npx', ['vite', 'build', '--outDir', 'dist-e2e'], options);
 if (build.status !== 0) process.exit(build.status ?? 1);
 
 const server = spawn('npx', ['serve', '-s', 'dist-e2e', '-l', String(FRONT_PORT)], options);

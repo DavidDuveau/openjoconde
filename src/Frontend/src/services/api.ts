@@ -4,7 +4,7 @@ import { Artist, NamedItem, Museum } from '@/types/models';
 
 // Création de l'instance axios avec la configuration de base
 const http = axios.create({
-  baseURL: process.env.VUE_APP_API_URL || 'https://localhost:5001/api',
+  baseURL: import.meta.env.VUE_APP_API_URL || 'https://localhost:5001/api',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
