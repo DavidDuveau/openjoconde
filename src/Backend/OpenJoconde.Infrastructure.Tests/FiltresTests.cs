@@ -61,6 +61,26 @@ public class FiltresTests : IAsyncLifetime
     private Task<Guid> TechniqueAsync(string nom) => IdAsync(c => c.Techniques, t => t.Id, t => t.Name, nom);
     private Task<Guid> PeriodeAsync(string nom) => IdAsync(c => c.Periods, p => p.Id, p => p.Name, nom);
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("title_desc")]
+    public async Task ParcourirToutesLesPages_RendChaqueOeuvreUneFois_DansLOrdreDuTri(string? tri)
+    {
+        var controleur = new ArtworksController(_db.CreateContext(), NullLogger<ArtworksController>.Instance);
+        var references = new List<string>();
+        for (var page = 1; page <= 5; page++)
+        {
+            var resultat = Resultat(await controleur.GetArtworks(page, 9, null, null, null, null, null, null, tri));
+            Assert.Equal(Notices, resultat.TotalItems);
+            references.AddRange(resultat.Items.Select(a => a.Reference));
+        }
+
+        Assert.Equal(Notices, references.Count);
+        Assert.Equal(Notices, references.Distinct().Count());
+        var titres = (await ListerAsync(sortBy: tri)).Items.Select(a => a.Reference).ToList();
+        Assert.Equal(titres, references); // les 9 premières par page recollent la liste d'un seul tenant
+    }
+
     [Fact]
     public async Task FiltreParDomaine_NeGardeQueLesOeuvresDuDomaine()
     {
