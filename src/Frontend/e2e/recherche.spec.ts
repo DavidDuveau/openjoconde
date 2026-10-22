@@ -1,89 +1,111 @@
-import { expect, test, APIRequestContext } from '@playwright/test';
+import { Page } from '@playwright/test';
+import { expect, test } from './fixtures';
+import { NOMBRE, NOTICES, parMotDuTitre, titresTries } from './jeu';
 
-const API = 'http://localhost:5101/api';
+// Les valeurs attendues viennent du jeu de notices (jeu.ts), jamais de l'API que ces scénarios vérifient.
 
-interface Resume { id: string; title: string | null }
-interface Fiche { id: string; title: string | null; reference: string; techniques: { id: string; name: string }[]; domains: { id: string; name: string }[] }
+const PAGE = 12;
 
-async function oeuvres(request: APIRequestContext, query = ''): Promise<{ items: Resume[]; totalItems: number }> {
-  const response = await request.get(`${API}/artworks?pageSize=100${query}`);
-  expect(response.ok()).toBeTruthy();
-  return response.json();
+/** Titres bruts (attribut `title`) des cartes affichées, dans l'ordre ; vide pour une œuvre sans titre */
+async function titresAffiches(page: Page): Promise<string[]> {
+  return page.getByTestId('artwork-title').evaluateAll(titres => titres.map(titre => titre.getAttribute('title') ?? ''));
 }
 
-async function fiche(request: APIRequestContext, id: string): Promise<Fiche> {
-  const response = await request.get(`${API}/artworks/${id}`);
-  expect(response.ok()).toBeTruthy();
-  return response.json();
+async function attendreTitres(page: Page, attendus: string[]) {
+  await expect(async () => expect(await titresAffiches(page)).toEqual(attendus)).toPass();
 }
 
-/** Une œuvre qui porte au moins une technique, pour viser un filtre qui renvoie quelque chose */
-async function ficheAvecTechnique(request: APIRequestContext): Promise<Fiche> {
-  for (const { id } of (await oeuvres(request)).items) {
-    const f = await fiche(request, id);
-    if (f.techniques.length > 0) return f;
-  }
-  throw new Error('Aucune œuvre avec technique dans les données de test');
+async function choisirTechnique(page: Page, nom: string) {
+  await page.getByPlaceholder('Rechercher une technique').fill(nom);
+  await page.getByTestId('filter-option').filter({ hasText: new RegExp(`^${nom}$`) }).click();
 }
 
-test('la recherche par mot du titre rend les œuvres correspondantes', async ({ page, request }) => {
-  const titrees = (await oeuvres(request)).items.filter(o => o.title && /\p{L}{4,}/u.test(o.title));
-  const mot = titrees[0].title!.match(/\p{L}{4,}/u)![0];
-  const attendu = (await oeuvres(request, `&search=${encodeURIComponent(mot)}`)).totalItems;
-  expect(attendu).toBeGreaterThan(0);
+test('la recherche par mot du titre rend exactement les œuvres correspondantes', async ({ page }) => {
+  const attendues = parMotDuTitre('portrait');
+  expect(attendues.length).toBeGreaterThan(0);
+  expect(attendues.length).toBeLessThan(NOMBRE);
 
-  await page.goto(`/search?searchText=${encodeURIComponent(mot)}`);
+  await page.goto('/search?searchText=portrait');
 
-  await expect(page.locator('.results-count strong')).toHaveText(String(attendu));
-  await expect(page.locator('.artwork-card').first()).toBeVisible();
+  await expect(page.getByTestId('results-total')).toHaveText(String(attendues.length));
+  await attendreTitres(page, attendues.map(n => n.titre).sort((a, b) => a.localeCompare(b, 'fr')));
 });
 
-test('un filtre de technique restreint les résultats, et le retirer les rend tous', async ({ page, request }) => {
-  const f = await ficheAvecTechnique(request);
-  const technique = f.techniques[0];
-  const tous = (await oeuvres(request)).totalItems;
-  const filtrees = (await oeuvres(request, `&techniqueId=${technique.id}`)).totalItems;
-  expect(filtrees).toBeGreaterThan(0);
+test('la recherche ignore les accents et la casse', async ({ page }) => {
+  const attendues = parMotDuTitre('ETUDE');
+  expect(attendues.length).toBeGreaterThan(0);
+
+  await page.goto('/search?searchText=ETUDE');
+
+  await expect(page.getByTestId('results-total')).toHaveText(String(attendues.length));
+});
+
+test('une recherche sans résultat le dit', async ({ page }) => {
+  await page.goto('/search?searchText=zzzinexistant');
+
+  await expect(page.getByTestId('no-results')).toContainText('Aucune œuvre ne correspond');
+  await expect(page.getByTestId('artwork-card')).toHaveCount(0);
+});
+
+test('un filtre de technique restreint les résultats, et le retirer les rend tous', async ({ page }) => {
+  const attendues = NOTICES.filter(n => n.technique === 'technique 1').length;
 
   await page.goto('/search');
-  await expect(page.locator('.results-count strong')).toHaveText(String(tous));
+  await expect(page.getByTestId('results-total')).toHaveText(String(NOMBRE));
 
-  await page.getByPlaceholder('Rechercher une technique').fill(technique.name.slice(0, 6));
-  await page.locator('.options li', { hasText: technique.name }).first().click();
+  await choisirTechnique(page, 'technique 1');
 
-  await expect(page).toHaveURL(new RegExp(`techniqueId=${technique.id}`));
-  await expect(page.locator('.results-count strong')).toHaveText(String(filtrees));
+  await expect(page).toHaveURL(/techniqueId=/);
+  await expect(page.getByTestId('results-total')).toHaveText(String(attendues));
 
   await page.getByRole('button', { name: /Retirer le filtre/ }).click();
 
   await expect(page).not.toHaveURL(/techniqueId/);
-  await expect(page.locator('.results-count strong')).toHaveText(String(tous));
+  await expect(page.getByTestId('results-total')).toHaveText(String(NOMBRE));
 });
 
-test('le filtre reste affiché au rechargement de la page', async ({ page, request }) => {
-  const f = await ficheAvecTechnique(request);
-  const technique = f.techniques[0];
-
-  await page.goto(`/search?techniqueId=${technique.id}&techniqueName=${encodeURIComponent(technique.name)}`);
-
-  await expect(page.locator('.selected-label')).toHaveText(technique.name);
-});
-
-test('le tri Z-A inverse l\'ordre des titres', async ({ page, request }) => {
-  const attendu = (await oeuvres(request, '&sortBy=title_desc')).items.find(o => o.title)!.title!;
-
+test('au rechargement, le filtre reste affiché et reste appliqué', async ({ page }) => {
+  const attendues = NOTICES.filter(n => n.technique === 'technique 2').length;
   await page.goto('/search');
-  await page.locator('.results-sort select').selectOption('title_desc');
+  await choisirTechnique(page, 'technique 2');
+  await expect(page.getByTestId('results-total')).toHaveText(String(attendues));
+
+  await page.reload();
+
+  await expect(page.getByTestId('filter-label')).toHaveText('technique 2');
+  await expect(page.getByTestId('results-total')).toHaveText(String(attendues));
+  await expect(page.getByTestId('artwork-card')).toHaveCount(attendues);
+});
+
+test('le tri A-Z puis Z-A suit l\'ordre alphabétique français, accents compris', async ({ page }) => {
+  await page.goto('/search');
+  await attendreTitres(page, titresTries('asc').slice(0, PAGE));
+
+  await page.getByTestId('sort').selectOption('title_desc');
 
   await expect(page).toHaveURL(/sortBy=title_desc/);
-  await expect(page.locator('.artwork-card h3').first()).toHaveAttribute('title', attendu);
+  await attendreTitres(page, titresTries('desc').slice(0, PAGE));
 });
 
-test('la fiche d\'une œuvre s\'ouvre depuis la liste', async ({ page, request }) => {
-  const f = await fiche(request, (await oeuvres(request)).items[0].id);
+test('la deuxième page rend la suite de la liste', async ({ page }) => {
+  await page.goto('/search');
+  await expect(page.getByTestId('pagination')).toBeVisible();
 
-  await page.goto(`/artworks/${f.id}`);
+  await page.getByTestId('pagination').getByRole('button', { name: '2', exact: true }).click();
 
-  await expect(page.getByRole('heading', { level: 3, name: 'Référence' })).toBeVisible();
-  await expect(page.getByText(f.reference).first()).toBeVisible();
+  await expect(page).toHaveURL(/page=2/);
+  await attendreTitres(page, titresTries('asc').slice(PAGE, 2 * PAGE));
+});
+
+test('la fiche ouverte est celle de l\'œuvre cliquée', async ({ page }) => {
+  await page.goto('/search');
+  const titre = (await titresAffiches(page))[1];
+  const notice = NOTICES.find(n => n.titre === titre)!;
+  expect(notice, `notice du titre « ${titre} »`).toBeTruthy();
+
+  await page.getByTestId('artwork-card').nth(1).click();
+
+  await expect(page).toHaveURL(/\/artworks\//);
+  await expect(page.getByTestId('artwork-heading')).toHaveText(titre);
+  await expect(page.getByTestId('artwork-reference')).toHaveText(notice.reference);
 });

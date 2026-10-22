@@ -28,7 +28,7 @@
         </div>
 
         <div class="artwork-info">
-          <h1>{{ displayTitle(artwork.title, Infinity) }}</h1>
+          <h1 data-testid="artwork-heading">{{ displayTitle(artwork.title, Infinity) }}</h1>
           
           <div class="metadata">
             <div class="metadata-item" v-if="artwork.artists && artwork.artists.length">
@@ -70,7 +70,7 @@
 
             <div class="metadata-item" v-if="artwork.reference">
               <h3>Référence</h3>
-              <p>{{ artwork.reference }}</p>
+              <p data-testid="artwork-reference">{{ artwork.reference }}</p>
             </div>
 
             <div class="metadata-item" v-if="artwork.museum || artwork.conservationPlace">

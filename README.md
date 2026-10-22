@@ -93,6 +93,8 @@ VUE_APP_API_URL=https://localhost:5001/api
 
 `npm run e2e` (dans `src/Frontend`) pilote un vrai navigateur (Playwright, Chromium) contre une pile jetable : une base `openjoconde_e2e` créée puis supprimée, l'API sur `http://localhost:5101`, le front construit et servi sur `http://localhost:8101`. Elle ne touche ni à la base ni aux ports de développement. Prérequis : PostgreSQL local (mot de passe de `postgres` dans `pgpass.conf`, ou variable `E2E_PG_PASSWORD`), `dotnet tool restore`, puis `npx playwright install chromium` une fois. La CI la rejoue à chaque fusion. Les origines du front autorisées par l'API se complètent par `Cors:Origins`.
 
+Les scénarios (`src/Frontend/e2e/recherche.spec.ts`) tirent leurs valeurs attendues du jeu de 24 notices de `e2e/jeu.ts` (titres avec accents, « œ » et notices sans titre), jamais de l'API qu'ils vérifient ; l'import du jeu est contrôlé avant tout scénario. Tout scénario échoue si la page lève une erreur JavaScript ou écrit une erreur dans la console (`e2e/fixtures.ts`). Les éléments de page visés portent un attribut `data-testid`. Chaque nouvelle fonction du front ajoute ou met à jour un scénario.
+
 ### Tout lancer
 
 Depuis VS Code :
