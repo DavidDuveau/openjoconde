@@ -141,6 +141,7 @@ namespace OpenJoconde.Infrastructure.Data
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Lecture des periods existants impossible pour un lot de {Count}", chunk.Length);
+                    successCount += chunk.Length;
                     errorCount += chunk.Length;
                     _context.ChangeTracker.Clear();
                     continue;
