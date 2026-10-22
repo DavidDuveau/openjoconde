@@ -15,7 +15,7 @@ namespace OpenJoconde.Infrastructure.Services
     /// Parse un export JSON Joconde dont la racine est un tableau de notices.
     /// Les notices sont lues une à une depuis le flux : le découpage est fait par le lecteur JSON,
     /// donc des accolades dans un texte ne perturbent plus les notices voisines.
-    /// Les entités produites restent accumulées en mémoire dans le <see cref="ParsingResult"/>.
+    /// Les notices sont rendues par lots : seules les entités de référence dédoublonnées restent en mémoire.
     /// </summary>
     public class StreamingJocondeJsonParserService : IJocondeJsonParser
     {
@@ -31,10 +31,12 @@ namespace OpenJoconde.Infrastructure.Services
         }
 
         /// <summary>
-        /// Parse un fichier JSON Joconde et extrait toutes les entités
+        /// Parse un fichier JSON Joconde et rend ses notices par lots
         /// </summary>
-        public async Task<ParsingResult> ParseAsync(
+        public async Task<ParsingSummary> ParseInBatchesAsync(
             string jsonFilePath,
+            int batchSize,
+            Func<ParsingResult, Task> onBatch,
             Action<int, int>? progressCallback = null,
             CancellationToken cancellationToken = default)
         {
@@ -76,25 +78,30 @@ namespace OpenJoconde.Infrastructure.Services
                         _logger.LogWarning(ex, "Notice {Index} rejetée: {Message}", processedItems, ex.Message);
                     }
 
+                    if (mapper.PendingArtworks >= batchSize)
+                        await onBatch(mapper.TakeBatch());
+
                     if (processedItems % ProgressInterval == 0)
                     {
                         progressCallback?.Invoke(processedItems, Math.Max(estimatedItems, processedItems));
                     }
                 }
 
+                if (mapper.PendingArtworks > 0)
+                    await onBatch(mapper.TakeBatch());
+
                 progressCallback?.Invoke(processedItems, processedItems);
 
-                var result = mapper.ToResult();
-                result.RejectedRecords = rejectedItems;
+                var result = mapper.Summary(rejectedItems);
                 _logger.LogInformation(
                     "Parsing JSON terminé: {ArtworksCount} œuvres ({RejectedCount} notices rejetées), {ArtistsCount} artistes, {DomainsCount} domaines, {TechniquesCount} techniques, {PeriodsCount} périodes, {MuseumsCount} musées",
-                    result.Artworks.Count,
+                    result.Artworks,
                     rejectedItems,
-                    result.Artists.Count,
-                    result.Domains.Count,
-                    result.Techniques.Count,
-                    result.Periods.Count,
-                    result.Museums.Count);
+                    result.Artists,
+                    result.Domains,
+                    result.Techniques,
+                    result.Periods,
+                    result.Museums);
 
                 return result;
             }

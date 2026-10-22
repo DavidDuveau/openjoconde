@@ -4,7 +4,8 @@ using System.Collections.Generic;
 namespace OpenJoconde.Core.Parsers
 {
     /// <summary>
-    /// Résultat de l'analyse d'un fichier contenant toutes les entités extraites
+    /// Un lot de notices lues dans un fichier : ses œuvres et les entités liées rencontrées pour la première fois
+    /// dans ce lot (celles déjà rendues par un lot précédent n'y figurent plus)
     /// </summary>
     public class ParsingResult
     {
@@ -19,5 +20,23 @@ namespace OpenJoconde.Core.Parsers
         /// Nombre de notices du fichier qui n'ont pas pu être lues (absentes des listes ci-dessus)
         /// </summary>
         public int RejectedRecords { get; set; }
+    }
+
+    /// <summary>
+    /// Totaux d'un fichier lu en entier
+    /// </summary>
+    public class ParsingSummary
+    {
+        public int Artworks { get; init; }
+        public int Artists { get; init; }
+        public int Domains { get; init; }
+        public int Techniques { get; init; }
+        public int Periods { get; init; }
+        public int Museums { get; init; }
+
+        /// <summary>
+        /// Nombre de notices du fichier qui n'ont pas pu être lues
+        /// </summary>
+        public int RejectedRecords { get; init; }
     }
 }

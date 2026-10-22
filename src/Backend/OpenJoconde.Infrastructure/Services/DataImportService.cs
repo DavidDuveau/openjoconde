@@ -58,6 +58,11 @@ namespace OpenJoconde.Infrastructure.Services
         }
 
         /// <summary>
+        /// Taille des lots lus dans le fichier : chaque lot est écrit avant que le suivant soit lu
+        /// </summary>
+        private const int ParseBatchSize = 2000;
+
+        /// <summary>
         /// Importe les données du résultat de parsing dans la base de données.
         /// Les statistiques comptent ce qui a été écrit ; ce qui a été perdu est dans <see cref="ImportStatistics.Errors"/>.
         /// </summary>
@@ -67,49 +72,28 @@ namespace OpenJoconde.Infrastructure.Services
             CancellationToken cancellationToken = default)
         {
             var stats = new ImportStatistics();
-            await ImportIntoAsync(parsingResult, stats, progressCallback, cancellationToken);
-            return stats;
-        }
-
-        /// <summary>
-        /// Importe dans les statistiques fournies, pour que les comptes déjà écrits restent disponibles si l'import est annulé
-        /// </summary>
-        private async Task ImportIntoAsync(
-            ParsingResult parsingResult,
-            ImportStatistics stats,
-            Action<string, int, int>? progressCallback,
-            CancellationToken cancellationToken)
-        {
+            var session = new ImportSession(stats);
             var stopwatch = Stopwatch.StartNew();
-            var errors = new ImportErrors(stats);
 
             try
             {
-                _logger.LogInformation("Début de l'importation des données");
-
                 if (parsingResult.RejectedRecords > 0)
                 {
-                    errors.Add($"{parsingResult.RejectedRecords} notice(s) rejetée(s) au parsing", parsingResult.RejectedRecords);
+                    session.Errors.Add($"{parsingResult.RejectedRecords} notice(s) rejetée(s) au parsing", parsingResult.RejectedRecords);
                 }
 
-                // Les liens œuvre-artiste du parseur ne portent que l'Id d'origine de l'artiste :
-                // on le retient avant l'upsert, qui remplace l'Id par celui déjà en base.
-                var artistsByParsedId = parsingResult.Artists.ToDictionary(a => a.Id);
-
-                // 1. Importation des entités de référence
-                await ImportReferenceEntitiesAsync(parsingResult, stats, errors, progressCallback, cancellationToken);
-
-                // Un musée non enregistré ne peut pas être référencé : sa clé étrangère ferait échouer le lot d'œuvres
-                var usableMuseumIds = await UsableMuseumIdsAsync(parsingResult.Museums, stats.MuseumsImported);
-
-                // 2. Importation des œuvres
-                await ImportArtworksAsync(parsingResult.Artworks, artistsByParsedId, usableMuseumIds, stats, errors, progressCallback, cancellationToken);
+                await ImportBatchAsync(parsingResult, session, progressCallback, cancellationToken);
             }
             finally
             {
                 stats.Duration = stopwatch.Elapsed;
             }
 
+            LogImportEnd(stats);
+            return stats;
+        }
+
+        private void LogImportEnd(ImportStatistics stats) =>
             _logger.LogInformation("Importation des données terminée en {Duration}. " +
                                   "Œuvres: {ArtworksCount}, Artistes: {ArtistsCount}, " +
                                   "Musées: {MuseumsCount}, Domaines: {DomainsCount}, " +
@@ -122,23 +106,79 @@ namespace OpenJoconde.Infrastructure.Services
                                   stats.TechniquesImported,
                                   stats.PeriodsImported,
                                   stats.Errors);
+
+        /// <summary>
+        /// Ce qui se transmet d'un lot au suivant pendant l'import d'un fichier. Les comptes vont dans les statistiques
+        /// fournies, pour qu'ils restent disponibles si l'import est annulé.
+        /// </summary>
+        private sealed class ImportSession
+        {
+            public ImportSession(ImportStatistics stats)
+            {
+                Stats = stats;
+                Errors = new ImportErrors(stats);
+            }
+
+            public ImportStatistics Stats { get; }
+            public ImportErrors Errors { get; }
+
+            /// <summary>
+            /// Les liens œuvre-artiste du parseur ne portent que l'Id d'origine de l'artiste : on le retient avant
+            /// l'upsert, qui remplace l'Id par celui déjà en base. Les œuvres d'un lot peuvent citer un artiste d'un lot précédent.
+            /// </summary>
+            public Dictionary<Guid, Artist> ArtistsByParsedId { get; } = new();
+
+            /// <summary>
+            /// Musées dont l'enregistrement a échoué : une œuvre qui les référencerait ferait échouer son lot (clé étrangère)
+            /// </summary>
+            public HashSet<Guid> UnusableMuseumIds { get; } = new();
+
+            public int ArtworksProcessed { get; set; }
+            public int EstimatedArtworks { get; set; }
         }
 
         /// <summary>
-        /// Importe les entités de référence (domaines, techniques, périodes, artistes, musées)
+        /// Importe un lot : ses entités de référence, puis ses œuvres et leurs relations
         /// </summary>
-        private async Task ImportReferenceEntitiesAsync(
-            ParsingResult parsingResult,
-            ImportStatistics stats,
-            ImportErrors errors,
+        private async Task ImportBatchAsync(
+            ParsingResult batch,
+            ImportSession session,
             Action<string, int, int>? progressCallback,
             CancellationToken cancellationToken)
         {
-            stats.DomainsImported = await UpsertAsync("Domaines", parsingResult.Domains, _domainRepository.BulkUpsertAsync, errors, progressCallback, cancellationToken);
-            stats.TechniquesImported = await UpsertAsync("Techniques", parsingResult.Techniques, _techniqueRepository.BulkUpsertAsync, errors, progressCallback, cancellationToken);
-            stats.PeriodsImported = await UpsertAsync("Périodes", parsingResult.Periods, _periodRepository.BulkUpsertAsync, errors, progressCallback, cancellationToken);
-            stats.ArtistsImported = await UpsertAsync("Artistes", parsingResult.Artists, _artistRepository.BulkUpsertAsync, errors, progressCallback, cancellationToken);
-            stats.MuseumsImported = await UpsertAsync("Musées", parsingResult.Museums, _museumRepository.BulkUpsertAsync, errors, progressCallback, cancellationToken);
+            foreach (var artist in batch.Artists)
+                session.ArtistsByParsedId[artist.Id] = artist;
+
+            var museumsWritten = await ImportReferenceEntitiesAsync(batch, session, progressCallback, cancellationToken);
+
+            // Un musée non enregistré ne peut pas être référencé
+            if (museumsWritten < batch.Museums.Count)
+            {
+                var existing = await _museumRepository.GetExistingIdsAsync(batch.Museums.Select(m => m.Id));
+                session.UnusableMuseumIds.UnionWith(batch.Museums.Select(m => m.Id).Where(id => !existing.Contains(id)));
+            }
+
+            await ImportArtworksAsync(batch.Artworks, session, progressCallback, cancellationToken);
+        }
+
+        /// <summary>
+        /// Importe les entités de référence (domaines, techniques, périodes, artistes, musées) ; renvoie le nombre de musées enregistrés
+        /// </summary>
+        private async Task<int> ImportReferenceEntitiesAsync(
+            ParsingResult batch,
+            ImportSession session,
+            Action<string, int, int>? progressCallback,
+            CancellationToken cancellationToken)
+        {
+            var stats = session.Stats;
+            var errors = session.Errors;
+            stats.DomainsImported += await UpsertAsync("Domaines", batch.Domains, _domainRepository.BulkUpsertAsync, errors, progressCallback, cancellationToken);
+            stats.TechniquesImported += await UpsertAsync("Techniques", batch.Techniques, _techniqueRepository.BulkUpsertAsync, errors, progressCallback, cancellationToken);
+            stats.PeriodsImported += await UpsertAsync("Périodes", batch.Periods, _periodRepository.BulkUpsertAsync, errors, progressCallback, cancellationToken);
+            stats.ArtistsImported += await UpsertAsync("Artistes", batch.Artists, _artistRepository.BulkUpsertAsync, errors, progressCallback, cancellationToken);
+            var museums = await UpsertAsync("Musées", batch.Museums, _museumRepository.BulkUpsertAsync, errors, progressCallback, cancellationToken);
+            stats.MuseumsImported += museums;
+            return museums;
         }
 
         /// <summary>
@@ -176,19 +216,8 @@ namespace OpenJoconde.Infrastructure.Services
             }
 
             progressCallback?.Invoke(label, items.Count, items.Count);
-            _logger.LogInformation("Importation de {Written}/{Count} élément(s) terminée : {Label}", written, items.Count, label);
+            _logger.LogDebug("Importation de {Written}/{Count} élément(s) terminée : {Label}", written, items.Count, label);
             return written;
-        }
-
-        /// <summary>
-        /// Identifiants des musées présents en base ; null quand ils y sont tous
-        /// </summary>
-        private async Task<HashSet<Guid>?> UsableMuseumIdsAsync(List<Museum> museums, int museumsWritten)
-        {
-            if (museumsWritten >= museums.Count)
-                return null;
-
-            return await _museumRepository.GetExistingIdsAsync(museums.Select(m => m.Id));
         }
 
         /// <summary>
@@ -196,21 +225,19 @@ namespace OpenJoconde.Infrastructure.Services
         /// </summary>
         private async Task ImportArtworksAsync(
             List<Artwork> artworks,
-            IReadOnlyDictionary<Guid, Artist> artistsByParsedId,
-            HashSet<Guid>? usableMuseumIds,
-            ImportStatistics stats,
-            ImportErrors errors,
+            ImportSession session,
             Action<string, int, int>? progressCallback,
             CancellationToken cancellationToken)
         {
-            if (!artworks.Any())
+            if (artworks.Count == 0)
                 return;
 
-            progressCallback?.Invoke("Œuvres", 0, artworks.Count);
+            var stats = session.Stats;
+            var errors = session.Errors;
+            var artistsByParsedId = session.ArtistsByParsedId;
 
             // Pour les grandes quantités de données, on traite par lots
             const int batchSize = 500;
-            var totalProcessed = 0;
 
             for (int i = 0; i < artworks.Count; i += batchSize)
             {
@@ -239,7 +266,7 @@ namespace OpenJoconde.Infrastructure.Services
                     HasImage = artwork.HasImage,
                     ContentHash = artwork.ContentHash,
                     // L'upsert des musées a fixé leur Id réel sur les objets du parseur
-                    MuseumId = artwork.Museum != null && (usableMuseumIds == null || usableMuseumIds.Contains(artwork.Museum.Id))
+                    MuseumId = artwork.Museum != null && !session.UnusableMuseumIds.Contains(artwork.Museum.Id)
                         ? artwork.Museum.Id
                         : null,
                     UpdatedAt = DateTime.UtcNow
@@ -259,8 +286,7 @@ namespace OpenJoconde.Infrastructure.Services
                     // Le lot entier est perdu : sans œuvre en base, ses relations ne peuvent pas être écrites
                     _logger.LogError(ex, "Échec de l'enregistrement d'un lot de {Count} œuvres", batch.Count);
                     errors.Add("Œuvres", ex, batch.Count);
-                    totalProcessed += batch.Count;
-                    progressCallback?.Invoke("Œuvres", totalProcessed, artworks.Count);
+                    ReportArtworkProgress(session, batch.Count, progressCallback);
                     continue;
                 }
 
@@ -305,11 +331,14 @@ namespace OpenJoconde.Infrastructure.Services
                     }
                 }
 
-                totalProcessed += batch.Count;
-                progressCallback?.Invoke("Œuvres", totalProcessed, artworks.Count);
+                ReportArtworkProgress(session, batch.Count, progressCallback);
             }
+        }
 
-            _logger.LogInformation("Importation de {Written}/{Count} œuvres et de leurs relations terminée", stats.ArtworksImported, artworks.Count);
+        private static void ReportArtworkProgress(ImportSession session, int processed, Action<string, int, int>? progressCallback)
+        {
+            session.ArtworksProcessed += processed;
+            progressCallback?.Invoke("Œuvres", session.ArtworksProcessed, Math.Max(session.EstimatedArtworks, session.ArtworksProcessed));
         }
 
         /// <summary>
@@ -377,13 +406,13 @@ namespace OpenJoconde.Infrastructure.Services
         /// Importe les données depuis un fichier JSON
         /// </summary>
         public Task<ImportReport> ImportFromJsonFileAsync(string jsonFilePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default) =>
-            ImportParsedFileAsync("JSON", jsonFilePath, _jsonParser.ParseAsync, progressCallback, cancellationToken);
+            ImportParsedFileAsync("JSON", jsonFilePath, _jsonParser.ParseInBatchesAsync, progressCallback, cancellationToken);
 
         /// <summary>
         /// Importe les données depuis un fichier CSV (export data.gouv.fr de la base Joconde)
         /// </summary>
         public Task<ImportReport> ImportFromCsvFileAsync(string csvFilePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default) =>
-            ImportParsedFileAsync("CSV", csvFilePath, _csvParser.ParseAsync, progressCallback, cancellationToken);
+            ImportParsedFileAsync("CSV", csvFilePath, _csvParser.ParseInBatchesAsync, progressCallback, cancellationToken);
 
         /// <summary>
         /// Importe un fichier en choisissant le parseur selon l'extension (.csv ou .json)
@@ -391,8 +420,8 @@ namespace OpenJoconde.Infrastructure.Services
         public Task<ImportReport> ImportFromFileAsync(string filePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default, bool onlyChanges = false) =>
             Path.GetExtension(filePath).ToLowerInvariant() switch
             {
-                ".csv" => ImportParsedFileAsync("CSV", filePath, _csvParser.ParseAsync, progressCallback, cancellationToken, onlyChanges),
-                ".json" => ImportParsedFileAsync("JSON", filePath, _jsonParser.ParseAsync, progressCallback, cancellationToken, onlyChanges),
+                ".csv" => ImportParsedFileAsync("CSV", filePath, _csvParser.ParseInBatchesAsync, progressCallback, cancellationToken, onlyChanges),
+                ".json" => ImportParsedFileAsync("JSON", filePath, _jsonParser.ParseInBatchesAsync, progressCallback, cancellationToken, onlyChanges),
                 var extension => throw new NotSupportedException($"Format de fichier non pris en charge : '{extension}' (attendu : .csv ou .json)")
             };
 
@@ -401,31 +430,6 @@ namespace OpenJoconde.Infrastructure.Services
         /// est jugée tronquée ou fautive, et rien n'est supprimé
         /// </summary>
         private const double MaxRemovedRatio = 0.10;
-
-        /// <summary>
-        /// Synchronisation incrémentale : écrit les œuvres nouvelles ou modifiées, puis supprime celles que la source ne contient plus
-        /// </summary>
-        private async Task ImportChangesAsync(
-            ParsingResult parsingResult,
-            ImportStatistics stats,
-            ImportReport report,
-            Action<string, int, int>? progressCallback,
-            CancellationToken cancellationToken)
-        {
-            progressCallback?.Invoke("Comparaison", 0, 1);
-            var existing = await _artworkRepository.GetContentHashesAsync();
-            var plan = IncrementalPlanner.Plan(parsingResult, existing);
-            progressCallback?.Invoke("Comparaison", 1, 1);
-
-            report.SkippedArtworks = plan.Unchanged;
-            _logger.LogInformation(
-                "Comparaison avec la base : {Changed} œuvre(s) à écrire, {Unchanged} déjà à jour, {Missing} absente(s) de la source",
-                plan.Changed.Artworks.Count, plan.Unchanged, plan.Missing.Count);
-
-            await ImportIntoAsync(plan.Changed, stats, progressCallback, cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();
-            await RemoveMissingAsync(plan.Missing, existing.Count, parsingResult.RejectedRecords, stats, report);
-        }
 
         private async Task RemoveMissingAsync(
             IReadOnlyList<string> missing,
@@ -468,7 +472,7 @@ namespace OpenJoconde.Infrastructure.Services
         private async Task<ImportReport> ImportParsedFileAsync(
             string format,
             string filePath,
-            Func<string, Action<int, int>?, CancellationToken, Task<ParsingResult>> parse,
+            Func<string, int, Func<ParsingResult, Task>, Action<int, int>?, CancellationToken, Task<ParsingSummary>> parse,
             Action<string, int, int>? progressCallback,
             CancellationToken cancellationToken,
             bool onlyChanges = false)
@@ -483,6 +487,7 @@ namespace OpenJoconde.Infrastructure.Services
 
             var stopwatch = Stopwatch.StartNew();
             var stats = new ImportStatistics();
+            var session = new ImportSession(stats);
 
             try
             {
@@ -491,34 +496,59 @@ namespace OpenJoconde.Infrastructure.Services
                     throw new FileNotFoundException($"Le fichier {format} Joconde n'existe pas", filePath);
                 }
 
-                progressCallback?.Invoke("Parsing", 0, 1);
-                var parsingResult = await parse(filePath, (current, total) =>
+                // Synchronisation incrémentale : on ne garde de chaque lot que les œuvres nouvelles ou modifiées
+                IncrementalFilter? filter = null;
+                var existingCount = 0;
+                if (onlyChanges)
                 {
-                    if (current % 100 == 0 || current == total)
+                    progressCallback?.Invoke("Comparaison", 0, 1);
+                    var existing = await _artworkRepository.GetContentHashesAsync();
+                    existingCount = existing.Count;
+                    filter = new IncrementalFilter(existing);
+                    progressCallback?.Invoke("Comparaison", 1, 1);
+                }
+
+                progressCallback?.Invoke("Parsing", 0, 1);
+
+                // Chaque lot lu est écrit avant le suivant : le fichier n'est jamais gardé entier en mémoire
+                var summary = await parse(filePath, ParseBatchSize,
+                    batch => ImportBatchAsync(filter == null ? batch : filter.Filter(batch), session, progressCallback, cancellationToken),
+                    (current, total) =>
                     {
+                        session.EstimatedArtworks = total;
                         _logger.LogInformation("Progression du parsing {Format}: {Current}/{Total}", format, current, total);
                         progressCallback?.Invoke("Parsing", current, total);
-                    }
-                }, cancellationToken);
+                    }, cancellationToken);
 
                 progressCallback?.Invoke("Parsing", 1, 1);
 
                 // Éléments trouvés dans le fichier
-                report.TotalArtworks = parsingResult.Artworks.Count;
-                report.TotalArtists = parsingResult.Artists.Count;
-                report.TotalMuseums = parsingResult.Museums.Count;
-                report.TotalDomains = parsingResult.Domains.Count;
-                report.TotalTechniques = parsingResult.Techniques.Count;
-                report.TotalPeriods = parsingResult.Periods.Count;
+                report.TotalArtworks = summary.Artworks;
+                report.TotalArtists = summary.Artists;
+                report.TotalMuseums = summary.Museums;
+                report.TotalDomains = summary.Domains;
+                report.TotalTechniques = summary.Techniques;
+                report.TotalPeriods = summary.Periods;
 
-                if (onlyChanges)
+                if (summary.RejectedRecords > 0)
                 {
-                    await ImportChangesAsync(parsingResult, stats, report, progressCallback, cancellationToken);
+                    session.Errors.Add($"{summary.RejectedRecords} notice(s) rejetée(s) au parsing", summary.RejectedRecords);
                 }
-                else
+
+                if (filter != null)
                 {
-                    await ImportIntoAsync(parsingResult, stats, progressCallback, cancellationToken);
+                    var missing = filter.Missing();
+                    report.SkippedArtworks = filter.Unchanged;
+                    _logger.LogInformation(
+                        "Comparaison avec la base : {Written} œuvre(s) écrite(s), {Unchanged} déjà à jour, {Missing} absente(s) de la source",
+                        stats.ArtworksImported, filter.Unchanged, missing.Count);
+
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await RemoveMissingAsync(missing, existingCount, summary.RejectedRecords, stats, report);
                 }
+
+                stats.Duration = stopwatch.Elapsed;
+                LogImportEnd(stats);
             }
             catch (OperationCanceledException)
             {

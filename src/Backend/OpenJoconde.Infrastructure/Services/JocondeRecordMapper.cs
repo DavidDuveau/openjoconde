@@ -45,7 +45,19 @@ namespace OpenJoconde.Infrastructure.Services
         private readonly Dictionary<string, Technique> _techniques = new();
         private readonly Dictionary<string, Period> _periods = new();
         private readonly Dictionary<string, Museum> _museums = new();
-        private readonly List<Artwork> _artworks = new();
+        private List<Artwork> _artworks = new();
+
+        // Entités créées depuis le dernier lot rendu : le lot les porte, les dictionnaires ci-dessus les retiennent
+        // pour dédoublonner les notices suivantes.
+        private List<Artist> _newArtists = new();
+        private List<Domain> _newDomains = new();
+        private List<Technique> _newTechniques = new();
+        private List<Period> _newPeriods = new();
+        private List<Museum> _newMuseums = new();
+        private int _artworksMapped;
+
+        /// <summary>Œuvres lues depuis le dernier lot rendu</summary>
+        public int PendingArtworks => _artworks.Count;
 
         /// <summary>Ajoute une notice ; lève une exception si elle est inexploitable.</summary>
         public void Add(IJocondeRecord record)
@@ -54,16 +66,44 @@ namespace OpenJoconde.Infrastructure.Services
             var author = ExtractRelatedEntities(record, artwork);
             artwork.ContentHash = ArtworkFingerprint.Compute(artwork, author);
             _artworks.Add(artwork);
+            _artworksMapped++;
         }
 
-        public ParsingResult ToResult() => new()
+        /// <summary>
+        /// Rend les œuvres lues depuis le dernier appel, avec les entités créées pendant ce temps, et les oublie
+        /// (hors dictionnaires de dédoublonnage) : la mémoire ne grandit pas avec le fichier.
+        /// </summary>
+        public ParsingResult TakeBatch()
         {
-            Artworks = _artworks,
-            Artists = _artists.Values.ToList(),
-            Domains = _domains.Values.ToList(),
-            Techniques = _techniques.Values.ToList(),
-            Periods = _periods.Values.ToList(),
-            Museums = _museums.Values.ToList()
+            var batch = new ParsingResult
+            {
+                Artworks = _artworks,
+                Artists = _newArtists,
+                Domains = _newDomains,
+                Techniques = _newTechniques,
+                Periods = _newPeriods,
+                Museums = _newMuseums
+            };
+
+            _artworks = new();
+            _newArtists = new();
+            _newDomains = new();
+            _newTechniques = new();
+            _newPeriods = new();
+            _newMuseums = new();
+            return batch;
+        }
+
+        /// <summary>Totaux de ce qui a été lu depuis le début du fichier</summary>
+        public ParsingSummary Summary(int rejectedRecords) => new()
+        {
+            Artworks = _artworksMapped,
+            Artists = _artists.Count,
+            Domains = _domains.Count,
+            Techniques = _techniques.Count,
+            Periods = _periods.Count,
+            Museums = _museums.Count,
+            RejectedRecords = rejectedRecords
         };
 
         private static Artwork ExtractArtwork(IJocondeRecord record)
@@ -111,6 +151,7 @@ namespace OpenJoconde.Infrastructure.Services
                 {
                     artist = ParseArtistName(artistName);
                     _artists[key] = artist;
+                    _newArtists.Add(artist);
                 }
 
                 author = artist;
@@ -128,6 +169,7 @@ namespace OpenJoconde.Infrastructure.Services
                 {
                     domain = new Domain { Id = Guid.NewGuid(), Name = name, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
                     _domains[name.ToLowerInvariant()] = domain;
+                    _newDomains.Add(domain);
                 }
                 artwork.Domains.Add(domain);
             }
@@ -138,6 +180,7 @@ namespace OpenJoconde.Infrastructure.Services
                 {
                     technique = new Technique { Id = Guid.NewGuid(), Name = name, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
                     _techniques[name.ToLowerInvariant()] = technique;
+                    _newTechniques.Add(technique);
                 }
                 artwork.Techniques.Add(technique);
             }
@@ -152,6 +195,7 @@ namespace OpenJoconde.Infrastructure.Services
                 {
                     period = new Period { Id = Guid.NewGuid(), Name = name, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
                     _periods[name.ToLowerInvariant()] = period;
+                    _newPeriods.Add(period);
                 }
                 artwork.Periods.Add(period);
             }
@@ -185,6 +229,7 @@ namespace OpenJoconde.Infrastructure.Services
                 }
 
                 _museums[museumName.ToLowerInvariant()] = museum;
+                _newMuseums.Add(museum);
                 artwork.Museum = museum;
             }
 
