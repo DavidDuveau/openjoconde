@@ -49,10 +49,10 @@
           <dt>Courriel</dt>
           <dd>{{ museum.email }}</dd>
         </template>
-        <template v-if="museum.website">
+        <template v-if="siteUrl">
           <dt>Site</dt>
           <dd>
-            <a :href="museum.website" target="_blank" rel="noopener noreferrer">{{ museum.website }}</a>
+            <a :href="siteUrl" target="_blank" rel="noopener noreferrer">{{ siteUrl }}</a>
           </dd>
         </template>
         <template v-if="hasCoordinates">
@@ -93,6 +93,7 @@ import { defineComponent, ref, computed, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ApiService from '@/services/api';
 import { displayTitle } from '@/utils/title';
+import { safeWebUrl } from '@/utils/rights';
 import PaginationBar from '@/components/PaginationBar.vue';
 import { Artwork } from '@/types/artwork';
 import { Museum } from '@/types/models';
@@ -175,6 +176,7 @@ export default defineComponent({
     const place = computed(() =>
       [museum.value?.zipCode, museum.value?.city, museum.value?.department].filter(Boolean).join(' · ')
     );
+    const siteUrl = computed(() => safeWebUrl(museum.value?.website));
     const hasCoordinates = computed(() =>
       museum.value?.latitude != null && museum.value?.longitude != null
     );
@@ -189,6 +191,7 @@ export default defineComponent({
       error,
       fetchMuseum,
       place,
+      siteUrl,
       hasCoordinates,
       mapUrl,
       artworks,
