@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using OpenJoconde.API.Dtos;
 using OpenJoconde.API.Security;
 using Microsoft.Extensions.Logging;
 using OpenJoconde.Core.Interfaces;
@@ -97,7 +98,7 @@ namespace OpenJoconde.API.Controllers
         /// <summary>
         /// Crée un nouveau musée
         /// </summary>
-        /// <param name="museum">Le musée à créer</param>
+        /// <param name="input">Le musée à créer</param>
         /// <returns>Le musée créé</returns>
         /// <response code="201">Retourne le musée créé</response>
         /// <response code="400">Requête invalide</response>
@@ -108,14 +109,12 @@ namespace OpenJoconde.API.Controllers
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<Museum>> CreateMuseum([FromBody] Museum museum)
+        public async Task<ActionResult<Museum>> CreateMuseum([FromBody] MuseumInput input)
         {
             try
             {
-                if (museum == null)
-                {
-                    return BadRequest("Le musée ne peut pas être null.");
-                }
+                var museum = new Museum { CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+                input.ApplyTo(museum);
 
                 _logger.LogInformation("Création d'un nouveau musée: {Name}, {City}",
                     museum.Name, museum.City);
@@ -134,7 +133,7 @@ namespace OpenJoconde.API.Controllers
         /// Met à jour un musée existant
         /// </summary>
         /// <param name="id">Identifiant du musée à mettre à jour</param>
-        /// <param name="museum">Les nouvelles informations du musée</param>
+        /// <param name="input">Les nouvelles informations du musée</param>
         /// <returns>Aucun contenu en cas de succès</returns>
         /// <response code="204">Le musée a été mis à jour avec succès</response>
         /// <response code="400">Requête invalide</response>
@@ -147,20 +146,10 @@ namespace OpenJoconde.API.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> UpdateMuseum(Guid id, [FromBody] Museum museum)
+        public async Task<IActionResult> UpdateMuseum(Guid id, [FromBody] MuseumInput input)
         {
             try
             {
-                if (museum == null)
-                {
-                    return BadRequest("Le musée ne peut pas être null.");
-                }
-
-                if (id != museum.Id)
-                {
-                    return BadRequest("L'identifiant dans l'URL ne correspond pas à l'identifiant du musée.");
-                }
-
                 var existingMuseum = await _museumRepository.GetByIdAsync(id);
                 if (existingMuseum == null)
                 {
@@ -169,7 +158,9 @@ namespace OpenJoconde.API.Controllers
 
                 _logger.LogInformation("Mise à jour du musée avec l'identifiant {Id}", id);
 
-                var result = await _museumRepository.UpdateAsync(museum);
+                input.ApplyTo(existingMuseum);
+                existingMuseum.UpdatedAt = DateTime.UtcNow;
+                var result = await _museumRepository.UpdateAsync(existingMuseum);
                 if (!result)
                 {
                     return StatusCode(500, "La mise à jour du musée a échoué.");

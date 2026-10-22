@@ -110,6 +110,8 @@ Depuis VS Code :
 | `POST /api/museofile/sync` | Applique le fichier Muséofile aux musées (adresse, téléphone, site, histoire) sans synchroniser Joconde ; rend le nombre de musées lus, retrouvés, mis à jour et sans correspondance (clé d'API) |
 | `GET /api/health` | État de l'API et de la base |
 
+Les corps de `POST` et `PUT` sur les musées et les artistes ne portent que les champs de la fiche (`name`/`lastName`, adresse, etc.) : l'identifiant, les dates et les œuvres liées sont gérés par le serveur, et un champ vide, trop long ou absurde (coordonnées hors du globe) répond `400`.
+
 Les routes d'écriture et d'import (`POST`, `PUT`, `DELETE`) exigent l'en-tête `X-Api-Key` égal à `Security:ApiKey`. Tant que cette clé n'est pas configurée, ces routes répondent `401`. Elles sont aussi limitées à 20 requêtes par minute et par adresse IP (`429` au-delà). Définir la clé hors du dépôt, par exemple :
 
 ```bash
