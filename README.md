@@ -25,6 +25,8 @@ La synchronisation est **incrémentale**. Le fichier est republié environ chaqu
 
 Une base importée avant l'arrivée des empreintes est réécrite une fois en entier, puis suit le régime incrémental.
 
+Les musées sont complétés par la base [Muséofile](https://www.data.gouv.fr/datasets/musees-de-france-base-museofile) (Musées de France, Licence Ouverte 2.0) : adresse, code postal, téléphone, site Internet et histoire, rapprochés par le code Muséofile (`museum.code`). Le fichier (`Museofile:SourceUrl`, environ 3 Mo) est appliqué à chaque synchronisation, même quand Joconde n'a pas changé ; une panne de Muséofile ne fait pas échouer la synchronisation des œuvres. La ville, le département, la région et les coordonnées de Joconde sont gardés : Muséofile ne comble que les manques, et ne touche jamais à la ville, clé de rattachement des musées à l'import.
+
 ## Prérequis
 
 - [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0)

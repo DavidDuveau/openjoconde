@@ -21,6 +21,7 @@ public class SyncCoordinatorTests : IAsyncLifetime
     private readonly string _tempDirectory = Path.Combine(Path.GetTempPath(), $"sync_tests_{Guid.NewGuid():N}");
     private readonly FakeImportService _import = new();
     private readonly FakeDownloadService _download = new();
+    private readonly FakeMuseofileService _museofile = new();
     private SyncCoordinator _coordinator = null!;
 
     public async Task InitializeAsync()
@@ -31,13 +32,15 @@ public class SyncCoordinatorTests : IAsyncLifetime
         {
             ["ConnectionStrings:DefaultConnection"] = _db.ConnectionString,
             ["JocondeData:SourceUrl"] = "https://exemple.test/joconde.csv",
-            ["JocondeData:TempDirectory"] = _tempDirectory
+            ["JocondeData:TempDirectory"] = _tempDirectory,
+            ["Museofile:SourceUrl"] = "https://exemple.test/museofile.csv"
         }).Build();
 
         var services = new ServiceCollection()
             .AddDbContext<OpenJocondeDbContext>(options => options.UseNpgsql(_db.ConnectionString).UseSnakeCaseNamingConvention())
             .AddSingleton<IJocondeDataService>(_download)
             .AddSingleton<IDataImportService>(_import)
+            .AddSingleton<IMuseofileService>(_museofile)
             .BuildServiceProvider();
 
         _coordinator = new SyncCoordinator(
@@ -302,6 +305,51 @@ public class SyncCoordinatorTests : IAsyncLifetime
         await SynchroniserAsync();
 
         Assert.Equal(2, _download.Downloads);
+    }
+
+    [Fact]
+    public async Task Museofile_EstAppliqueApresLImport_EtMemeQuandJocondeEstInchange()
+    {
+        _download.Version = "v1";
+        _import.OnImport = (_, _) => Task.FromResult(new ImportReport { Success = true });
+
+        await SynchroniserAsync(); // importe
+        await SynchroniserAsync(); // source inchangée
+
+        Assert.Equal(1, _download.Downloads);
+        Assert.Equal(2, _museofile.Calls);
+        Assert.Equal("https://exemple.test/museofile.csv", _museofile.LastUrl);
+    }
+
+    [Fact]
+    public async Task UnePanneDeMuseofile_NeFaitPasEchouerLaSynchronisation()
+    {
+        _museofile.Failure = new HttpRequestException("Muséofile indisponible");
+        _import.OnImport = (_, _) => Task.FromResult(new ImportReport { Success = true, ImportedArtworks = 5 });
+
+        var result = await _coordinator.TryStartAsync("Manual");
+        await result.Completion;
+
+        var log = await LogAsync(result.SyncId!.Value);
+        Assert.Equal("Completed", log.Status);
+        Assert.True(log.Success);
+        Assert.Equal(1, _museofile.Calls);
+    }
+
+    private sealed class FakeMuseofileService : IMuseofileService
+    {
+        public int Calls { get; private set; }
+        public string? LastUrl { get; private set; }
+        public Exception? Failure { get; set; }
+
+        public Task<MuseofileReport> EnrichFromUrlAsync(string url, CancellationToken cancellationToken = default)
+        {
+            Calls++;
+            LastUrl = url;
+            return Failure != null ? Task.FromException<MuseofileReport>(Failure) : Task.FromResult(new MuseofileReport(0, 0, 0, 0));
+        }
+
+        public Task<MuseofileReport> EnrichFromFileAsync(string csvFilePath, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
     private sealed class FakeDownloadService : IJocondeDataService
