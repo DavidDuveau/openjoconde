@@ -21,6 +21,9 @@ namespace OpenJoconde.Infrastructure.Data
         /// <summary>Titre sans la ponctuation initiale, calculé par la base : clé du tri alphabétique des œuvres</summary>
         public const string TitleSort = "title_sort";
 
+        /// <summary>Première année de la date de création, calculée par la base : clé du tri par date</summary>
+        public const string CreationYear = "creation_year";
+
         public DbSet<Artwork> Artworks { get; set; }
         public DbSet<Artist> Artists { get; set; }
         public DbSet<Domain> Domains { get; set; }
@@ -62,6 +65,11 @@ namespace OpenJoconde.Infrastructure.Data
                 entity.Property<string>(TitleSort)
                     .HasComputedColumnSql("ltrim(title, ' -.,;:!?''\"«»([{*/_')", stored: true);
                 entity.HasIndex(TitleSort, "Id");
+                // Première année de la date de création, lue dans le texte libre (« 1er quart 20e siècle » : 1900) par la
+                // fonction SQL oj_creation_year, pour trier par date
+                entity.Property<int?>(CreationYear)
+                    .HasComputedColumnSql("oj_creation_year(creation_date)", stored: true);
+                entity.HasIndex(CreationYear, "Id");
                 entity.HasOne(e => e.Museum)
                     .WithMany()
                     .HasForeignKey(e => e.MuseumId)

@@ -43,13 +43,17 @@ describe('artworkStore.searchArtworks', () => {
     });
   });
 
-  it("n'envoie le tri que pour Z-A : A-Z est le tri par défaut de l'API", async () => {
+  it("n'envoie pas le tri A-Z, défaut de l'API, mais envoie les autres", async () => {
     searchArtworks.mockResolvedValue(resultat);
     const store = useArtworkStore();
 
     await store.searchArtworks({ page: 1, pageSize: 12, sortBy: 'title' });
 
     expect(searchArtworks.mock.calls[0][0].sortBy).toBeUndefined();
+
+    await store.searchArtworks({ page: 1, pageSize: 12, sortBy: 'date_desc' });
+
+    expect(searchArtworks.mock.calls[1][0].sortBy).toBe('date_desc');
   });
 
   it('garde les œuvres et le total rendus par une recherche réussie', async () => {

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NpgsqlTypes;
 using OpenJoconde.Core.Models;
 using OpenJoconde.Infrastructure.Data;
 
@@ -27,5 +28,41 @@ namespace OpenJoconde.Infrastructure.Services
                 ? query.OrderBy(a => EF.Property<string>(a, OpenJocondeDbContext.TitleSort).ToLower()).ThenBy(a => a.Id)
                 : query.OrderBy(a => EF.Property<string>(a, OpenJocondeDbContext.TitleSort)).ThenBy(a => a.Id);
         }
+
+        /// <summary>
+        /// Par date de création (première année lue dans le texte libre) ; les œuvres sans date lisible (« néolithique »)
+        /// viennent en dernier, dans les deux sens. Le plus ancien d'abord par défaut, sur l'index.
+        /// </summary>
+        public static IOrderedQueryable<Artwork> ByDate(IQueryable<Artwork> query, bool descending = false)
+        {
+            if (descending)
+                return query
+                    .OrderBy(a => EF.Property<int?>(a, OpenJocondeDbContext.CreationYear) == null)
+                    .ThenByDescending(a => EF.Property<int?>(a, OpenJocondeDbContext.CreationYear))
+                    .ThenBy(a => a.Id);
+
+            return query.OrderBy(a => EF.Property<int?>(a, OpenJocondeDbContext.CreationYear)).ThenBy(a => a.Id);
+        }
+
+        /// <summary>
+        /// Par pertinence de la recherche plein texte (ts_rank sur titre et description), la plus forte d'abord
+        /// </summary>
+        /// <param name="tsQueryCondition">Condition to_tsquery de la recherche (<see cref="ArtworkSearch.BuildCondition"/>)</param>
+        public static IOrderedQueryable<Artwork> ByRelevance(IQueryable<Artwork> query, string tsQueryCondition) =>
+            query
+                .OrderByDescending(a => EF.Property<NpgsqlTsVector>(a, OpenJocondeDbContext.SearchVector)
+                    .Rank(EF.Functions.ToTsQuery("french_unaccent", tsQueryCondition)))
+                .ThenBy(a => a.Id);
+
+        /// <summary>
+        /// Par nom du premier artiste, les œuvres sans artiste en dernier. Une jointure par œuvre : à réserver aux
+        /// résultats déjà restreints par une recherche ou un filtre.
+        /// </summary>
+        public static IOrderedQueryable<Artwork> ByArtist(IQueryable<Artwork> query) =>
+            query
+                .OrderBy(a => !a.Artists.Any())
+                .ThenBy(a => a.Artists.Select(x => x.Artist.LastName.ToLower()).Min())
+                .ThenBy(a => a.Artists.Select(x => x.Artist.FirstName.ToLower()).Min())
+                .ThenBy(a => a.Id);
     }
 }

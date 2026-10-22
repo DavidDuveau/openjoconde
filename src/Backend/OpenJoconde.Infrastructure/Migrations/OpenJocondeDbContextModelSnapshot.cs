@@ -215,6 +215,12 @@ namespace OpenJoconde.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
+                    b.Property<int?>("creation_year")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("integer")
+                        .HasColumnName("creation_year")
+                        .HasComputedColumnSql("oj_creation_year(creation_date)", true);
+
                     b.Property<NpgsqlTsVector>("search_vector")
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("tsvector")
@@ -247,6 +253,9 @@ namespace OpenJoconde.Infrastructure.Migrations
                         .HasDatabaseName("ix_artwork_search_vector");
 
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("search_vector"), "GIN");
+
+                    b.HasIndex("creation_year", "Id")
+                        .HasDatabaseName("ix_artwork_creation_year_id");
 
                     b.HasIndex("title_sort", "Id")
                         .HasDatabaseName("ix_artwork_title_sort_id");
