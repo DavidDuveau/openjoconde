@@ -91,7 +91,7 @@
 
             <div class="metadata-item" v-if="rightsText">
               <h3>Droits d'auteur</h3>
-              <p>{{ rightsText }}</p>
+              <p data-testid="artwork-rights">{{ rightsText }}</p>
             </div>
 
             <div class="metadata-item" v-if="popUrl">
@@ -104,7 +104,7 @@
             <div class="metadata-item" v-if="siteUrl">
               <h3>Site associé</h3>
               <p>
-                <a :href="siteUrl" target="_blank" rel="noopener noreferrer">Voir sur le site du musée</a>
+                <a :href="siteUrl" target="_blank" rel="noopener noreferrer" data-testid="museum-site-link">Voir sur le site du musée</a>
               </p>
             </div>
           </div>

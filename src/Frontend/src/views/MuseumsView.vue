@@ -6,6 +6,7 @@
       <input
         type="text"
         v-model="searchQuery"
+        data-testid="museum-search"
         placeholder="Rechercher un musée, une ville, un département..."
         @input="debounceSearch"
       />
@@ -28,13 +29,14 @@
     </div>
 
     <div v-else>
-      <p class="result-count">{{ totalItems }} musée{{ totalItems !== 1 ? 's' : '' }}</p>
+      <p class="result-count" data-testid="museum-count">{{ totalItems }} musée{{ totalItems !== 1 ? 's' : '' }}</p>
 
       <div class="museums-grid">
         <div
           v-for="museum in museums"
           :key="museum.id"
           class="museum-card"
+          data-testid="museum-card"
           @click="navigateToMuseum(museum.id)"
         >
           <h3>{{ museum.name }}</h3>
