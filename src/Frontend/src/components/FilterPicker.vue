@@ -56,7 +56,7 @@ export default defineComponent({
       try {
         const found = await props.fetchOptions(text.value.trim());
         if (request === latest) options.value = found;
-      } catch (error) {
+      } catch {
         if (request === latest) options.value = [];
       } finally {
         if (request === latest) loading.value = false;

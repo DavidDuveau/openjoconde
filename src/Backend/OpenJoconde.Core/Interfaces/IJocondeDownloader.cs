@@ -6,7 +6,7 @@ namespace OpenJoconde.Core.Interfaces
     /// <summary>
     /// Interface pour le service de données Joconde (téléchargement uniquement)
     /// </summary>
-    public interface IJocondeDataService
+    public interface IJocondeDownloader
     {
         /// <summary>
         /// Télécharge les données Joconde depuis l'URL spécifiée

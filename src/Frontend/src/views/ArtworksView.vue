@@ -100,26 +100,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { useArtworkStore } from '@/store/artworkStore';
 import ArtworkCard from '@/components/ArtworkCard.vue';
 
-// Type pour les œuvres d'art
-interface Artwork {
-  id: string;
-  title: string;
-  reference: string;
-  inventoryNumber: string;
-  imageUrl: string;
-  creationDate: string;
-  artists: { id: string; firstName: string; lastName: string }[];
-}
-
-// Type pour la réponse paginée
-interface PaginatedResult<T> {
-  items: T[];
-  totalItems: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
-
 export default defineComponent({
   name: 'ArtworksView',
   components: {

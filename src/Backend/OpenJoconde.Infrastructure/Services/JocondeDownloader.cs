@@ -13,13 +13,13 @@ namespace OpenJoconde.Infrastructure.Services
     /// <summary>
     /// Service pour télécharger, analyser et importer les données Joconde
     /// </summary>
-    public class JocondeDataService : IJocondeDataService
+    public class JocondeDownloader : IJocondeDownloader
     {
-        private readonly ILogger<JocondeDataService> _logger;
+        private readonly ILogger<JocondeDownloader> _logger;
         private readonly HttpClient _httpClient;
 
-        public JocondeDataService(
-            ILogger<JocondeDataService> logger,
+        public JocondeDownloader(
+            ILogger<JocondeDownloader> logger,
             HttpClient httpClient)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));

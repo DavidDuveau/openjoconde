@@ -401,52 +401,6 @@ namespace OpenJoconde.Infrastructure.Migrations
                     b.ToTable("domain", (string)null);
                 });
 
-            modelBuilder.Entity("OpenJoconde.Core.Models.JocondeMetadata", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTime?>("LastUpdateDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_update_date");
-
-                    b.Property<string>("Notes")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("notes");
-
-                    b.Property<string>("SchemaVersion")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("schema_version");
-
-                    b.Property<string>("SourceVersion")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("source_version");
-
-                    b.Property<int?>("TotalRecords")
-                        .HasColumnType("integer")
-                        .HasColumnName("total_records");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_joconde_metadata");
-
-                    b.ToTable("joconde_metadata", (string)null);
-                });
-
             modelBuilder.Entity("OpenJoconde.Core.Models.Museum", b =>
                 {
                     b.Property<Guid>("Id")
