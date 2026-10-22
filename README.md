@@ -54,7 +54,7 @@ Les musées sont complétés par la base [Muséofile](https://www.data.gouv.fr/d
    dotnet ef database update --project ../OpenJoconde.Infrastructure
    ```
 
-   La migration `InitialCreate` crée les tables, leurs index, la configuration de recherche `french_unaccent` et les déclencheurs `updated_at` ; `RecherchePrefixeReference` ajoute les index de recherche par début de référence ; `TriTitre` ajoute la clé de tri des titres (sans la ponctuation initiale). Il n'y a pas de script SQL à appliquer ensuite.
+   La migration `InitialCreate` crée les tables, leurs index, la configuration de recherche `french_unaccent` et les déclencheurs `updated_at` ; `RecherchePrefixeReference` ajoute les index de recherche par début de référence ; `TriTitre` ajoute la clé de tri des titres (sans la ponctuation initiale) ; `ChampsDroitsEtLien` ajoute les droits d'auteur et le lien vers le site du musée ; `TriDate` ajoute la fonction SQL `oj_creation_year` et la colonne calculée `creation_year` du tri par date. Il n'y a pas de script SQL à appliquer ensuite.
 
    Les tests d'intégration créent chacun une base jetable. Ils se connectent à `Host=localhost;Port=5432;Username=postgres` (mot de passe lu dans `pgpass.conf`), ou à la connexion donnée par la variable d'environnement `OPENJOCONDE_TEST_POSTGRES` (serveur sans nom de base).
 
@@ -104,13 +104,17 @@ Depuis VS Code :
 
 | Route | Rôle |
 |---|---|
-| `GET /api/artworks`, `GET /api/artworks/{id}` | Œuvres, paginées, avec recherche (`search`) |
-| `GET /api/artists`, `GET /api/museums` | Artistes et musées |
+| `GET /api/artworks` | Œuvres, paginées (`page`, `pageSize` ≤ 100), avec recherche (`search`), filtres cumulables (`museumId`, `artistId`, `domainId`, `techniqueId`, `periodId`) et tri (`sortBy`, voir ci-dessous) |
+| `GET /api/artworks/{id}` | Fiche complète : champs, musée, artistes avec rôle, domaines, techniques, périodes, droits d'auteur et lien vers le site du musée |
+| `GET /api/artists`, `GET /api/museums` | Artistes et musées, paginés, avec recherche par nom (musées : aussi ville et département) |
+| `GET /api/domains`, `GET /api/techniques`, `GET /api/periods` | Listes de référence paginées, avec recherche par nom (`name`) : propositions des filtres du front |
 | `POST /api/import/from-file` | Importe un fichier Joconde envoyé par l'appelant (CSV ou JSON selon l'extension) |
 | `GET /api/sync/status`, `POST /api/sync/start` | Statut de la dernière synchronisation ; lancement (télécharge la source configurée et l'importe ; `?force=true` pour télécharger même si la source n'a pas changé). Une seule à la fois : `409` si une autre tourne |
 | `POST /api/sync/cancel/{id}`, `GET /api/sync/history` | Annulation d'une synchronisation en cours ; historique avec messages d'erreur (clé d'API) |
 | `POST /api/museofile/sync` | Applique le fichier Muséofile aux musées (adresse, téléphone, site, histoire) sans synchroniser Joconde ; rend le nombre de musées lus, retrouvés, mis à jour et sans correspondance (clé d'API) |
 | `GET /api/health` | État de l'API et de la base |
+
+Tris de `GET /api/artworks` (`sortBy`) : `title` (A-Z, par défaut), `title_desc`, `date` (plus ancien d'abord ; la première année est lue dans le texte libre de la date, « 4e quart 19e siècle » donne 1875), `date_desc`, `relevance` (pertinence ; demande une recherche par mots) et `artist` (premier artiste ; demande une recherche ou un filtre). Les œuvres sans titre, sans date lisible ou sans artiste viennent en dernier. Un tri inconnu ou impossible répond `400`.
 
 Les corps de `POST` et `PUT` sur les musées et les artistes ne portent que les champs de la fiche (`name`/`lastName`, adresse, etc.) : l'identifiant, les dates et les œuvres liées sont gérés par le serveur, et un champ vide, trop long ou absurde (coordonnées hors du globe) répond `400`.
 
@@ -128,8 +132,9 @@ La liste complète est dans Swagger.
 src/
 ├── Backend/
 │   ├── OpenJoconde.API/             # Contrôleurs, configuration, point d'entrée
-│   ├── OpenJoconde.Core/            # Modèles, interfaces, parsers Joconde
+│   ├── OpenJoconde.Core/            # Modèles, DTO de sortie, interfaces, parsers Joconde
 │   └── OpenJoconde.Infrastructure/  # DbContext, repositories, services d'import
+│       ├── Configuration/           # Options liées à la configuration (section Sync)
 │       ├── Data/                    # DbContext et repositories
 │       ├── Migrations/              # Migrations EF Core
 │       └── Services/                # Téléchargement, parsing, import, synchronisation
