@@ -26,7 +26,7 @@ export const useArtworkStore = defineStore('artwork', {
     searchParams: {
       page: 1,
       pageSize: 10,
-      sortBy: 'relevance'
+      sortBy: 'title'
     }
   }),
   
@@ -78,7 +78,13 @@ export const useArtworkStore = defineStore('artwork', {
         const searchParams = {
           page: params.page || 1,
           pageSize: params.pageSize || 10,
-          search: params.searchText || undefined
+          search: params.searchText || undefined,
+          artistId: params.artistId || undefined,
+          domainId: params.domainId || undefined,
+          techniqueId: params.techniqueId || undefined,
+          periodId: params.periodId || undefined,
+          museumId: params.museumId || undefined,
+          sortBy: params.sortBy === 'title_desc' ? 'title_desc' : undefined
         };
         const result = await ApiService.searchArtworks(searchParams);
         this.artworks = result.items;

@@ -57,6 +57,11 @@ export interface Period {
   description: string;
 }
 
+export interface NamedItem {
+  id: string;
+  name: string;
+}
+
 export interface Museum {
   id: string;
   name: string;
@@ -81,9 +86,14 @@ export interface SearchParams {
   techniqueId?: string;
   periodId?: string;
   museumId?: string;
+  // Libellés des filtres choisis, gardés dans l'adresse pour les réafficher au rechargement
+  artistName?: string;
+  domainName?: string;
+  techniqueName?: string;
+  periodName?: string;
   page: number;
   pageSize: number;
-  sortBy?: string;
+  sortBy?: string; // title (défaut) ou title_desc
 }
 
 export interface PaginatedResult<T> {

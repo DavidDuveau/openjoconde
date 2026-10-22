@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { PaginatedResult, Artwork, ArtworkDetail } from '@/types/artwork';
-import { Artist, Domain, Technique, Period, Museum } from '@/types/models';
+import { Artist, NamedItem, Museum } from '@/types/models';
 
 // Création de l'instance axios avec la configuration de base
 const http = axios.create({
@@ -48,18 +48,19 @@ const api = {
     return response.data;
   },
 
-  async getDomains(): Promise<Domain[]> {
-    const response = await http.get('/domains');
+  // Listes de référence des filtres : paginées, cherchées par une partie du nom
+  async getDomains(name?: string, pageSize = 20): Promise<PaginatedResult<NamedItem>> {
+    const response = await http.get('/domains', { params: { name: name || undefined, pageSize } });
     return response.data;
   },
 
-  async getTechniques(): Promise<Technique[]> {
-    const response = await http.get('/techniques');
+  async getTechniques(name?: string, pageSize = 20): Promise<PaginatedResult<NamedItem>> {
+    const response = await http.get('/techniques', { params: { name: name || undefined, pageSize } });
     return response.data;
   },
 
-  async getPeriods(): Promise<Period[]> {
-    const response = await http.get('/periods');
+  async getPeriods(name?: string, pageSize = 20): Promise<PaginatedResult<NamedItem>> {
+    const response = await http.get('/periods', { params: { name: name || undefined, pageSize } });
     return response.data;
   },
 

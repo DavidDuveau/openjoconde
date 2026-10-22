@@ -32,14 +32,27 @@ namespace OpenJoconde.API.Controllers
         /// <param name="pageSize">Nombre d'éléments par page</param>
         /// <param name="search">Terme de recherche : mots du titre ou de la description (début de mot accepté), début de référence ou de numéro d'inventaire</param>
         /// <param name="museumId">Ne garder que les œuvres de ce musée</param>
+        /// <param name="artistId">Ne garder que les œuvres de cet artiste</param>
+        /// <param name="domainId">Ne garder que les œuvres de ce domaine</param>
+        /// <param name="techniqueId">Ne garder que les œuvres réalisées avec cette technique</param>
+        /// <param name="periodId">Ne garder que les œuvres de cette période</param>
+        /// <param name="sortBy">Tri : title (A-Z, par défaut) ou title_desc (Z-A) ; les œuvres sans titre viennent en dernier</param>
         /// <returns>Liste paginée d'oeuvres d'art</returns>
         [HttpGet]
         public async Task<ActionResult<PaginatedResult<Artwork>>> GetArtworks(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10,
             [FromQuery] string? search = null,
-            [FromQuery] Guid? museumId = null)
+            [FromQuery] Guid? museumId = null,
+            [FromQuery] Guid? artistId = null,
+            [FromQuery] Guid? domainId = null,
+            [FromQuery] Guid? techniqueId = null,
+            [FromQuery] Guid? periodId = null,
+            [FromQuery] string? sortBy = null)
         {
+            if (sortBy != null && sortBy != "title" && sortBy != "title_desc")
+                return BadRequest("Tri inconnu : utiliser title ou title_desc.");
+
             try
             {
                 _logger.LogInformation("Récupération des oeuvres d'art - Page: {Page}, PageSize: {PageSize}, Search: {Search}",
@@ -52,10 +65,8 @@ namespace OpenJoconde.API.Controllers
                 // Query de base
                 IQueryable<Artwork> query = _context.Artworks;
 
-                if (museumId.HasValue)
-                {
-                    query = query.Where(a => a.MuseumId == museumId.Value);
-                }
+                query = ArtworkFilter.Apply(query, museumId, artistId, domainId, techniqueId, periodId);
+                var filtered = museumId.HasValue || artistId.HasValue || domainId.HasValue || techniqueId.HasValue || periodId.HasValue;
 
                 // Appliquer la recherche si nécessaire
                 var searching = !string.IsNullOrWhiteSpace(search);
@@ -64,7 +75,7 @@ namespace OpenJoconde.API.Controllers
                     query = ArtworkSearch.Apply(query, search!);
                 }
 
-                IQueryable<Artwork> ordered = ArtworkOrdering.ByTitle(query, searching);
+                IQueryable<Artwork> ordered = ArtworkOrdering.ByTitle(query, searching || filtered, sortBy == "title_desc");
 
                 // Calculer le nombre total d'éléments
                 var totalItems = await ordered.CountAsync();

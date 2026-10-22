@@ -74,13 +74,17 @@ if (builder.Configuration.GetValue<bool>("JocondeData:CheckForUpdatesOnStartup",
 // CORS Policy
 builder.Services.AddCors(options =>
 {
+    // Origines du front en plus de celles de développement (tests de bout en bout, déploiement) : Cors:Origins
+    var extraOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? Array.Empty<string>();
     options.AddPolicy("AllowVueApp", builder =>
     {
-        builder.WithOrigins(
+        builder.WithOrigins(new[]
+            {
                 "http://localhost:8080",  // Vue CLI serve
                 "http://localhost:5173",  // Vite
                 "http://localhost:3000",  // Additional common port
-                "http://localhost:4200")  // Angular CLI (if needed)
+                "http://localhost:4200"   // Angular CLI (if needed)
+            }.Concat(extraOrigins).ToArray())
                 .AllowAnyHeader()
                 .AllowAnyMethod();
     });
