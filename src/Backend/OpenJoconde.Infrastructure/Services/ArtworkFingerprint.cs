@@ -47,6 +47,7 @@ namespace OpenJoconde.Infrastructure.Services
             Add(artwork.AssociatedSiteUrl);
             Add(artwork.ArtistUnderCopyright);
             Add(artwork.PublicDomainYear);
+            Add(artwork.HasImage);
 
             var museum = artwork.Museum;
             Add(museum?.Name);

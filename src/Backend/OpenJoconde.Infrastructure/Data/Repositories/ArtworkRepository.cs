@@ -94,6 +94,7 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
                     AssociatedSiteUrl = a.AssociatedSiteUrl,
                     ArtistUnderCopyright = a.ArtistUnderCopyright,
                     PublicDomainYear = a.PublicDomainYear,
+                    HasImage = a.HasImage,
                     MuseumId = a.MuseumId,
                     UpdatedAt = a.UpdatedAt
                 })
@@ -132,6 +133,7 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
                     AssociatedSiteUrl = a.AssociatedSiteUrl,
                     ArtistUnderCopyright = a.ArtistUnderCopyright,
                     PublicDomainYear = a.PublicDomainYear,
+                    HasImage = a.HasImage,
                     Museum = a.Museum == null ? null : new NamedItemDto { Id = a.Museum.Id, Name = a.Museum.Name },
                     Artists = a.Artists
                         .Select(aa => new ArtworkArtistDto
@@ -187,6 +189,7 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
                         existing.AssociatedSiteUrl = artwork.AssociatedSiteUrl;
                         existing.ArtistUnderCopyright = artwork.ArtistUnderCopyright;
                         existing.PublicDomainYear = artwork.PublicDomainYear;
+                        existing.HasImage = artwork.HasImage;
                         existing.MuseumId = artwork.MuseumId;
                         existing.ContentHash = artwork.ContentHash;
                         existing.UpdatedAt = DateTime.UtcNow;

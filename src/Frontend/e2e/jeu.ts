@@ -17,6 +17,8 @@ export interface Notice {
   titre: string;
   /** Nom de famille de l'artiste (cinq artistes, un prénom commun « Prénom ») */
   auteur: string;
+  /** Présence_image de l'export : oui pour une notice sur trois, non pour une sur trois, absente sinon */
+  image: 'oui' | 'non' | '';
   domaine: string;
   technique: string;
   periode: string;
@@ -30,6 +32,7 @@ export const NOTICES: Notice[] = Array.from({ length: NOMBRE }, (_, i) => {
     reference: `E2E${String(numero).padStart(5, '0')}`,
     titre: numero % 6 === 0 ? '' : `${TITRES[numero % TITRES.length]} ${numero}`,
     auteur: `AUTEUR${numero % 5}`,
+    image: numero % 3 === 0 ? 'oui' : numero % 3 === 1 ? 'non' : '',
     domaine: `domaine ${numero % 3}`,
     technique: `technique ${numero % 4}`,
     periode: `période ${numero % 3}`,

@@ -94,6 +94,13 @@
               <p>{{ rightsText }}</p>
             </div>
 
+            <div class="metadata-item" v-if="popUrl">
+              <h3>Plateforme POP</h3>
+              <p>
+                <a :href="popUrl" target="_blank" rel="noopener noreferrer" data-testid="pop-link">{{ artwork.hasImage ? 'Voir l\'image sur POP' : 'Voir la notice sur POP' }}</a>
+              </p>
+            </div>
+
             <div class="metadata-item" v-if="siteUrl">
               <h3>Site associé</h3>
               <p>
@@ -159,6 +166,7 @@ import { useRoute } from 'vue-router';
 import ApiService from '@/services/api';
 import { displayTitle } from '@/utils/title';
 import { rightsSummary, safeWebUrl } from '@/utils/rights';
+import { popNoticeUrl } from '@/utils/pop';
 import { ArtworkDetail } from '@/types/artwork';
 
 export default defineComponent({
@@ -203,11 +211,13 @@ export default defineComponent({
 
     const rightsText = computed(() => artwork.value ? rightsSummary(artwork.value.artistUnderCopyright, artwork.value.publicDomainYear) : null);
     const siteUrl = computed(() => artwork.value ? safeWebUrl(artwork.value.associatedSiteUrl) : null);
+    const popUrl = computed(() => artwork.value ? popNoticeUrl(artwork.value.reference) : null);
 
     return {
       displayTitle,
       rightsText,
       siteUrl,
+      popUrl,
       artwork,
       loading,
       error,

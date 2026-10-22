@@ -26,15 +26,17 @@ public class DroitsEtLiensTests : IAsyncLifetime
         {
             ["Lien_site_associe"] = "https://webmuseo.com/ws/musee-crozatier/app/collection/record/17872",
             ["Artiste_sous_droits"] = "oui ; oui", // deux auteurs, espace insécable comme dans l'export
-            ["Date_entree_dans_le_domaine_public"] = "2046"
+            ["Date_entree_dans_le_domaine_public"] = "2046",
+            ["Presence_image"] = "oui"
         },
         2 => new Dictionary<string, string>
         {
             ["Lien_site_associe"] = "javascript:alert(1)", // jamais proposé en lien
             ["Artiste_sous_droits"] = "non",
-            ["Date_entree_dans_le_domaine_public"] = "2031 ; 2056"
+            ["Date_entree_dans_le_domaine_public"] = "2031 ; 2056",
+            ["Presence_image"] = "Non"
         },
-        3 => new Dictionary<string, string> { ["Lien_site_associe"] = "pas une adresse", ["Date_entree_dans_le_domaine_public"] = "bientôt" },
+        3 => new Dictionary<string, string> { ["Lien_site_associe"] = "pas une adresse", ["Date_entree_dans_le_domaine_public"] = "bientôt", ["Presence_image"] = "peut-être" },
         _ => new Dictionary<string, string>()
     };
 
@@ -88,5 +90,30 @@ public class DroitsEtLiensTests : IAsyncLifetime
         Assert.Null(quatrieme.AssociatedSiteUrl);
         Assert.Null(quatrieme.ArtistUnderCopyright);
         Assert.Null(quatrieme.PublicDomainYear);
+    }
+
+    [Fact]
+    public async Task PresenceImage_EstLue_OuiNonEtLeResteInconnu()
+    {
+        await ImporterAsync();
+
+        Assert.True((await OeuvreAsync("L000001")).HasImage);
+        Assert.False((await OeuvreAsync("L000002")).HasImage);
+        Assert.Null((await OeuvreAsync("L000003")).HasImage);
+        Assert.Null((await OeuvreAsync("L000004")).HasImage);
+    }
+
+    [Fact]
+    public async Task PresenceImage_EstDansLaListeEtLaFiche()
+    {
+        await ImporterAsync();
+        var id = (await OeuvreAsync("L000001")).Id;
+        var controleur = _db.CreateArtworksController();
+
+        var fiche = Assert.IsType<OpenJoconde.Core.Dtos.ArtworkDetailDto>(Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>((await controleur.GetArtwork(id)).Result).Value);
+        var liste = Assert.IsType<PaginatedResult<OpenJoconde.Core.Dtos.ArtworkListItemDto>>(Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>((await controleur.GetArtworks(search: "L000001")).Result).Value);
+
+        Assert.True(fiche.HasImage);
+        Assert.True(liste.Items.Single().HasImage);
     }
 }

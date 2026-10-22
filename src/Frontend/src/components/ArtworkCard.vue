@@ -1,7 +1,9 @@
 <template>
   <div class="artwork-card" data-testid="artwork-card" @click="$emit('click')">
     <div class="artwork-image">
-      <img :src="imageUrl" :alt="title" />
+      <img v-if="imageUrl" :src="imageUrl" :alt="title" />
+      <div v-else class="no-image" aria-hidden="true">Pas d'aperçu</div>
+      <span v-if="hasImage" class="image-badge" data-testid="pop-badge" title="Une image existe sur la plateforme POP">Image sur POP</span>
     </div>
     <div class="artwork-info">
       <h3 :title="title" data-testid="artwork-title">{{ shownTitle }}</h3>
@@ -30,7 +32,11 @@ export default defineComponent({
     },
     imageUrl: {
       type: String,
-      default: '/placeholder-image.jpg'
+      default: ''
+    },
+    hasImage: {
+      type: Boolean,
+      default: false
     },
     date: {
       type: String,
@@ -80,6 +86,28 @@ export default defineComponent({
     position: relative;
     width: 100%;
     padding-top: 75%; // 4:3 ratio
+
+    .no-image {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f0f2f5;
+      color: #8a8f98;
+      font-size: 0.9rem;
+    }
+
+    .image-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.65);
+      color: #fff;
+      font-size: 0.75rem;
+    }
 
     img {
       position: absolute;

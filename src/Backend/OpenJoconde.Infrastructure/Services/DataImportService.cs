@@ -236,6 +236,7 @@ namespace OpenJoconde.Infrastructure.Services
                     AssociatedSiteUrl = artwork.AssociatedSiteUrl,
                     ArtistUnderCopyright = artwork.ArtistUnderCopyright,
                     PublicDomainYear = artwork.PublicDomainYear,
+                    HasImage = artwork.HasImage,
                     ContentHash = artwork.ContentHash,
                     // L'upsert des musées a fixé leur Id réel sur les objets du parseur
                     MuseumId = artwork.Museum != null && (usableMuseumIds == null || usableMuseumIds.Contains(artwork.Museum.Id))
