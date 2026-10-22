@@ -233,8 +233,8 @@ export default defineComponent({
     });
 
     // La pertinence suppose une recherche par mots ; le tri par artiste, une recherche ou un filtre (sinon l'API refuse)
-    const canSortByRelevance = computed(() => /[\p{L}\p{N}]/u.test(searchParams.searchText));
-    const canSortByArtist = computed(() => searchParams.searchText.trim() !== '' || hasFiltersEnabled.value);
+    const canSortByRelevance = computed(() => /[\p{L}\p{N}]/u.test(searchParams.searchText ?? ''));
+    const canSortByArtist = computed(() => (searchParams.searchText ?? '').trim() !== '' || hasFiltersEnabled.value);
 
     // Observer les changements dans les paramètres d'URL
     watch(() => route.query, (newQuery) => {
