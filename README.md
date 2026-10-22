@@ -81,6 +81,10 @@ L'application est servie sur `http://localhost:8080`. L'URL de l'API vaut `https
 VUE_APP_API_URL=https://localhost:5001/api
 ```
 
+### Tests du front
+
+`npm test` (dans `src/Frontend`) lance les tests unitaires avec Vitest et jsdom : utilitaires (`title`, `rights`), composants (`ArtworkCard`, `FilterPicker`), store Pinia et client HTTP. Ils vivent dans `src/Frontend/tests/unit` et tournent en quelques secondes, sans API ni base.
+
 ### Tests de bout en bout
 
 `npm run e2e` (dans `src/Frontend`) pilote un vrai navigateur (Playwright, Chromium) contre une pile jetable : une base `openjoconde_e2e` créée puis supprimée, l'API sur `http://localhost:5101`, le front construit et servi sur `http://localhost:8101`. Elle ne touche ni à la base ni aux ports de développement. Prérequis : PostgreSQL local (mot de passe de `postgres` dans `pgpass.conf`, ou variable `E2E_PG_PASSWORD`), `dotnet tool restore`, puis `npx playwright install chromium` une fois. La CI la rejoue à chaque fusion. Les origines du front autorisées par l'API se complètent par `Cors:Origins`.
