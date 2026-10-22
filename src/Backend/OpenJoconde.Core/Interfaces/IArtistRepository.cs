@@ -16,6 +16,11 @@ namespace OpenJoconde.Core.Interfaces
         Task<Artist> GetByIdAsync(Guid id);
 
         /// <summary>
+        /// Nombre d'œuvres de chacun des artistes donnés (0 pour un artiste sans œuvre)
+        /// </summary>
+        Task<Dictionary<Guid, int>> CountArtworksAsync(IReadOnlyCollection<Guid> artistIds);
+
+        /// <summary>
         /// Recherche des artistes par nom
         /// </summary>
         Task<PaginatedResult<Artist>> SearchByNameAsync(string? name, int page = 1, int pageSize = 10);

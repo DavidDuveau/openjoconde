@@ -20,7 +20,7 @@ function csv(): string {
       domaine: notice.domaine,
       materiaux_techniques: notice.technique,
       periode_de_creation: notice.periode,
-      auteur: `AUTEUR${i % 5} Prénom`,
+      auteur: `${notice.auteur} Prénom`,
       nom_officiel_musee: notice.musee,
       lien_site_associe: i % 2 === 0 ? 'https://example.org/musee' : '',
       artiste_sous_droits: i % 4 === 0 ? 'oui' : '',

@@ -37,6 +37,19 @@ namespace OpenJoconde.Infrastructure.Data
         }
 
         /// <summary>
+        /// Nombre d'œuvres de chacun des artistes donnés : une requête groupée sur l'index des liens
+        /// </summary>
+        public async Task<Dictionary<Guid, int>> CountArtworksAsync(IReadOnlyCollection<Guid> artistIds)
+        {
+            var counts = await _context.Set<ArtworkArtist>()
+                .Where(link => artistIds.Contains(link.ArtistId))
+                .GroupBy(link => link.ArtistId)
+                .Select(group => new { group.Key, Count = group.Count() })
+                .ToDictionaryAsync(group => group.Key, group => group.Count);
+            return artistIds.ToDictionary(id => id, id => counts.GetValueOrDefault(id));
+        }
+
+        /// <summary>
         /// Search artists by name
         /// </summary>
         public async Task<PaginatedResult<Artist>> SearchByNameAsync(string? name, int page = 1, int pageSize = 10)

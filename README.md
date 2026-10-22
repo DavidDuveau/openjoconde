@@ -108,7 +108,7 @@ Depuis VS Code :
 |---|---|
 | `GET /api/artworks` | Œuvres, paginées (`page`, `pageSize` ≤ 100), avec recherche (`search`), filtres cumulables (`museumId`, `artistId`, `domainId`, `techniqueId`, `periodId`) et tri (`sortBy`, voir ci-dessous) |
 | `GET /api/artworks/{id}` | Fiche complète : champs, musée, artistes avec rôle, domaines, techniques, périodes, droits d'auteur et lien vers le site du musée |
-| `GET /api/artists`, `GET /api/museums` | Artistes et musées, paginés, avec recherche par nom (musées : aussi ville et département) |
+| `GET /api/artists`, `GET /api/artists/{id}`, `GET /api/museums` | Artistes (avec leur nombre d'œuvres ; leurs œuvres se lisent par `GET /api/artworks?artistId=`) et musées, paginés, avec recherche par nom (musées : aussi ville et département) |
 | `GET /api/domains`, `GET /api/techniques`, `GET /api/periods` | Listes de référence paginées, avec recherche par nom (`name`) : propositions des filtres du front |
 | `POST /api/import/from-file` | Importe un fichier Joconde envoyé par l'appelant (CSV ou JSON selon l'extension) |
 | `GET /api/sync/status`, `POST /api/sync/start` | Statut de la dernière synchronisation ; lancement (télécharge la source configurée et l'importe ; `?force=true` pour télécharger même si la source n'a pas changé). Une seule à la fois : `409` si une autre tourne |

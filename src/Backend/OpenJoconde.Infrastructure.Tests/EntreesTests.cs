@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenJoconde.API.Controllers;
 using OpenJoconde.API.Dtos;
+using OpenJoconde.Core.Dtos;
 using OpenJoconde.Core.Models;
 using OpenJoconde.Infrastructure.Data;
 using OpenJoconde.Infrastructure.Data.Repositories;
@@ -75,10 +76,10 @@ public class EntreesTests : IAsyncLifetime
     {
         var reponse = await Artistes().CreateArtist(new ArtistInput { LastName = "DUPONT", FirstName = "Jean" });
 
-        var cree = Assert.IsType<Artist>(Assert.IsType<CreatedAtActionResult>(reponse.Result).Value);
+        var cree = Assert.IsType<ArtistDto>(Assert.IsType<CreatedAtActionResult>(reponse.Result).Value);
         Assert.NotEqual(Guid.Empty, cree.Id);
-        Assert.NotEqual(default, cree.CreatedAt);
-        Assert.Empty(cree.Artworks);
+        Assert.NotEqual(default, (await _db.CreateContext().Artists.SingleAsync()).CreatedAt);
+        Assert.Equal(0, cree.ArtworksCount);
     }
 
     [Fact]
