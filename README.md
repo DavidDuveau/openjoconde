@@ -7,7 +7,7 @@ Le backend télécharge et importe les données Joconde dans PostgreSQL, puis le
 ## Stack
 
 - **Backend** : .NET 10, ASP.NET Core, Entity Framework Core 10 (Npgsql, noms de tables et de colonnes en snake_case)
-- **Frontend** : Vue 3, TypeScript, Pinia, Vue Router, Vue CLI 5
+- **Frontend** : Vue 3, TypeScript, Pinia, Vue Router, Vite
 - **Base de données** : PostgreSQL 15 ou supérieur (gratuit). La recherche plein texte utilise les fonctions intégrées de PostgreSQL, avec les extensions `citext` et `unaccent` fournies de série
 
 ## Source des données
@@ -79,7 +79,7 @@ npm install
 npm run serve
 ```
 
-L'application est servie sur `http://localhost:8080`. L'URL de l'API vaut `https://localhost:5001/api` par défaut. Pour la changer, créer `src/Frontend/.env.local` :
+L'application est servie sur `http://localhost:8080` (Vite ; `npm run build` contrôle les types avec `vue-tsc` puis construit, `npm run lint` lance ESLint). L'URL de l'API vaut `https://localhost:5001/api` par défaut. Pour la changer, créer `src/Frontend/.env.local` :
 
 ```
 VUE_APP_API_URL=https://localhost:5001/api
