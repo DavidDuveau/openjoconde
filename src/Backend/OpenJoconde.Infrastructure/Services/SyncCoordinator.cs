@@ -29,6 +29,7 @@ namespace OpenJoconde.Infrastructure.Services
         private const long LockKey = 0x4F4A5359;
         private const string FailureMessage = "La synchronisation a échoué, voir les journaux du serveur";
         private const int MaxStoredMessageLength = 2000;
+        private const int ProgressWriteIntervalMs = 5000;
 
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IConfiguration _configuration;
@@ -232,7 +233,7 @@ namespace OpenJoconde.Infrastructure.Services
                 try
                 {
                     await downloader.DownloadJocondeDataAsync(sourceUrl, filePath, cancellation.Token);
-                    var report = await importer.ImportFromFileAsync(filePath, LogProgress, cancellation.Token, onlyChanges: true);
+                    var report = await importer.ImportFromFileAsync(filePath, ProgressReporter(syncId), cancellation.Token, onlyChanges: true);
 
                     outcome = new SyncOutcome
                     {
@@ -343,6 +344,38 @@ namespace OpenJoconde.Infrastructure.Services
             {
                 _logger.LogError(ex, "Impossible d'écrire la conclusion de la synchronisation {SyncId} ; elle sera marquée « Interrupted » à la prochaine", syncId);
             }
+        }
+
+        /// <summary>
+        /// Journalise la progression et, au plus une fois par <see cref="ProgressWriteIntervalMs"/>, écrit dans le journal de
+        /// synchronisation le nombre d'œuvres écrites : <c>GET /api/sync/status</c> montre ainsi l'avancement d'une synchronisation
+        /// en cours. L'écriture se fait dans l'appel de progression, donc jamais après la conclusion de la synchronisation.
+        /// </summary>
+        private Action<string, int, int> ProgressReporter(Guid syncId)
+        {
+            var lastWrite = long.MinValue;
+
+            return (stage, current, total) =>
+            {
+                LogProgress(stage, current, total);
+
+                var now = Environment.TickCount64;
+                if (stage != "Œuvres" || (lastWrite != long.MinValue && now - lastWrite < ProgressWriteIntervalMs))
+                    return;
+
+                lastWrite = now;
+                try
+                {
+                    using var scope = _scopeFactory.CreateScope();
+                    var context = scope.ServiceProvider.GetRequiredService<OpenJocondeDbContext>();
+                    context.DataSyncLogs.Where(log => log.Id == syncId)
+                        .ExecuteUpdate(update => update.SetProperty(log => log.ArtworksProcessed, current));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Progression de la synchronisation {SyncId} non enregistrée", syncId);
+                }
+            };
         }
 
         private void LogProgress(string stage, int current, int total)

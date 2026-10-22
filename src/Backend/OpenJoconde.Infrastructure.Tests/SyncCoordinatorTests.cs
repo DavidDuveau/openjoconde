@@ -85,6 +85,35 @@ public class SyncCoordinatorTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Synchronisation_EnCours_EcritSaProgressionDansLeJournal_AuPlusUneFoisParIntervalle()
+    {
+        var release = new TaskCompletionSource();
+        var progressSent = new TaskCompletionSource();
+        _import.OnImport = async (_, _) =>
+        {
+            _import.Progress!("Parsing", 2000, 10000); // la lecture du fichier n'est pas du travail écrit
+            _import.Progress!("Œuvres", 500, 10000);
+            _import.Progress!("Œuvres", 900, 10000); // trop proche de l'écriture précédente
+            progressSent.SetResult();
+            await release.Task;
+            return new ImportReport { Success = true, ImportedArtworks = 1200 };
+        };
+
+        var result = await _coordinator.TryStartAsync("Manual");
+        await progressSent.Task;
+
+        var enCours = await LogAsync(result.SyncId!.Value);
+        Assert.Equal("Running", enCours.Status);
+        Assert.Equal(500, enCours.ArtworksProcessed);
+
+        release.SetResult();
+        await result.Completion;
+
+        // La conclusion écrit le total réel
+        Assert.Equal(1200, (await LogAsync(result.SyncId.Value)).ArtworksProcessed);
+    }
+
+    [Fact]
     public async Task Synchronisation_AvecPertes_EstMarqueeCompletedWithErrors()
     {
         _import.OnImport = (_, _) => Task.FromResult(new ImportReport
@@ -378,9 +407,13 @@ public class SyncCoordinatorTests : IAsyncLifetime
 
         public bool? LastOnlyChanges { get; private set; }
 
+        /// <summary>Rappel de progression reçu par le dernier import, pour que le test simule l'avancement</summary>
+        public Action<string, int, int>? Progress { get; private set; }
+
         public Task<ImportReport> ImportFromFileAsync(string filePath, Action<string, int, int>? progressCallback = null, CancellationToken cancellationToken = default, bool onlyChanges = false)
         {
             LastOnlyChanges = onlyChanges;
+            Progress = progressCallback;
             return OnImport(filePath, cancellationToken);
         }
 
