@@ -38,6 +38,7 @@ namespace OpenJoconde.API.Extensions
             services.AddScoped<IJocondeJsonParser, StreamingJocondeJsonParserService>();
             services.AddScoped<IJocondeCsvParser, StreamingJocondeCsvParserService>();
             services.AddScoped<IDataImportService, AdvancedDataImportService>();
+            services.AddHttpClient<IMuseofileService, MuseofileService>(client => client.Timeout = System.TimeSpan.FromMinutes(2));
             // Singleton : il garde les annulations des synchronisations en cours
             services.AddSingleton<ISyncCoordinator, SyncCoordinator>();
 

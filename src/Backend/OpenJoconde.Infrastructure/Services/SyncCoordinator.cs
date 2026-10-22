@@ -216,6 +216,7 @@ namespace OpenJoconde.Infrastructure.Services
                         SourceETag = sourceVersion,
                         ErrorMessage = "Source inchangée depuis la dernière synchronisation"
                     };
+                    await EnrichMuseumsAsync(scope.ServiceProvider, cancellation.Token);
                     return;
                 }
 
@@ -241,6 +242,7 @@ namespace OpenJoconde.Infrastructure.Services
                         ErrorCount = report.Errors,
                         ErrorMessage = Truncate(report.ErrorMessage)
                     };
+                    await EnrichMuseumsAsync(scope.ServiceProvider, cancellation.Token);
                 }
                 finally
                 {
@@ -267,6 +269,32 @@ namespace OpenJoconde.Infrastructure.Services
                 _running.TryRemove(syncId, out _);
                 cancellation.Dispose();
                 await ReleaseLockAsync(lockConnection);
+            }
+        }
+
+        /// <summary>
+        /// Complète les musées avec Muséofile (adresse, téléphone, site). Ce fichier est publié à part de Joconde : il est
+        /// appliqué à chaque synchronisation, même quand Joconde n'a pas changé. Une panne de Muséofile ne fait pas
+        /// échouer la synchronisation des œuvres.
+        /// </summary>
+        private async Task EnrichMuseumsAsync(IServiceProvider services, CancellationToken cancellationToken)
+        {
+            var url = _configuration["Museofile:SourceUrl"];
+            var museofile = services.GetService<IMuseofileService>();
+            if (string.IsNullOrWhiteSpace(url) || museofile == null)
+                return;
+
+            try
+            {
+                await museofile.EnrichFromUrlAsync(url, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Les musées n'ont pas pu être complétés avec Muséofile");
             }
         }
 

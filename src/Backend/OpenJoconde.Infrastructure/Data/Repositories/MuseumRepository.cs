@@ -160,17 +160,19 @@ namespace OpenJoconde.Infrastructure.Data
                         museum.Id = existingMuseum.Id;
 
                         // Update existing museum
-                        existingMuseum.Department = museum.Department;
-                        existingMuseum.Region = museum.Region;
-                        existingMuseum.Code = museum.Code;
-                        existingMuseum.Latitude = museum.Latitude;
-                        existingMuseum.Longitude = museum.Longitude;
-                        existingMuseum.Address = museum.Address;
-                        existingMuseum.ZipCode = museum.ZipCode;
-                        existingMuseum.Phone = museum.Phone;
-                        existingMuseum.Email = museum.Email;
-                        existingMuseum.Website = museum.Website;
-                        existingMuseum.Description = museum.Description;
+                        // Une valeur absente de l'import n'efface pas celle de la base : adresse, téléphone, site
+                        // viennent de Muséofile, que l'import Joconde ne connaît pas
+                        existingMuseum.Department = museum.Department ?? existingMuseum.Department;
+                        existingMuseum.Region = museum.Region ?? existingMuseum.Region;
+                        existingMuseum.Code = museum.Code ?? existingMuseum.Code;
+                        existingMuseum.Latitude = museum.Latitude ?? existingMuseum.Latitude;
+                        existingMuseum.Longitude = museum.Longitude ?? existingMuseum.Longitude;
+                        existingMuseum.Address = museum.Address ?? existingMuseum.Address;
+                        existingMuseum.ZipCode = museum.ZipCode ?? existingMuseum.ZipCode;
+                        existingMuseum.Phone = museum.Phone ?? existingMuseum.Phone;
+                        existingMuseum.Email = museum.Email ?? existingMuseum.Email;
+                        existingMuseum.Website = museum.Website ?? existingMuseum.Website;
+                        existingMuseum.Description = museum.Description ?? existingMuseum.Description;
                         existingMuseum.UpdatedAt = DateTime.UtcNow;
                         
                         _context.Museums.Update(existingMuseum);
@@ -273,13 +275,13 @@ namespace OpenJoconde.Infrastructure.Data
                         if (existingMuseum != null)
                         {
                             // Update existing
-                            existingMuseum.Department = TruncateString(museum.Department, 100);
-                            existingMuseum.Address = museum.Address;
-                            existingMuseum.ZipCode = TruncateString(museum.ZipCode, 20);
-                            existingMuseum.Phone = TruncateString(museum.Phone, 20);
-                            existingMuseum.Email = TruncateString(museum.Email, 100);
-                            existingMuseum.Website = museum.Website;
-                            existingMuseum.Description = museum.Description;
+                            existingMuseum.Department = TruncateString(museum.Department, 100) ?? existingMuseum.Department;
+                            existingMuseum.Address = museum.Address ?? existingMuseum.Address;
+                            existingMuseum.ZipCode = TruncateString(museum.ZipCode, 20) ?? existingMuseum.ZipCode;
+                            existingMuseum.Phone = TruncateString(museum.Phone, 20) ?? existingMuseum.Phone;
+                            existingMuseum.Email = TruncateString(museum.Email, 100) ?? existingMuseum.Email;
+                            existingMuseum.Website = museum.Website ?? existingMuseum.Website;
+                            existingMuseum.Description = museum.Description ?? existingMuseum.Description;
                             existingMuseum.UpdatedAt = DateTime.UtcNow;
                         }
                         else
