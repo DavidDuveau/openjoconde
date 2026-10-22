@@ -17,7 +17,7 @@ namespace OpenJoconde.API.Extensions
         /// </summary>
         public static IHttpClientBuilder AddJocondeHttpClient(this IServiceCollection services)
         {
-            return services.AddHttpClient<IJocondeDataService, JocondeDataService>(client =>
+            return services.AddHttpClient<IJocondeDownloader, JocondeDownloader>(client =>
             {
                 // Timeout étendu à 10 minutes pour les téléchargements volumineux
                 client.Timeout = TimeSpan.FromMinutes(10);

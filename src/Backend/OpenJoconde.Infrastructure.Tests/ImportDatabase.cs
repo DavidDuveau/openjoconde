@@ -62,12 +62,12 @@ public sealed class ImportDatabase : IAsyncLifetime
     }
 
     /// <summary>Assemble le service d'import comme le fait l'injection de dépendances de l'API.</summary>
-    public AdvancedDataImportService CreateImportService(
+    public DataImportService CreateImportService(
         OpenJocondeDbContext context,
         IArtworkRepository? artworks = null,
         IArtworkRelationsRepository? relations = null) =>
         new(
-            NullLogger<AdvancedDataImportService>.Instance,
+            NullLogger<DataImportService>.Instance,
             artworks ?? new ArtworkRepository(context, NullLogger<ArtworkRepository>.Instance),
             new ArtistRepository(context, NullLogger<ArtistRepository>.Instance),
             new MuseumRepository(context, NullLogger<MuseumRepository>.Instance),

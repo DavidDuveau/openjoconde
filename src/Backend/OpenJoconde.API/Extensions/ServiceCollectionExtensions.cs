@@ -33,11 +33,11 @@ namespace OpenJoconde.API.Extensions
                     provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ArtworkRelationsRepository>>()));
 
             // Services
-            services.AddScoped<IJocondeDataService, JocondeDataService>();
+            services.AddScoped<IJocondeDownloader, JocondeDownloader>();
             // Utiliser l'implémentation avec streaming pour éviter les OutOfMemoryException
             services.AddScoped<IJocondeJsonParser, StreamingJocondeJsonParserService>();
             services.AddScoped<IJocondeCsvParser, StreamingJocondeCsvParserService>();
-            services.AddScoped<IDataImportService, AdvancedDataImportService>();
+            services.AddScoped<IDataImportService, DataImportService>();
             services.AddHttpClient<IMuseofileService, MuseofileService>(client => client.Timeout = System.TimeSpan.FromMinutes(2));
             // Singleton : il garde les annulations des synchronisations en cours
             services.AddSingleton<ISyncCoordinator, SyncCoordinator>();

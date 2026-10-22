@@ -43,7 +43,7 @@ public class SyncCoordinatorTests : IAsyncLifetime
 
         var services = new ServiceCollection()
             .AddDbContext<OpenJocondeDbContext>(options => options.UseNpgsql(_db.ConnectionString).UseSnakeCaseNamingConvention())
-            .AddSingleton<IJocondeDataService>(_download)
+            .AddSingleton<IJocondeDownloader>(_download)
             .AddSingleton<IDataImportService>(_import)
             .AddSingleton<IMuseofileService>(_museofile)
             .BuildServiceProvider();
@@ -357,7 +357,7 @@ public class SyncCoordinatorTests : IAsyncLifetime
         public Task<MuseofileReport> EnrichFromFileAsync(string csvFilePath, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
-    private sealed class FakeDownloadService : IJocondeDataService
+    private sealed class FakeDownloadService : IJocondeDownloader
     {
         public string? Version { get; set; }
         public int Downloads { get; private set; }

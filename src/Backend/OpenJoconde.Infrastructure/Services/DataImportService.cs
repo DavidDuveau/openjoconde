@@ -17,9 +17,9 @@ namespace OpenJoconde.Infrastructure.Services
     /// Service avancé pour l'importation des données depuis le résultat du parsing vers la base de données
     /// Optimisé pour les performances et la gestion des relations
     /// </summary>
-    public class AdvancedDataImportService : IDataImportService
+    public class DataImportService : IDataImportService
     {
-        private readonly ILogger<AdvancedDataImportService> _logger;
+        private readonly ILogger<DataImportService> _logger;
         private readonly IArtworkRepository _artworkRepository;
         private readonly IArtistRepository _artistRepository;
         private readonly IMuseumRepository _museumRepository;
@@ -31,8 +31,8 @@ namespace OpenJoconde.Infrastructure.Services
         private readonly IJocondeCsvParser _csvParser;
         private readonly HttpClient _httpClient;
 
-        public AdvancedDataImportService(
-            ILogger<AdvancedDataImportService> logger,
+        public DataImportService(
+            ILogger<DataImportService> logger,
             IArtworkRepository artworkRepository,
             IArtistRepository artistRepository,
             IMuseumRepository museumRepository,

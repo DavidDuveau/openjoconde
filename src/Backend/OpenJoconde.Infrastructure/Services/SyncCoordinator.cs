@@ -204,7 +204,7 @@ namespace OpenJoconde.Infrastructure.Services
             try
             {
                 using var scope = _scopeFactory.CreateScope();
-                var downloader = scope.ServiceProvider.GetRequiredService<IJocondeDataService>();
+                var downloader = scope.ServiceProvider.GetRequiredService<IJocondeDownloader>();
                 var importer = scope.ServiceProvider.GetRequiredService<IDataImportService>();
 
                 var sourceUrl = (string.IsNullOrWhiteSpace(_options.SourceUrl) ? null : _options.SourceUrl)
