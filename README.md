@@ -30,7 +30,7 @@ Les musées sont complétés par la base [Muséofile](https://www.data.gouv.fr/d
 ## Prérequis
 
 - [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0)
-- [Node.js](https://nodejs.org/) 18 ou supérieur
+- [Node.js](https://nodejs.org/) 22.12 ou supérieur (22 LTS ; `nvm use 22` avec nvm-windows, voir `.nvmrc`)
 - PostgreSQL 15 ou supérieur
 - L'outil EF Core, épinglé dans `dotnet-tools.json` (`dotnet tool restore`)
 
