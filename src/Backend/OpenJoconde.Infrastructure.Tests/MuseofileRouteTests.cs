@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using OpenJoconde.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenJoconde.API.Controllers;
 using OpenJoconde.Core.Interfaces;
@@ -14,10 +15,7 @@ public class MuseofileRouteTests
 {
     private static MuseofileController Controleur(FakeMuseofile service, string? url = "https://exemple.test/museofile.csv")
     {
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { ["Museofile:SourceUrl"] = url })
-            .Build();
-        return new MuseofileController(service, configuration, NullLogger<MuseofileController>.Instance);
+        return new MuseofileController(service, Options.Create(new SyncOptions { MuseofileSourceUrl = url }), NullLogger<MuseofileController>.Instance);
     }
 
     [Fact]

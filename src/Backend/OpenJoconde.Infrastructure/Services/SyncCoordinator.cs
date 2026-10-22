@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+using OpenJoconde.Infrastructure.Configuration;
 using Npgsql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -30,16 +32,19 @@ namespace OpenJoconde.Infrastructure.Services
 
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IConfiguration _configuration;
+        private readonly SyncOptions _options;
         private readonly ILogger<SyncCoordinator> _logger;
         private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _running = new();
 
         public SyncCoordinator(
             IServiceScopeFactory scopeFactory,
             IConfiguration configuration,
+            IOptions<SyncOptions> options,
             ILogger<SyncCoordinator> logger)
         {
             _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -142,7 +147,7 @@ namespace OpenJoconde.Infrastructure.Services
         }
 
         private string TempDirectory() =>
-            _configuration["JocondeData:TempDirectory"] ?? Path.Combine(Path.GetTempPath(), "openjoconde");
+            (string.IsNullOrWhiteSpace(_options.TempDirectory) ? null : _options.TempDirectory) ?? Path.Combine(Path.GetTempPath(), "openjoconde");
 
         private async Task<DateTime?> RunningSinceAsync(CancellationToken cancellationToken)
         {
@@ -202,7 +207,7 @@ namespace OpenJoconde.Infrastructure.Services
                 var downloader = scope.ServiceProvider.GetRequiredService<IJocondeDataService>();
                 var importer = scope.ServiceProvider.GetRequiredService<IDataImportService>();
 
-                var sourceUrl = _configuration["JocondeData:SourceUrl"]
+                var sourceUrl = (string.IsNullOrWhiteSpace(_options.SourceUrl) ? null : _options.SourceUrl)
                     ?? throw new InvalidOperationException("L'URL source des données Joconde n'est pas configurée");
                 // Source inchangée depuis la dernière synchronisation réussie : rien à télécharger
                 var sourceVersion = await downloader.GetSourceVersionAsync(sourceUrl, cancellation.Token);
@@ -279,7 +284,7 @@ namespace OpenJoconde.Infrastructure.Services
         /// </summary>
         private async Task EnrichMuseumsAsync(IServiceProvider services, CancellationToken cancellationToken)
         {
-            var url = _configuration["Museofile:SourceUrl"];
+            var url = _options.MuseofileSourceUrl;
             var museofile = services.GetService<IMuseofileService>();
             if (string.IsNullOrWhiteSpace(url) || museofile == null)
                 return;

@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using OpenJoconde.Infrastructure.Configuration;
 using Microsoft.OpenApi;
 using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Infrastructure.Data;
@@ -62,11 +64,17 @@ builder.Services.AddHttpClient<AutoSyncService>(client =>
     client.Timeout = TimeSpan.FromMinutes(10);
 });
 
+// Réglages des synchronisations (section « Sync »), contrôlés au démarrage
+builder.Services.AddOptions<SyncOptions>()
+    .Bind(builder.Configuration.GetSection(SyncOptions.SectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<SyncOptions>, SyncOptionsValidator>();
+
 // Register infrastructure services
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // Register auto sync service if enabled
-if (builder.Configuration.GetValue<bool>("JocondeData:CheckForUpdatesOnStartup", false))
+if (builder.Configuration.GetValue<bool>($"{SyncOptions.SectionName}:{nameof(SyncOptions.CheckForUpdatesOnStartup)}"))
 {
     builder.Services.AddHostedService<AutoSyncService>();
 }
@@ -102,7 +110,7 @@ builder.Services.AddRateLimiter(options =>
 var app = builder.Build();
 
 // Ensure the temp directory exists
-var tempDir = builder.Configuration["JocondeData:TempDirectory"];
+var tempDir = app.Services.GetRequiredService<IOptions<SyncOptions>>().Value.TempDirectory;
 if (!string.IsNullOrEmpty(tempDir) && !Directory.Exists(tempDir))
 {
     Directory.CreateDirectory(tempDir);

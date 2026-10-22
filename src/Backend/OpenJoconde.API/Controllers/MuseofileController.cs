@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+using OpenJoconde.Infrastructure.Configuration;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
@@ -18,18 +20,18 @@ namespace OpenJoconde.API.Controllers
     public class MuseofileController : ControllerBase
     {
         private readonly IMuseofileService _museofile;
-        private readonly IConfiguration _configuration;
+        private readonly SyncOptions _options;
         private readonly ILogger<MuseofileController> _logger;
 
-        public MuseofileController(IMuseofileService museofile, IConfiguration configuration, ILogger<MuseofileController> logger)
+        public MuseofileController(IMuseofileService museofile, IOptions<SyncOptions> options, ILogger<MuseofileController> logger)
         {
             _museofile = museofile ?? throw new ArgumentNullException(nameof(museofile));
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
-        /// Télécharge le fichier Muséofile (<c>Museofile:SourceUrl</c>) et complète les musées : adresse, code postal,
+        /// Télécharge le fichier Muséofile (<c>Sync:MuseofileSourceUrl</c>) et complète les musées : adresse, code postal,
         /// téléphone, site Internet, histoire. Même opération que celle qui suit chaque synchronisation de Joconde.
         /// </summary>
         /// <returns>Nombre de musées lus, retrouvés, mis à jour et sans correspondance</returns>
@@ -38,7 +40,7 @@ namespace OpenJoconde.API.Controllers
         [HttpPost("sync")]
         public async Task<IActionResult> Sync(CancellationToken cancellationToken)
         {
-            var url = _configuration["Museofile:SourceUrl"];
+            var url = _options.MuseofileSourceUrl;
             if (string.IsNullOrWhiteSpace(url))
                 return StatusCode(503, "L'URL source de Muséofile n'est pas configurée.");
 
