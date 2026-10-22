@@ -150,3 +150,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+/// <summary>Point d'entrée de l'API, public pour que les tests d'intégration le démarrent (WebApplicationFactory)</summary>
+public partial class Program { }
