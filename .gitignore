@@ -93,3 +93,5 @@ pnpm-debug.log*
 src/Frontend/dist-e2e/
 src/Frontend/test-results/
 src/Frontend/playwright-report/
+coverage
+TestResults/

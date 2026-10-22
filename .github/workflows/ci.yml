@@ -24,6 +24,8 @@ jobs:
       OPENJOCONDE_TEST_POSTGRES: "Host=localhost;Port=5432;Username=postgres;Password=Test_Passw0rd"
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
@@ -33,7 +35,15 @@ jobs:
         run: |
           dotnet tool restore
           dotnet ef migrations has-pending-model-changes --project src/Backend/OpenJoconde.Infrastructure --startup-project src/Backend/OpenJoconde.API --no-build --configuration Release
-      - run: dotnet test OpenJoconde.sln --no-build --configuration Release
+      - name: Tests et couverture
+        run: dotnet test OpenJoconde.sln --no-build --configuration Release --settings coverage.runsettings --results-directory ./TestResults
+      - name: Couverture du back au moins 85 %
+        run: python3 scripts/verifier-couverture-back.py TestResults/*/coverage.cobertura.xml
+      - name: Couverture du code modifié au moins 85 % (pull request)
+        if: github.event_name == 'pull_request'
+        run: |
+          pip install diff-cover
+          diff-cover TestResults/*/coverage.cobertura.xml --compare-branch=origin/${{ github.base_ref }} --fail-under=85
 
   frontend:
     runs-on: ubuntu-latest
@@ -42,14 +52,21 @@ jobs:
         working-directory: src/Frontend
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: src/Frontend/package-lock.json
       - run: npm ci
-      - name: Tests unitaires
-        run: npm test
+      - name: Tests unitaires et couverture au moins 85 % (seuils dans vitest.config.ts)
+        run: npm run test:coverage
+      - name: Couverture du code modifié au moins 85 % (pull request)
+        if: github.event_name == 'pull_request'
+        run: |
+          pip install diff-cover
+          diff-cover coverage/cobertura-coverage.xml --compare-branch=origin/${{ github.base_ref }} --fail-under=85
       - run: npm run build
 
   e2e:

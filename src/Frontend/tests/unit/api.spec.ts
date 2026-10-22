@@ -1,11 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { get } = vi.hoisted(() => ({ get: vi.fn() }));
-vi.mock('axios', () => ({
-  default: { create: () => ({ get, interceptors: { response: { use: vi.fn() } } }) }
-}));
+const { get, use, create } = vi.hoisted(() => {
+  const use = vi.fn();
+  const get = vi.fn();
+  return { get, use, create: vi.fn(() => ({ get, interceptors: { response: { use } } })) };
+});
+vi.mock('axios', () => ({ default: { create } }));
 
 import api from '@/services/api';
+
+// Les appels de configuration ont lieu à l'import du module : on les relève avant tout nettoyage
+const configuration = create.mock.calls[0] as unknown[];
+const intercepteurs = use.mock.calls[0] as [(r: unknown) => unknown, (e: unknown) => Promise<never>];
 
 describe('client API', () => {
   beforeEach(() => {
@@ -41,5 +47,46 @@ describe('client API', () => {
     await api.searchArtworks(params);
 
     expect(get).toHaveBeenCalledWith('/artworks', { params });
+  });
+
+  it.each([
+    ['getArtworks', [2, 5], '/artworks', { params: { page: 2, pageSize: 5 } }],
+    ['getArtwork', ['a1'], '/artworks/a1', undefined],
+    ['getArtist', ['r1'], '/artists/r1', undefined],
+    ['getMuseum', ['m1'], '/museums/m1', undefined]
+  ] as const)('%s appelle %s', async (methode, args, route, options) => {
+    get.mockResolvedValue({ data: { id: 'x' } });
+
+    const resultat = await (api[methode] as (...a: unknown[]) => Promise<unknown>)(...args);
+
+    expect(resultat).toEqual({ id: 'x' });
+    if (options) expect(get).toHaveBeenCalledWith(route, options);
+    else expect(get).toHaveBeenCalledWith(route);
+  });
+
+  it('cherche les musées par nom, sans nom vide', async () => {
+    await api.getMuseums(2, 12, 'guimet');
+    expect(get).toHaveBeenLastCalledWith('/museums', { params: { page: 2, pageSize: 12, name: 'guimet' } });
+
+    await api.getMuseums();
+    expect(get).toHaveBeenLastCalledWith('/museums', { params: { page: 1, pageSize: 10, name: undefined } });
+  });
+
+  it('crée le client avec la base de l’API et du JSON', () => {
+    expect(configuration[0]).toEqual(expect.objectContaining({
+      baseURL: expect.any(String),
+      headers: expect.objectContaining({ Accept: 'application/json' })
+    }));
+  });
+
+  it('laisse passer les réponses et rejette les erreurs en les journalisant', async () => {
+    const [succes, echec] = intercepteurs;
+    const journal = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const reponse = { data: 1 };
+    const erreur = { response: { status: 500 } };
+
+    expect(succes(reponse)).toBe(reponse);
+    await expect(echec(erreur)).rejects.toBe(erreur);
+    expect(journal).toHaveBeenCalledWith('API Error:', erreur.response);
   });
 });
