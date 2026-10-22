@@ -6,6 +6,7 @@
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
+    "test": "vitest run",
     "e2e": "playwright test"
   },
   "dependencies": {
@@ -19,17 +20,22 @@
     "@playwright/test": "^1.64.1",
     "@typescript-eslint/eslint-plugin": "^5.4.0",
     "@typescript-eslint/parser": "^5.4.0",
+    "@vitejs/plugin-vue": "^5.2.4",
     "@vue/cli-plugin-babel": "~5.0.0",
     "@vue/cli-plugin-eslint": "~5.0.0",
     "@vue/cli-plugin-router": "~5.0.0",
     "@vue/cli-plugin-typescript": "~5.0.0",
     "@vue/cli-service": "~5.0.0",
     "@vue/eslint-config-typescript": "^9.1.0",
+    "@vue/test-utils": "^2.5.1",
     "eslint": "^7.32.0",
     "eslint-plugin-vue": "^8.0.3",
+    "jsdom": "^25.0.1",
     "sass": "^1.32.7",
     "sass-loader": "^12.0.0",
     "serve": "^14.2.6",
-    "typescript": "~4.5.5"
+    "typescript": "~4.5.5",
+    "vite": "^5.4.21",
+    "vitest": "^2.1.9"
   }
 }

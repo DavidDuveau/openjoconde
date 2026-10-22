@@ -48,6 +48,8 @@ jobs:
           cache: npm
           cache-dependency-path: src/Frontend/package-lock.json
       - run: npm ci
+      - name: Tests unitaires
+        run: npm test
       - run: npm run build
 
   e2e:
