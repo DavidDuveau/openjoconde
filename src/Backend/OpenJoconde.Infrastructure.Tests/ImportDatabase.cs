@@ -32,6 +32,9 @@ public sealed class ImportDatabase : IAsyncLifetime
     public static string FixturePath(string name) =>
         Path.Combine(AppContext.BaseDirectory, "Fixtures", name);
 
+    public API.Controllers.ArtworksController CreateArtworksController() =>
+        new(new ArtworkRepository(CreateContext(), NullLogger<ArtworkRepository>.Instance), NullLogger<API.Controllers.ArtworksController>.Instance);
+
     public OpenJocondeDbContext CreateContext() =>
         new(Configure(new DbContextOptionsBuilder<OpenJocondeDbContext>(), ConnectionString).Options);
 

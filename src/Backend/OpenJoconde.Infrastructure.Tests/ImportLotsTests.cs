@@ -130,12 +130,11 @@ public class ImportLotsTests : IAsyncLifetime
         await ImporterAsync(CreerCsv(Notices, i => $"titre {i}"));
         await using var context = _db.CreateContext();
         var musee = await context.Museums.SingleAsync(m => m.Name == "musée 1");
-        var controleur = new OpenJoconde.API.Controllers.ArtworksController(
-            context, Microsoft.Extensions.Logging.Abstractions.NullLogger<OpenJoconde.API.Controllers.ArtworksController>.Instance);
+        var controleur = _db.CreateArtworksController();
 
         var reponse = await controleur.GetArtworks(page: 1, pageSize: 50, museumId: musee.Id);
 
-        var page = Assert.IsType<OpenJoconde.Core.Models.PaginatedResult<OpenJoconde.Core.Models.Artwork>>(
+        var page = Assert.IsType<OpenJoconde.Core.Models.PaginatedResult<OpenJoconde.Core.Dtos.ArtworkListItemDto>>(
             Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(reponse.Result).Value);
         Assert.Equal(Notices / 3, page.TotalItems);
         Assert.Equal(50, page.Items.Count);

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenJoconde.API.Controllers;
 using OpenJoconde.API.Dtos;
+using OpenJoconde.Core.Dtos;
 using OpenJoconde.Core.Models;
 using OpenJoconde.Infrastructure.Data;
 using Xunit;
@@ -43,11 +44,11 @@ public class FiltresTests : IAsyncLifetime
     private static PaginatedResult<T> Resultat<T>(ActionResult<PaginatedResult<T>> reponse) =>
         Assert.IsType<PaginatedResult<T>>(Assert.IsType<OkObjectResult>(reponse.Result).Value);
 
-    private async Task<PaginatedResult<Artwork>> ListerAsync(
+    private async Task<PaginatedResult<ArtworkListItemDto>> ListerAsync(
         Guid? artistId = null, Guid? domainId = null, Guid? techniqueId = null, Guid? periodId = null,
         string? search = null, string? sortBy = null)
     {
-        var controleur = new ArtworksController(_db.CreateContext(), NullLogger<ArtworksController>.Instance);
+        var controleur = _db.CreateArtworksController();
         return Resultat(await controleur.GetArtworks(1, 100, search, null, artistId, domainId, techniqueId, periodId, sortBy));
     }
 
@@ -66,7 +67,7 @@ public class FiltresTests : IAsyncLifetime
     [InlineData("title_desc")]
     public async Task ParcourirToutesLesPages_RendChaqueOeuvreUneFois_DansLOrdreDuTri(string? tri)
     {
-        var controleur = new ArtworksController(_db.CreateContext(), NullLogger<ArtworksController>.Instance);
+        var controleur = _db.CreateArtworksController();
         var references = new List<string>();
         for (var page = 1; page <= 5; page++)
         {
@@ -157,7 +158,7 @@ public class FiltresTests : IAsyncLifetime
     [Fact]
     public async Task TriInconnu_EstRefuse()
     {
-        var controleur = new ArtworksController(_db.CreateContext(), NullLogger<ArtworksController>.Instance);
+        var controleur = _db.CreateArtworksController();
 
         var reponse = await controleur.GetArtworks(sortBy: "relevance");
 
