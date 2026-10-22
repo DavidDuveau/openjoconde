@@ -64,6 +64,17 @@ public class TrisTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TriParDate_PlaceLesDatesAvantJesusChristAvantLesAutres()
+    {
+        var dates = new[] { "", "1850", "5e siècle av JC", "40000 av JC,10000 av JC", "néolithique", "1er siècle av. J.-C." };
+        await ImporterAsync(5, i => $"Titre {i}", i => new Dictionary<string, string> { ["Periode_de_creation"] = dates[i] });
+
+        var references = References(await ListerAsync("date"));
+
+        Assert.Equal(new[] { 3, 2, 5, 1, 4 }.Select(Ref), references);
+    }
+
+    [Fact]
     public async Task TriParDateDecroissante_PlusRecentDAbord_SansDateLisibleALaFin()
     {
         await ImporterDatesAsync();
