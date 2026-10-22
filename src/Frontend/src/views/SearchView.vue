@@ -125,6 +125,10 @@
               <select v-model="sortBy" @change="search">
                 <option value="title">Titre (A-Z)</option>
                 <option value="title_desc">Titre (Z-A)</option>
+                <option value="date">Date (plus ancien)</option>
+                <option value="date_desc">Date (plus récent)</option>
+                <option v-if="canSortByRelevance" value="relevance">Pertinence</option>
+                <option v-if="canSortByArtist" value="artist">Artiste</option>
               </select>
             </div>
           </div>
@@ -228,6 +232,10 @@ export default defineComponent({
              searchParams.museumId !== '';
     });
 
+    // La pertinence suppose une recherche par mots ; le tri par artiste, une recherche ou un filtre (sinon l'API refuse)
+    const canSortByRelevance = computed(() => /[\p{L}\p{N}]/u.test(searchParams.searchText));
+    const canSortByArtist = computed(() => searchParams.searchText.trim() !== '' || hasFiltersEnabled.value);
+
     // Observer les changements dans les paramètres d'URL
     watch(() => route.query, (newQuery) => {
       if (typeof newQuery.searchText === 'string') {
@@ -303,6 +311,10 @@ export default defineComponent({
 
     // Search function (déclaration de fonction : le watch immédiat ci-dessus l'appelle avant cette ligne)
     function search() {
+      // Un tri devenu impossible (recherche effacée) retombe sur le titre
+      if ((sortBy.value === 'relevance' && !canSortByRelevance.value) || (sortBy.value === 'artist' && !canSortByArtist.value)) {
+        sortBy.value = 'title';
+      }
       // Mettre à jour les paramètres de tri
       searchParams.sortBy = sortBy.value;
       
@@ -402,6 +414,8 @@ export default defineComponent({
       findTechniques,
       findPeriods,
       sortBy,
+      canSortByRelevance,
+      canSortByArtist,
       hasFiltersEnabled,
       search,
       resetFilters,

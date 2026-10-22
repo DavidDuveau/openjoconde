@@ -93,7 +93,7 @@ export interface SearchParams {
   periodName?: string;
   page: number;
   pageSize: number;
-  sortBy?: string; // title (défaut) ou title_desc
+  sortBy?: string; // title (défaut), title_desc, date, date_desc, relevance ou artist
 }
 
 export interface PaginatedResult<T> {
