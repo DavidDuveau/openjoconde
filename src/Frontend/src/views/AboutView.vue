@@ -9,18 +9,16 @@
           OpenJoconde est une application web permettant d'explorer les collections des musées français référencées dans la base Joconde. Cette application a été développée dans le but de rendre accessible au grand public la richesse du patrimoine muséal français.
         </p>
         <p>
-          La base Joconde est le catalogue collectif des collections des musées de France, géré par le Ministère de la Culture. Elle contient plus de 600 000 notices d'objets de toute nature (archéologie, beaux-arts, ethnologie, histoire, sciences et techniques...) valorisées par des notices descriptives et des images.
+          La base Joconde est le catalogue collectif des collections des musées de France, géré par le Ministère de la Culture. Elle compte plus d'un million de notices d'objets de toute nature (archéologie, beaux-arts, ethnologie, histoire, sciences et techniques...).
         </p>
       </section>
 
       <section class="about-section">
         <h2>Fonctionnalités</h2>
         <ul>
-          <li>Recherche multicritères dans les collections</li>
-          <li>Exploration par domaine, période, technique ou artiste</li>
-          <li>Visualisation détaillée des œuvres avec leurs métadonnées</li>
-          <li>Navigation thématique par musée</li>
-          <li>Découverte d'œuvres similaires</li>
+          <li>Recherche par mots dans les collections, avec filtres (artiste, domaine, technique, période, musée) et tris</li>
+          <li>Fiche détaillée de chaque œuvre, avec renvoi vers sa notice sur la plateforme POP</li>
+          <li>Annuaire des artistes et des musées, avec leurs œuvres</li>
         </ul>
       </section>
 
@@ -28,24 +26,37 @@
         <h2>Technologies</h2>
         <p>OpenJoconde est développé avec les technologies suivantes :</p>
         <ul>
-          <li><strong>Backend</strong> : .NET Core avec une architecture clean</li>
+          <li><strong>Backend</strong> : .NET 10 et ASP.NET Core</li>
           <li><strong>Base de données</strong> : PostgreSQL pour le stockage relationnel optimisé</li>
           <li><strong>Frontend</strong> : Vue.js 3 avec TypeScript pour une interface utilisateur moderne et réactive</li>
         </ul>
       </section>
 
-      <section class="about-section">
-        <h2>Données ouvertes</h2>
+      <section class="about-section" id="sources" data-testid="about-sources">
+        <h2>Sources et licences</h2>
         <p>
-          Cette application utilise les données ouvertes de la base Joconde mises à disposition par le Ministère de la Culture sur la plateforme data.gouv.fr sous licence ouverte.
+          Les données viennent du Ministère de la Culture, publiées en données ouvertes sur data.gouv.fr et diffusées par la
+          plateforme ouverte du patrimoine (POP) :
+        </p>
+        <ul>
+          <li v-for="source in sources" :key="source.nom">
+            <a :href="source.url" target="_blank" rel="noopener noreferrer">{{ source.nom }}</a> : {{ source.description }}
+          </li>
+        </ul>
+        <p>
+          Ces données sont réutilisées sous
+          <a :href="licenceUrl" target="_blank" rel="noopener noreferrer">Licence Ouverte 2.0</a>. Elles sont reprises telles
+          que publiées, sans en altérer le sens ; chaque fiche rappelle la référence de la notice, le lieu de conservation et
+          l'origine des données.
         </p>
         <p>
-          Les données sont régulièrement mises à jour à partir de la source officielle pour garantir leur exactitude et leur fraîcheur.
+          Les images, et certaines informations des notices, peuvent relever de droits de tiers : leur réutilisation demande
+          l'autorisation de leurs auteurs ou ayants droit. OpenJoconde n'affiche donc aucune image ; la fiche renvoie vers la
+          notice sur
+          <a href="https://pop.culture.gouv.fr/" target="_blank" rel="noopener noreferrer">POP</a>, qui les diffuse.
         </p>
         <p>
-          <a href="https://www.data.gouv.fr/fr/datasets/joconde-catalogue-collectif-des-collections-des-musees-de-france/" target="_blank" rel="noopener">
-            Consulter les données sur data.gouv.fr
-          </a>
+          OpenJoconde est un projet indépendant, sans lien officiel avec le Ministère de la Culture.
         </p>
       </section>
 
@@ -56,22 +67,32 @@
         </p>
         <p>
           Le code source du projet est disponible sur GitHub :
-          <!-- Dans une implémentation réelle, insérer le lien vers le repo GitHub -->
-          <a href="#" target="_blank" rel="noopener">GitHub Repository</a>
+          <a href="https://github.com/DavidDuveau/openjoconde" target="_blank" rel="noopener noreferrer">github.com/DavidDuveau/openjoconde</a>
         </p>
       </section>
 
       <section class="about-section">
         <h2>Contact</h2>
         <p>
-          Pour toute question ou suggestion concernant l'application OpenJoconde, veuillez nous contacter à l'adresse :
-          <!-- Adresse email fictive -->
-          <a href="mailto:contact@openjoconde.org">contact@openjoconde.org</a>
+          Pour toute question ou suggestion concernant l'application, ouvrez une demande sur
+          <a href="https://github.com/DavidDuveau/openjoconde/issues" target="_blank" rel="noopener noreferrer">GitHub</a>.
         </p>
       </section>
     </div>
   </div>
 </template>
+
+<script lang="ts">
+import { defineComponent } from 'vue';
+import { SOURCES, LICENCE_URL } from '@/utils/sources';
+
+export default defineComponent({
+  name: 'AboutView',
+  setup() {
+    return { sources: SOURCES, licenceUrl: LICENCE_URL };
+  }
+});
+</script>
 
 <style scoped lang="scss">
 .about {

@@ -8,6 +8,10 @@
 
     <footer>
       <p>OpenJoconde - Exploration des collections des musées de France</p>
+      <p class="footer-source" data-testid="footer-source">
+        Données : Ministère de la Culture (bases Joconde et Muséofile), Licence Ouverte 2.0 ·
+        <router-link to="/about#sources">Sources et licences</router-link>
+      </p>
     </footer>
   </div>
 </template>
@@ -67,10 +71,22 @@ main {
 footer {
   background-color: var(--primary-color);
   color: white;
-  height: var(--footer-height);
-  padding: 0 20px;
+  min-height: var(--footer-height);
+  padding: 10px 20px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 4px;
+  text-align: center;
+
+  .footer-source {
+    font-size: 0.8rem;
+    opacity: 0.85;
+
+    a {
+      color: white;
+    }
+  }
 }
 </style>

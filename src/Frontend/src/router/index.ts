@@ -58,7 +58,9 @@ const routes: Array<RouteRecordRaw> = [
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes
+  routes,
+  // Un lien vers une ancre (/about#sources) y mène ; sinon, en haut de la page
+  scrollBehavior: to => (to.hash ? { el: to.hash, top: 80 } : { top: 0 })
 });
 
 export default router;
