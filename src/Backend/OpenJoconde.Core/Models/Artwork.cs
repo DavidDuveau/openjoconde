@@ -79,6 +79,12 @@ namespace OpenJoconde.Core.Models
         public int? PublicDomainYear { get; set; }
 
         /// <summary>
+        /// La notice annonce une image (colonne Presence_image de l'export) ; null quand elle ne le dit pas. L'export ne
+        /// donne pas l'adresse de l'image : elle se voit sur la notice de la plateforme POP.
+        /// </summary>
+        public bool? HasImage { get; set; }
+
+        /// <summary>
         /// URL to the image of the artwork
         /// </summary>
         public string? ImageUrl { get; set; }

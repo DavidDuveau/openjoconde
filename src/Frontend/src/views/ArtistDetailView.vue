@@ -68,6 +68,7 @@
               :id="artwork.id"
               :title="artwork.title"
               :imageUrl="artwork.imageUrl"
+              :hasImage="artwork.hasImage === true"
               :date="artwork.creationDate"
               @click="navigateToArtwork(artwork.id)"
             />

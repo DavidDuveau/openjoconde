@@ -93,6 +93,8 @@ VUE_APP_API_URL=https://localhost:5001/api
 
 `npm run e2e` (dans `src/Frontend`) pilote un vrai navigateur (Playwright, Chromium) contre une pile jetable : une base `openjoconde_e2e` créée puis supprimée, l'API sur `http://localhost:5101`, le front construit et servi sur `http://localhost:8101`. Elle ne touche ni à la base ni aux ports de développement. Prérequis : PostgreSQL local (mot de passe de `postgres` dans `pgpass.conf`, ou variable `E2E_PG_PASSWORD`), `dotnet tool restore`, puis `npx playwright install chromium` une fois. La CI la rejoue à chaque fusion. Les origines du front autorisées par l'API se complètent par `Cors:Origins`.
 
+Images : l'export Joconde annonce une image (`Presence_image`, enregistrée dans `artwork.has_image`) sans en donner l'adresse. La fiche d'une œuvre renvoie donc vers sa notice sur la plateforme POP (« Voir l'image sur POP » quand une image est annoncée), et les cartes repèrent ces notices. Le début de l'adresse POP se règle par `VUE_APP_POP_URL` (défaut `https://www.pop.culture.gouv.fr/notice/joconde/`). Une base importée avant cette colonne la remplit à la synchronisation suivante, qui réécrit toutes les notices une fois.
+
 Les scénarios (`src/Frontend/e2e/recherche.spec.ts`) tirent leurs valeurs attendues du jeu de 24 notices de `e2e/jeu.ts` (titres avec accents, « œ » et notices sans titre), jamais de l'API qu'ils vérifient ; l'import du jeu est contrôlé avant tout scénario. Tout scénario échoue si la page lève une erreur JavaScript ou écrit une erreur dans la console (`e2e/fixtures.ts`). Les éléments de page visés portent un attribut `data-testid`. Chaque nouvelle fonction du front ajoute ou met à jour un scénario.
 
 ### Tout lancer

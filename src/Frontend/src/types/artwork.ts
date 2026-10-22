@@ -8,6 +8,8 @@ export interface Artwork {
   inventoryNumber: string;
   imageUrl: string;
   creationDate: string;
+  /** La notice annonce une image (visible sur POP) */
+  hasImage?: boolean | null;
   artists: {
     id: string;
     firstName: string;
@@ -34,6 +36,8 @@ export interface ArtworkDetail {
   associatedSiteUrl: string | null;
   artistUnderCopyright: boolean | null;
   publicDomainYear: number | null;
+  /** La notice annonce une image (visible sur POP) ; null si elle ne le dit pas */
+  hasImage: boolean | null;
   museum: {
     id: string;
     name: string;

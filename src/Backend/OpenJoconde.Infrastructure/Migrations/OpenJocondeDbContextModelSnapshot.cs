@@ -185,6 +185,10 @@ namespace OpenJoconde.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("dimensions");
 
+                    b.Property<bool?>("HasImage")
+                        .HasColumnType("boolean")
+                        .HasColumnName("has_image");
+
                     b.Property<string>("ImageUrl")
                         .HasColumnType("text")
                         .HasColumnName("image_url");

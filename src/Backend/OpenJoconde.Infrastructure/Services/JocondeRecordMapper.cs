@@ -92,6 +92,7 @@ namespace OpenJoconde.Infrastructure.Services
                 AssociatedSiteUrl = HttpUrl(record.GetString("lien_site_associe")),
                 ArtistUnderCopyright = UnderCopyright(record.GetValues("artiste_sous_droits")),
                 PublicDomainYear = LatestYear(record.GetString("date_entree_dans_le_domaine_public")),
+                HasImage = YesNo(record.GetString("presence_image")),
                 // L'export ne fournit ni URL d'image (seulement presence_image) ni texte de droits.
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -260,6 +261,17 @@ namespace OpenJoconde.Infrastructure.Services
                 : null;
 
         /// <summary>« oui » pour un des auteurs suffit ; « non » seulement quand aucun n'est sous droits ; sinon inconnu.</summary>
+        /// <summary>
+        /// « oui » ou « non » de l'export ; null pour toute autre valeur ou une valeur absente
+        /// </summary>
+        internal static bool? YesNo(string? value)
+        {
+            var text = value?.Trim();
+            if (string.Equals(text, "oui", StringComparison.OrdinalIgnoreCase))
+                return true;
+            return string.Equals(text, "non", StringComparison.OrdinalIgnoreCase) ? false : null;
+        }
+
         internal static bool? UnderCopyright(List<string> values)
         {
             if (values.Any(v => v.Equals("oui", StringComparison.OrdinalIgnoreCase)))

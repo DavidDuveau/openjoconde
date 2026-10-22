@@ -23,6 +23,7 @@ function csv(): string {
       auteur: `${notice.auteur} Prénom`,
       nom_officiel_musee: notice.musee,
       lien_site_associe: i % 2 === 0 ? 'https://example.org/musee' : '',
+      presence_image: notice.image,
       artiste_sous_droits: i % 4 === 0 ? 'oui' : '',
       date_entree_dans_le_domaine_public: i % 4 === 0 ? '2080' : ''
     };

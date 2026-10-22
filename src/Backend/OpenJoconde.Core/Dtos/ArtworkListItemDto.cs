@@ -22,6 +22,7 @@ namespace OpenJoconde.Core.Dtos
         public string? AssociatedSiteUrl { get; init; }
         public bool? ArtistUnderCopyright { get; init; }
         public int? PublicDomainYear { get; init; }
+        public bool? HasImage { get; init; }
         public Guid? MuseumId { get; init; }
         public DateTime UpdatedAt { get; init; }
     }
