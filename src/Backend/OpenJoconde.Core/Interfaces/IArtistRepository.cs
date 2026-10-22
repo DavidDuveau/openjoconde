@@ -13,7 +13,7 @@ namespace OpenJoconde.Core.Interfaces
         /// <summary>
         /// Récupère un artiste par son identifiant
         /// </summary>
-        Task<Artist> GetByIdAsync(Guid id);
+        Task<Artist?> GetByIdAsync(Guid id);
 
         /// <summary>
         /// Nombre d'œuvres de chacun des artistes donnés (0 pour un artiste sans œuvre)

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OpenJoconde.Core.Interfaces;
@@ -29,7 +30,7 @@ namespace OpenJoconde.Infrastructure.Data
         /// <summary>
         /// Get an artist by ID
         /// </summary>
-        public async Task<Artist> GetByIdAsync(Guid id)
+        public async Task<Artist?> GetByIdAsync(Guid id)
         {
             return await _context.Artists
                 .AsNoTracking()
@@ -244,13 +245,14 @@ namespace OpenJoconde.Infrastructure.Data
             }
         }
 
-        private static (string, string) NameKey(string lastName, string firstName) =>
+        private static (string, string) NameKey(string lastName, string? firstName) =>
             (lastName.ToLowerInvariant(), (firstName ?? string.Empty).ToLowerInvariant());
 
         /// <summary>
         /// Truncates a string to the specified maximum length
         /// </summary>
-        private string TruncateString(string value, int maxLength)
+        [return: NotNullIfNotNull(nameof(value))]
+        private string? TruncateString(string? value, int maxLength)
         {
             if (string.IsNullOrEmpty(value))
                 return value;

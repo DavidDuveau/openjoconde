@@ -17,6 +17,7 @@ namespace OpenJoconde.API.Controllers
         private readonly OpenJocondeDbContext _context;
         private readonly ILogger<HealthController> _logger;
 
+        /// <summary>Crée le contrôleur avec ses dépendances</summary>
         public HealthController(OpenJocondeDbContext context, ILogger<HealthController> logger)
         {
             _context = context;

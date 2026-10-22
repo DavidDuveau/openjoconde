@@ -8,13 +8,21 @@ namespace OpenJoconde.Core.Dtos
     /// </summary>
     public class ArtistDto
     {
+        /// <summary>Identifiant de l'artiste</summary>
         public Guid Id { get; init; }
+        /// <summary>Nom de famille</summary>
         public string LastName { get; init; } = string.Empty;
+        /// <summary>Prénom</summary>
         public string? FirstName { get; init; }
+        /// <summary>Date de naissance, en texte libre</summary>
         public string? BirthDate { get; init; }
+        /// <summary>Date de décès, en texte libre</summary>
         public string? DeathDate { get; init; }
+        /// <summary>Nationalité</summary>
         public string? Nationality { get; init; }
+        /// <summary>Biographie</summary>
         public string? Biography { get; init; }
+        /// <summary>Nombre d'œuvres de l'artiste</summary>
         public int ArtworksCount { get; init; }
     }
 }

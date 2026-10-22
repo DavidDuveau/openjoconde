@@ -17,9 +17,12 @@ namespace OpenJoconde.API.Security
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
     public sealed class RequireApiKeyAttribute : Attribute, IAsyncAuthorizationFilter
     {
+        /// <summary>En-tête HTTP qui porte la clé d'API</summary>
         public const string HeaderName = "X-Api-Key";
+        /// <summary>Clé de configuration qui porte la clé d'API attendue</summary>
         public const string ConfigurationKey = "Security:ApiKey";
 
+        /// <summary>Refuse la requête (401) si la clé d'API est absente, fausse ou non configurée</summary>
         public Task OnAuthorizationAsync(AuthorizationFilterContext context)
         {
             var services = context.HttpContext.RequestServices;

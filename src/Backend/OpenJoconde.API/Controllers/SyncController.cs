@@ -12,6 +12,9 @@ using System.Threading.Tasks;
 
 namespace OpenJoconde.API.Controllers
 {
+    /// <summary>
+    /// Déclenchement, suivi et annulation des synchronisations avec la source Joconde
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     public class SyncController : ControllerBase
@@ -20,6 +23,7 @@ namespace OpenJoconde.API.Controllers
         private readonly OpenJocondeDbContext _dbContext;
         private readonly ILogger<SyncController> _logger;
 
+        /// <summary>Crée le contrôleur avec ses dépendances</summary>
         public SyncController(
             ISyncCoordinator coordinator,
             OpenJocondeDbContext dbContext,
@@ -101,6 +105,7 @@ namespace OpenJoconde.API.Controllers
         /// Déclenche une synchronisation manuelle
         /// </summary>
         /// <param name="force">Télécharge et compare même si la source n'a pas changé depuis la dernière synchronisation réussie</param>
+        /// <param name="cancellationToken">Annulation de la requête</param>
         [RequireApiKey]
         [EnableRateLimiting("ecriture")]
         [HttpPost("start")]

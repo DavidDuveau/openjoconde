@@ -13,7 +13,7 @@ namespace OpenJoconde.Core.Interfaces
         /// <summary>
         /// Récupère une période par son identifiant
         /// </summary>
-        Task<Period> GetByIdAsync(Guid id);
+        Task<Period?> GetByIdAsync(Guid id);
 
         /// <summary>
         /// Récupère toutes les périodes

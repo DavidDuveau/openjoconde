@@ -12,6 +12,9 @@ using System.Threading.Tasks;
 
 namespace OpenJoconde.API.Controllers
 {
+    /// <summary>
+    /// Consultation et gestion des musées
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     [Produces("application/json")]
@@ -20,6 +23,7 @@ namespace OpenJoconde.API.Controllers
         private readonly IMuseumRepository _museumRepository;
         private readonly ILogger<MuseumsController> _logger;
 
+        /// <summary>Crée le contrôleur avec ses dépendances</summary>
         public MuseumsController(
             IMuseumRepository museumRepository,
             ILogger<MuseumsController> logger)

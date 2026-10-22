@@ -10,6 +10,9 @@ using System.Threading.Tasks;
 
 namespace OpenJoconde.API.Controllers
 {
+    /// <summary>
+    /// Recherche et consultation des œuvres
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class ArtworksController : ControllerBase
@@ -17,6 +20,7 @@ namespace OpenJoconde.API.Controllers
         private readonly IArtworkRepository _artworkRepository;
         private readonly ILogger<ArtworksController> _logger;
 
+        /// <summary>Crée le contrôleur avec ses dépendances</summary>
         public ArtworksController(IArtworkRepository artworkRepository, ILogger<ArtworksController> logger)
         {
             _artworkRepository = artworkRepository ?? throw new ArgumentNullException(nameof(artworkRepository));

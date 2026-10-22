@@ -13,7 +13,7 @@ namespace OpenJoconde.Core.Interfaces
         /// <summary>
         /// Récupère un domaine par son identifiant
         /// </summary>
-        Task<Domain> GetByIdAsync(Guid id);
+        Task<Domain?> GetByIdAsync(Guid id);
 
         /// <summary>
         /// Récupère tous les domaines

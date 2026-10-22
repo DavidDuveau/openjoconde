@@ -13,7 +13,7 @@ namespace OpenJoconde.Core.Interfaces
         /// <summary>
         /// Récupère un musée par son identifiant
         /// </summary>
-        Task<Museum> GetByIdAsync(Guid id);
+        Task<Museum?> GetByIdAsync(Guid id);
 
         /// <summary>
         /// Recherche des musées par nom

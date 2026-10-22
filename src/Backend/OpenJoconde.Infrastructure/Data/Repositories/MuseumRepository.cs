@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OpenJoconde.Core.Interfaces;
@@ -28,7 +29,7 @@ namespace OpenJoconde.Infrastructure.Data
         /// <summary>
         /// Get a museum by ID
         /// </summary>
-        public async Task<Museum> GetByIdAsync(Guid id)
+        public async Task<Museum?> GetByIdAsync(Guid id)
         {
             return await _context.Museums
                 .AsNoTracking()
@@ -324,7 +325,8 @@ namespace OpenJoconde.Infrastructure.Data
         /// <summary>
         /// Truncates a string to the specified maximum length
         /// </summary>
-        private string TruncateString(string value, int maxLength)
+        [return: NotNullIfNotNull(nameof(value))]
+        private string? TruncateString(string? value, int maxLength)
         {
             if (string.IsNullOrEmpty(value))
                 return value;

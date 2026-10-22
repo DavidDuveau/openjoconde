@@ -42,7 +42,7 @@ namespace OpenJoconde.Infrastructure.Services
 
             // Créer le répertoire de destination s'il n'existe pas
             var directory = Path.GetDirectoryName(destinationPath);
-            if (!Directory.Exists(directory))
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
                 Directory.CreateDirectory(directory);
 
             try

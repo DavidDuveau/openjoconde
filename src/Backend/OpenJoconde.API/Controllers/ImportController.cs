@@ -25,6 +25,7 @@ namespace OpenJoconde.API.Controllers
         private readonly ILogger<ImportController> _logger;
         private readonly IDataImportService _dataImportService;
 
+        /// <summary>Crée le contrôleur avec ses dépendances</summary>
         public ImportController(
             ILogger<ImportController> logger,
             IDataImportService dataImportService)
