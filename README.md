@@ -25,6 +25,8 @@ La synchronisation est **incrémentale**. Le fichier est republié environ chaqu
 
 Une base importée avant l'arrivée des empreintes est réécrite une fois en entier, puis suit le régime incrémental.
 
+Les données du ministère de la Culture se réutilisent à condition d'en citer l'origine : le pied de page, la page « À propos » (ancre `#sources`), chaque fiche d'œuvre (référence de la notice, lieu de conservation, renvoi vers POP, Licence Ouverte 2.0) et chaque fiche de musée (Muséofile) portent cette attribution. Les images de POP, soumises à des droits de tiers, ne sont pas affichées.
+
 Les musées sont complétés par la base [Muséofile](https://www.data.gouv.fr/datasets/musees-de-france-base-museofile) (Musées de France, Licence Ouverte 2.0) : adresse, code postal, téléphone, site Internet et histoire, rapprochés par le code Muséofile (`museum.code`). Le fichier (`Sync:MuseofileSourceUrl`, environ 3 Mo) est appliqué à chaque synchronisation, même quand Joconde n'a pas changé ; une panne de Muséofile ne fait pas échouer la synchronisation des œuvres. La ville, le département, la région et les coordonnées de Joconde sont gardés : Muséofile ne comble que les manques, et ne touche jamais à la ville, clé de rattachement des musées à l'import.
 
 ## Prérequis

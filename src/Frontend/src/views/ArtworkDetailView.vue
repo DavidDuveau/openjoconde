@@ -154,6 +154,8 @@
               </div>
             </div>
           </div>
+
+          <DataSource kind="joconde" :reference="artwork.reference" :place="conservationText" />
         </div>
       </div>
     </div>
@@ -167,10 +169,12 @@ import ApiService from '@/services/api';
 import { displayTitle } from '@/utils/title';
 import { rightsSummary, safeWebUrl } from '@/utils/rights';
 import { popNoticeUrl } from '@/utils/pop';
+import DataSource from '@/components/DataSource.vue';
 import { ArtworkDetail } from '@/types/artwork';
 
 export default defineComponent({
   name: 'ArtworkDetailView',
+  components: { DataSource },
   setup() {
     const route = useRoute();
 
@@ -211,6 +215,8 @@ export default defineComponent({
 
     const rightsText = computed(() => artwork.value ? rightsSummary(artwork.value.artistUnderCopyright, artwork.value.publicDomainYear) : null);
     const siteUrl = computed(() => artwork.value ? safeWebUrl(artwork.value.associatedSiteUrl) : null);
+    const conservationText = computed(() =>
+      [artwork.value?.museum?.name, artwork.value?.conservationPlace].filter(Boolean).join(' · '));
     const popUrl = computed(() => artwork.value ? popNoticeUrl(artwork.value.reference) : null);
 
     return {
@@ -218,6 +224,7 @@ export default defineComponent({
       rightsText,
       siteUrl,
       popUrl,
+      conservationText,
       artwork,
       loading,
       error,

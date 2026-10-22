@@ -84,6 +84,8 @@
 
         <PaginationBar :page="artworksPage" :total-pages="artworksTotalPages" @change="goToArtworksPage" />
       </section>
+
+      <DataSource kind="museofile" />
     </div>
   </div>
 </template>
@@ -95,12 +97,13 @@ import ApiService from '@/services/api';
 import { displayTitle } from '@/utils/title';
 import { safeWebUrl } from '@/utils/rights';
 import PaginationBar from '@/components/PaginationBar.vue';
+import DataSource from '@/components/DataSource.vue';
 import { Artwork } from '@/types/artwork';
 import { Museum } from '@/types/models';
 
 export default defineComponent({
   name: 'MuseumDetailView',
-  components: { PaginationBar },
+  components: { PaginationBar, DataSource },
   setup() {
     const route = useRoute();
     const museum = ref<Museum | null>(null);
