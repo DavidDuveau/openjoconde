@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace OpenJoconde.API.Dtos
+namespace OpenJoconde.Core.Dtos
 {
     /// <summary>
     /// Fiche complète d'une œuvre : ses champs et ses relations (musée, artistes, domaines, techniques, périodes)

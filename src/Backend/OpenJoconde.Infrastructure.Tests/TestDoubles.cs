@@ -1,3 +1,4 @@
+using OpenJoconde.Core.Dtos;
 using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Core.Models;
 
@@ -9,6 +10,8 @@ internal sealed class FailingArtworkRepository : IArtworkRepository
     public Task<int> BulkUpsertAsync(IEnumerable<Artwork> artworks) =>
         throw new InvalidOperationException("écriture des œuvres refusée");
 
+    public Task<PaginatedResult<ArtworkListItemDto>> SearchAsync(ArtworkSearchCriteria criteria) => throw new NotSupportedException();
+    public Task<ArtworkDetailDto?> GetDetailAsync(Guid id) => throw new NotSupportedException();
     public Task<Dictionary<string, Guid?>> GetContentHashesAsync() => Task.FromResult(new Dictionary<string, Guid?>());
     public Task<int> DeleteByReferencesAsync(IReadOnlyCollection<string> references) => Task.FromResult(0);
 }

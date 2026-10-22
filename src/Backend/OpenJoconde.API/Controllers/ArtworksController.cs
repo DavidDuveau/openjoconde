@@ -1,10 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using OpenJoconde.API.Dtos;
+using OpenJoconde.Core.Dtos;
+using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Core.Models;
-using OpenJoconde.Infrastructure.Data;
-using OpenJoconde.Infrastructure.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,14 +14,12 @@ namespace OpenJoconde.API.Controllers
     [Route("api/[controller]")]
     public class ArtworksController : ControllerBase
     {
-        private static readonly string[] SortKeys = { "title", "title_desc", "date", "date_desc", "relevance", "artist" };
-
-        private readonly OpenJocondeDbContext _context;
+        private readonly IArtworkRepository _artworkRepository;
         private readonly ILogger<ArtworksController> _logger;
 
-        public ArtworksController(OpenJocondeDbContext context, ILogger<ArtworksController> logger)
+        public ArtworksController(IArtworkRepository artworkRepository, ILogger<ArtworksController> logger)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _artworkRepository = artworkRepository ?? throw new ArgumentNullException(nameof(artworkRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -45,7 +41,7 @@ namespace OpenJoconde.API.Controllers
         /// </param>
         /// <returns>Liste paginée d'oeuvres d'art</returns>
         [HttpGet]
-        public async Task<ActionResult<PaginatedResult<Artwork>>> GetArtworks(
+        public async Task<ActionResult<PaginatedResult<ArtworkListItemDto>>> GetArtworks(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10,
             [FromQuery] string? search = null,
@@ -56,72 +52,29 @@ namespace OpenJoconde.API.Controllers
             [FromQuery] Guid? periodId = null,
             [FromQuery] string? sortBy = null)
         {
-            if (sortBy != null && !SortKeys.Contains(sortBy))
-                return BadRequest($"Tri inconnu : utiliser {string.Join(", ", SortKeys)}.");
-
             try
             {
                 _logger.LogInformation("Récupération des oeuvres d'art - Page: {Page}, PageSize: {PageSize}, Search: {Search}",
                     page, pageSize, search ?? "null");
 
-                if (page < 1) page = 1;
-                if (pageSize < 1) pageSize = 10;
-                if (pageSize > 100) pageSize = 100;
-
-                // Query de base
-                IQueryable<Artwork> query = _context.Artworks;
-
-                query = ArtworkFilter.Apply(query, museumId, artistId, domainId, techniqueId, periodId);
-                var filtered = museumId.HasValue || artistId.HasValue || domainId.HasValue || techniqueId.HasValue || periodId.HasValue;
-
-                // Appliquer la recherche si nécessaire
-                var searching = !string.IsNullOrWhiteSpace(search);
-                if (searching)
+                var result = await _artworkRepository.SearchAsync(new ArtworkSearchCriteria
                 {
-                    query = ArtworkSearch.Apply(query, search!);
-                }
-
-                var condition = searching ? ArtworkSearch.BuildCondition(search!.Trim()) : null;
-                if (sortBy == "relevance" && condition == null)
-                    return BadRequest("Le tri par pertinence demande une recherche par mots.");
-                if (sortBy == "artist" && !(searching || filtered))
-                    return BadRequest("Le tri par artiste demande une recherche ou un filtre.");
-
-                IQueryable<Artwork> ordered = sortBy switch
-                {
-                    "relevance" => ArtworkOrdering.ByRelevance(query, condition!),
-                    "date" => ArtworkOrdering.ByDate(query),
-                    "date_desc" => ArtworkOrdering.ByDate(query, descending: true),
-                    "artist" => ArtworkOrdering.ByArtist(query),
-                    _ => ArtworkOrdering.ByTitle(query, searching || filtered, sortBy == "title_desc")
-                };
-
-                // Calculer le nombre total d'éléments
-                var totalItems = await ordered.CountAsync();
-
-                // Les identifiants de la page d'abord, sur l'index seul : sauter 500 000 lignes en les lisant
-                // entières coûte 16 s, en ne lisant que l'index 0,3 s. Les œuvres ne sont chargées qu'ensuite.
-                var ids = await ordered
-                    .Select(a => a.Id)
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync();
-                var loaded = await _context.Artworks
-                    .AsNoTracking()
-                    .Where(a => ids.Contains(a.Id))
-                    .ToDictionaryAsync(a => a.Id);
-                var items = ids.Where(loaded.ContainsKey).Select(id => loaded[id]).ToList();
-
-                // Construire le résultat paginé
-                var result = new PaginatedResult<Artwork>
-                {
-                    Items = items,
-                    TotalItems = totalItems,
                     Page = page,
-                    PageSize = pageSize
-                };
+                    PageSize = pageSize,
+                    Search = search,
+                    MuseumId = museumId,
+                    ArtistId = artistId,
+                    DomainId = domainId,
+                    TechniqueId = techniqueId,
+                    PeriodId = periodId,
+                    SortBy = sortBy
+                });
 
                 return Ok(result);
+            }
+            catch (InvalidArtworkSearchException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
@@ -142,41 +95,7 @@ namespace OpenJoconde.API.Controllers
             {
                 _logger.LogInformation("Récupération de l'oeuvre d'art avec l'identifiant {Id}", id);
 
-                var artwork = await _context.Artworks
-                    .Where(a => a.Id == id)
-                    .AsNoTracking()
-                    .Select(a => new ArtworkDetailDto
-                    {
-                        Id = a.Id,
-                        Reference = a.Reference,
-                        InventoryNumber = a.InventoryNumber,
-                        Denomination = a.Denomination,
-                        Title = a.Title,
-                        Description = a.Description,
-                        Dimensions = a.Dimensions,
-                        CreationDate = a.CreationDate,
-                        CreationPlace = a.CreationPlace,
-                        ConservationPlace = a.ConservationPlace,
-                        Copyright = a.Copyright,
-                        ImageUrl = a.ImageUrl,
-                        AssociatedSiteUrl = a.AssociatedSiteUrl,
-                        ArtistUnderCopyright = a.ArtistUnderCopyright,
-                        PublicDomainYear = a.PublicDomainYear,
-                        Museum = a.Museum == null ? null : new NamedItemDto { Id = a.Museum.Id, Name = a.Museum.Name },
-                        Artists = a.Artists
-                            .Select(aa => new ArtworkArtistDto
-                            {
-                                Id = aa.Artist.Id,
-                                FirstName = aa.Artist.FirstName,
-                                LastName = aa.Artist.LastName,
-                                Role = aa.Role
-                            })
-                            .ToList(),
-                        Domains = a.Domains.Select(d => new NamedItemDto { Id = d.Id, Name = d.Name }).ToList(),
-                        Techniques = a.Techniques.Select(t => new NamedItemDto { Id = t.Id, Name = t.Name }).ToList(),
-                        Periods = a.Periods.Select(p => new NamedItemDto { Id = p.Id, Name = p.Name }).ToList()
-                    })
-                    .FirstOrDefaultAsync();
+                var artwork = await _artworkRepository.GetDetailAsync(id);
 
                 if (artwork == null)
                 {

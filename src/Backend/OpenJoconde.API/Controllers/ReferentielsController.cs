@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using OpenJoconde.API.Dtos;
+using OpenJoconde.Core.Dtos;
 using OpenJoconde.Core.Models;
 using OpenJoconde.Infrastructure.Data;
 

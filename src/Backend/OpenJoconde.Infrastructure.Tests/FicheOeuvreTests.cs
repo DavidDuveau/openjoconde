@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenJoconde.API.Controllers;
 using OpenJoconde.API.Dtos;
+using OpenJoconde.Core.Dtos;
 using Xunit;
 
 namespace OpenJoconde.Infrastructure.Tests;
@@ -28,7 +29,7 @@ public class FicheOeuvreTests : IAsyncLifetime
             Assert.True(report.ImportedArtworks > 0, report.ErrorMessage);
         }
 
-        return new ArtworksController(_db.CreateContext(), NullLogger<ArtworksController>.Instance);
+        return _db.CreateArtworksController();
     }
 
     /// <summary>La fiche de l'œuvre la mieux reliée parmi celles qui vérifient le filtre, comparée à ses relations en base.</summary>

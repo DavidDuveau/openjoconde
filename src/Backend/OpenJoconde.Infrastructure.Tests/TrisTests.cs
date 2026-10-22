@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenJoconde.API.Controllers;
+using OpenJoconde.Core.Dtos;
 using OpenJoconde.Core.Models;
 using Xunit;
 
@@ -31,14 +32,14 @@ public class TrisTests : IAsyncLifetime
         Assert.True(rapport.Success, rapport.ErrorMessage);
     }
 
-    private async Task<ActionResult<PaginatedResult<Artwork>>> ListerAsync(string? tri, string? recherche = null)
+    private async Task<ActionResult<PaginatedResult<ArtworkListItemDto>>> ListerAsync(string? tri, string? recherche = null)
     {
-        var controleur = new ArtworksController(_db.CreateContext(), NullLogger<ArtworksController>.Instance);
+        var controleur = _db.CreateArtworksController();
         return await controleur.GetArtworks(1, 100, recherche, null, null, null, null, null, tri);
     }
 
-    private static List<string> References(ActionResult<PaginatedResult<Artwork>> reponse) =>
-        Assert.IsType<PaginatedResult<Artwork>>(Assert.IsType<OkObjectResult>(reponse.Result).Value).Items.Select(a => a.Reference).ToList();
+    private static List<string> References(ActionResult<PaginatedResult<ArtworkListItemDto>> reponse) =>
+        Assert.IsType<PaginatedResult<ArtworkListItemDto>>(Assert.IsType<OkObjectResult>(reponse.Result).Value).Items.Select(a => a.Reference).ToList();
 
     private static string Ref(int i) => $"L{i:D6}";
 
