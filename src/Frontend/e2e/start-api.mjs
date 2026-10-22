@@ -14,23 +14,26 @@ const env = {
   ConnectionStrings__DefaultConnection: connectionString(),
   Security__ApiKey: API_KEY,
   Cors__Origins__0: `http://localhost:${process.env.E2E_FRONT_PORT || 8101}`,
-  ASPNETCORE_ENVIRONMENT: 'Development'
+  ASPNETCORE_ENVIRONMENT: 'Development',
+  // Variables MSBuild : build, ef et run partagent les mêmes artefacts, sans toucher aux bin/obj de développement
+  UseArtifactsOutput: 'true',
+  ArtifactsPath: artifacts
 };
 
 const options = { cwd: repoDir, env, stdio: 'inherit' };
-const build = spawnSync('dotnet', ['build', api, '--artifacts-path', artifacts, '--nologo', '-v', 'q'], options);
+const build = spawnSync('dotnet', ['build', api, '--nologo', '-v', 'q'], options);
 if (build.status !== 0) process.exit(build.status ?? 1);
 
 const migrate = spawnSync(
   'dotnet',
-  ['ef', 'database', 'update', '--project', infrastructure, '--startup-project', api, '--no-build', '--connection', connectionString(), '--', '--artifacts-path', artifacts],
+  ['ef', 'database', 'update', '--project', infrastructure, '--startup-project', api, '--no-build', '--connection', connectionString()],
   options
 );
 if (migrate.status !== 0) process.exit(migrate.status ?? 1);
 
 const server = spawn(
   'dotnet',
-  ['run', '--project', api, '--no-build', '--no-launch-profile', '--artifacts-path', artifacts, '--urls', `http://localhost:${API_PORT}`],
+  ['run', '--project', api, '--no-build', '--no-launch-profile', '--urls', `http://localhost:${API_PORT}`],
   options
 );
 server.on('exit', code => process.exit(code ?? 0));
