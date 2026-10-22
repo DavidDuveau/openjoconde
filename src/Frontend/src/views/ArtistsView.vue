@@ -36,6 +36,7 @@
           v-for="artist in artists" 
           :key="artist.id"
           class="artist-card"
+          data-testid="artist-card"
           @click="navigateToArtist(artist.id)"
         >
           <div class="artist-info">
@@ -46,8 +47,8 @@
             <p class="artist-nationality" v-if="artist.nationality">
               {{ artist.nationality }}
             </p>
-            <p class="artist-count" v-if="artist.artworks">
-              {{ artist.artworks.length }} œuvre{{ artist.artworks.length !== 1 ? 's' : '' }}
+            <p class="artist-count" data-testid="artist-count">
+              {{ artist.artworksCount }} œuvre{{ artist.artworksCount !== 1 ? 's' : '' }}
             </p>
           </div>
         </div>

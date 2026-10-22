@@ -32,7 +32,7 @@
       </div>
       
       <header class="artist-header">
-        <h1>{{ artist.firstName }} {{ artist.lastName }}</h1>
+        <h1 data-testid="artist-heading">{{ artist.firstName }} {{ artist.lastName }}</h1>
         <div class="artist-meta">
           <div class="artist-dates">
             {{ formatArtistDates(artist.birthDate, artist.deathDate) }}
@@ -50,37 +50,32 @@
         </div>
       </div>
       
-      <div class="artist-artworks">
-        <h2>Œuvres de l'artiste</h2>
-        
-        <div v-if="artist.artworks && artist.artworks.length === 0" class="no-artworks">
+      <section class="artist-artworks">
+        <h2>Œuvres de l'artiste<span v-if="artworksTotal"> ({{ artworksTotal }})</span></h2>
+
+        <p v-if="artworksError" class="no-artworks">{{ artworksError }}</p>
+        <div v-else-if="!artworksLoading && artworks.length === 0" class="no-artworks" data-testid="no-artworks">
           <p>Aucune œuvre n'est actuellement disponible pour cet artiste.</p>
         </div>
-        
-        <div v-else-if="artist.artworks && artist.artworks.length > 0" class="artworks-grid">
-          <div 
-            v-for="artwork in artist.artworks" 
-            :key="artwork.artworkId"
+
+        <div v-else class="artworks-grid">
+          <div
+            v-for="artwork in artworks"
+            :key="artwork.id"
             class="artwork-card-container"
-            @click="navigateToArtwork(artwork.artworkId)"
           >
-            <div class="artwork-card">
-              <div class="artwork-image" v-if="artwork.artwork && artwork.artwork.imageUrl">
-                <img :src="artwork.artwork.imageUrl" :alt="artwork.artwork.title" />
-              </div>
-              <div class="artwork-info">
-                <h3>{{ displayTitle(artwork.artwork?.title) }}</h3>
-                <p class="artwork-date" v-if="artwork.artwork && artwork.artwork.creationDate">
-                  {{ artwork.artwork.creationDate }}
-                </p>
-                <p class="artwork-role" v-if="artwork.role">
-                  Rôle: {{ artwork.role }}
-                </p>
-              </div>
-            </div>
+            <ArtworkCard
+              :id="artwork.id"
+              :title="artwork.title"
+              :imageUrl="artwork.imageUrl"
+              :date="artwork.creationDate"
+              @click="navigateToArtwork(artwork.id)"
+            />
           </div>
         </div>
-      </div>
+
+        <PaginationBar :page="artworksPage" :total-pages="artworksTotalPages" @change="goToArtworksPage" />
+      </section>
     </div>
   </div>
 </template>
@@ -89,11 +84,14 @@
 import { defineComponent, ref, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ApiService from '@/services/api';
-import { displayTitle } from '@/utils/title';
+import ArtworkCard from '@/components/ArtworkCard.vue';
+import PaginationBar from '@/components/PaginationBar.vue';
 import { Artist } from '@/types/models';
+import { Artwork } from '@/types/artwork';
 
 export default defineComponent({
   name: 'ArtistDetailView',
+  components: { ArtworkCard, PaginationBar },
   setup() {
     const route = useRoute();
     const router = useRouter();
@@ -101,6 +99,41 @@ export default defineComponent({
     const loading = ref<boolean>(false);
     const error = ref<string | null>(null);
     
+    // Les œuvres de l'artiste : la recherche d'œuvres filtrée par artiste, paginée
+    const artworks = ref<Artwork[]>([]);
+    const artworksLoading = ref<boolean>(false);
+    const artworksError = ref<string | null>(null);
+    const artworksPage = ref<number>(1);
+    const artworksTotal = ref<number>(0);
+    const artworksTotalPages = ref<number>(1);
+    const artworksPageSize = 12;
+
+    const fetchArtworks = async () => {
+      artworksLoading.value = true;
+      artworksError.value = null;
+      try {
+        const result = await ApiService.searchArtworks({
+          artistId: route.params.id as string,
+          page: artworksPage.value,
+          pageSize: artworksPageSize
+        });
+        artworks.value = result.items;
+        artworksTotal.value = result.totalItems;
+        artworksTotalPages.value = result.totalPages;
+      } catch (err) {
+        console.error('Error fetching artist artworks:', err);
+        artworks.value = [];
+        artworksError.value = 'Erreur lors du chargement des œuvres de l\'artiste.';
+      } finally {
+        artworksLoading.value = false;
+      }
+    };
+
+    const goToArtworksPage = (page: number) => {
+      artworksPage.value = page;
+      fetchArtworks();
+    };
+
     // Fetch artist data when component is mounted or route changes
     onMounted(() => {
       fetchArtist();
@@ -123,6 +156,8 @@ export default defineComponent({
       
       try {
         artist.value = await ApiService.getArtist(artistId);
+        artworksPage.value = 1;
+        fetchArtworks();
       } catch (err) {
         console.error('Error fetching artist:', err);
         error.value = 'Erreur lors du chargement de l\'artiste. Veuillez réessayer.';
@@ -148,7 +183,13 @@ export default defineComponent({
     };
     
     return {
-      displayTitle,
+      artworks,
+      artworksLoading,
+      artworksError,
+      artworksPage,
+      artworksTotal,
+      artworksTotalPages,
+      goToArtworksPage,
       artist,
       loading,
       error,
@@ -335,58 +376,6 @@ export default defineComponent({
     
     &:hover {
       transform: translateY(-3px);
-    }
-  }
-  
-  .artwork-card {
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    
-    .artwork-image {
-      height: 200px;
-      overflow: hidden;
-      
-      img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transition: transform 0.3s;
-      }
-    }
-    
-    &:hover .artwork-image img {
-      transform: scale(1.05);
-    }
-    
-    .artwork-info {
-      padding: 15px;
-      flex-grow: 1;
-      display: flex;
-      flex-direction: column;
-      
-      h3 {
-        margin-bottom: 8px;
-        color: var(--primary-color);
-        font-size: 1.1rem;
-      }
-      
-      .artwork-date {
-        color: #666;
-        font-size: 0.9rem;
-        margin-bottom: 5px;
-      }
-      
-      .artwork-role {
-        margin-top: auto;
-        font-size: 0.85rem;
-        color: var(--secondary-color);
-        font-weight: 500;
-      }
     }
   }
 }

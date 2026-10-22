@@ -15,6 +15,8 @@ export interface Notice {
   reference: string;
   /** Vide pour une notice sans titre (une sur six) */
   titre: string;
+  /** Nom de famille de l'artiste (cinq artistes, un prénom commun « Prénom ») */
+  auteur: string;
   domaine: string;
   technique: string;
   periode: string;
@@ -27,6 +29,7 @@ export const NOTICES: Notice[] = Array.from({ length: NOMBRE }, (_, i) => {
     numero,
     reference: `E2E${String(numero).padStart(5, '0')}`,
     titre: numero % 6 === 0 ? '' : `${TITRES[numero % TITRES.length]} ${numero}`,
+    auteur: `AUTEUR${numero % 5}`,
     domaine: `domaine ${numero % 3}`,
     technique: `technique ${numero % 4}`,
     periode: `période ${numero % 3}`,
@@ -35,10 +38,10 @@ export const NOTICES: Notice[] = Array.from({ length: NOMBRE }, (_, i) => {
 });
 
 /** Ordre alphabétique français (ICU), comme la base ; les notices sans titre ferment toujours la liste */
-export function titresTries(sens: 'asc' | 'desc'): string[] {
+export function titresTries(sens: 'asc' | 'desc', parmi: Notice[] = NOTICES): string[] {
   const collateur = new Intl.Collator('fr');
-  const titres = NOTICES.filter(n => n.titre).map(n => n.titre).sort((a, b) => collateur.compare(a, b));
-  const sans = NOTICES.filter(n => !n.titre).map(() => '');
+  const titres = parmi.filter(n => n.titre).map(n => n.titre).sort((a, b) => collateur.compare(a, b));
+  const sans = parmi.filter(n => !n.titre).map(() => '');
   return [...(sens === 'asc' ? titres : titres.reverse()), ...sans];
 }
 

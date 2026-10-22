@@ -2,12 +2,14 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using OpenJoconde.API.Dtos;
+using OpenJoconde.Core.Dtos;
 using OpenJoconde.API.Security;
 using Microsoft.Extensions.Logging;
 using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Core.Models;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace OpenJoconde.API.Controllers
@@ -28,6 +30,18 @@ namespace OpenJoconde.API.Controllers
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        private static ArtistDto ToDto(Artist artist, int artworksCount) => new()
+        {
+            Id = artist.Id,
+            LastName = artist.LastName,
+            FirstName = artist.FirstName,
+            BirthDate = artist.BirthDate,
+            DeathDate = artist.DeathDate,
+            Nationality = artist.Nationality,
+            Biography = artist.Biography,
+            ArtworksCount = artworksCount
+        };
+
         /// <summary>
         /// Recherche des artistes par nom
         /// </summary>
@@ -40,7 +54,7 @@ namespace OpenJoconde.API.Controllers
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<PaginatedResult<Artist>>> SearchArtists(
+        public async Task<ActionResult<PaginatedResult<ArtistDto>>> SearchArtists(
             [FromQuery] string? name = null,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10)
@@ -51,7 +65,14 @@ namespace OpenJoconde.API.Controllers
                     name ?? "null", page, pageSize);
 
                 var artists = await _artistRepository.SearchByNameAsync(name, page, pageSize);
-                return Ok(artists);
+                var counts = await _artistRepository.CountArtworksAsync(artists.Items.Select(a => a.Id).ToList());
+                return Ok(new PaginatedResult<ArtistDto>
+                {
+                    Items = artists.Items.Select(a => ToDto(a, counts.GetValueOrDefault(a.Id))).ToList(),
+                    TotalItems = artists.TotalItems,
+                    Page = artists.Page,
+                    PageSize = artists.PageSize
+                });
             }
             catch (Exception ex)
             {
@@ -72,7 +93,7 @@ namespace OpenJoconde.API.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<Artist>> GetArtist(Guid id)
+        public async Task<ActionResult<ArtistDto>> GetArtist(Guid id)
         {
             try
             {
@@ -86,7 +107,8 @@ namespace OpenJoconde.API.Controllers
                     return NotFound();
                 }
 
-                return Ok(artist);
+                var counts = await _artistRepository.CountArtworksAsync(new[] { id });
+                return Ok(ToDto(artist, counts.GetValueOrDefault(id)));
             }
             catch (Exception ex)
             {
@@ -109,7 +131,7 @@ namespace OpenJoconde.API.Controllers
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<Artist>> CreateArtist([FromBody] ArtistInput input)
+        public async Task<ActionResult<ArtistDto>> CreateArtist([FromBody] ArtistInput input)
         {
             try
             {
@@ -120,7 +142,7 @@ namespace OpenJoconde.API.Controllers
                     artist.LastName, artist.FirstName);
 
                 var createdArtist = await _artistRepository.AddAsync(artist);
-                return CreatedAtAction(nameof(GetArtist), new { id = createdArtist.Id }, createdArtist);
+                return CreatedAtAction(nameof(GetArtist), new { id = createdArtist.Id }, ToDto(createdArtist, 0));
             }
             catch (Exception ex)
             {

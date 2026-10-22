@@ -26,7 +26,8 @@ export interface Artist {
   deathDate: string;
   nationality: string;
   biography: string;
-  artworks: ArtworkArtist[];
+  /** Nombre d'œuvres ; les œuvres se lisent par la recherche d'œuvres filtrée par artiste */
+  artworksCount: number;
 }
 
 export interface ArtworkArtist {
