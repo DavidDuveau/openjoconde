@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+using OpenJoconde.Infrastructure.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,10 +33,13 @@ public class SyncCoordinatorTests : IAsyncLifetime
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["ConnectionStrings:DefaultConnection"] = _db.ConnectionString,
-            ["JocondeData:SourceUrl"] = "https://exemple.test/joconde.csv",
-            ["JocondeData:TempDirectory"] = _tempDirectory,
-            ["Museofile:SourceUrl"] = "https://exemple.test/museofile.csv"
         }).Build();
+        var options = Options.Create(new SyncOptions
+        {
+            SourceUrl = "https://exemple.test/joconde.csv",
+            TempDirectory = _tempDirectory,
+            MuseofileSourceUrl = "https://exemple.test/museofile.csv"
+        });
 
         var services = new ServiceCollection()
             .AddDbContext<OpenJocondeDbContext>(options => options.UseNpgsql(_db.ConnectionString).UseSnakeCaseNamingConvention())
@@ -44,7 +49,7 @@ public class SyncCoordinatorTests : IAsyncLifetime
             .BuildServiceProvider();
 
         _coordinator = new SyncCoordinator(
-            services.GetRequiredService<IServiceScopeFactory>(), configuration, NullLogger<SyncCoordinator>.Instance);
+            services.GetRequiredService<IServiceScopeFactory>(), configuration, options, NullLogger<SyncCoordinator>.Instance);
     }
 
     public async Task DisposeAsync()

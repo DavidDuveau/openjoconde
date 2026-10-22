@@ -15,7 +15,7 @@ Le backend télécharge et importe les données Joconde dans PostgreSQL, puis le
 - [Collections des musées de France : base Joconde sur data.gouv.fr](https://www.data.gouv.fr/datasets/collections-des-musees-de-france-base-joconde)
 - Format utilisé : fichier CSV (environ 1,2 Go, plus d'un million de notices, séparateur `|`). L'ancien export JSON de l'API Opendatasoft n'existe plus ; l'import d'un fichier JSON reste supporté, le format est déduit de l'extension du fichier.
 
-L'URL de la source se règle dans `JocondeData:SourceUrl` (synchronisations manuelle et automatique) de `src/Backend/OpenJoconde.API/appsettings.json`. Le parsing du fichier complet prend environ une minute et occupe environ 1,4 Go de mémoire.
+L'URL de la source se règle dans `Sync:SourceUrl` (synchronisations manuelle et automatique) de `src/Backend/OpenJoconde.API/appsettings.json`. Le parsing du fichier complet prend environ une minute et occupe environ 1,4 Go de mémoire.
 
 La synchronisation est **incrémentale**. Le fichier est republié environ chaque semaine, et l'export ne donne pas toujours de date de mise à jour exploitable (`Date_de_mise_a_jour` est vide pour un quart des notices). Elle procède donc par empreinte :
 
@@ -25,7 +25,7 @@ La synchronisation est **incrémentale**. Le fichier est republié environ chaqu
 
 Une base importée avant l'arrivée des empreintes est réécrite une fois en entier, puis suit le régime incrémental.
 
-Les musées sont complétés par la base [Muséofile](https://www.data.gouv.fr/datasets/musees-de-france-base-museofile) (Musées de France, Licence Ouverte 2.0) : adresse, code postal, téléphone, site Internet et histoire, rapprochés par le code Muséofile (`museum.code`). Le fichier (`Museofile:SourceUrl`, environ 3 Mo) est appliqué à chaque synchronisation, même quand Joconde n'a pas changé ; une panne de Muséofile ne fait pas échouer la synchronisation des œuvres. La ville, le département, la région et les coordonnées de Joconde sont gardés : Muséofile ne comble que les manques, et ne touche jamais à la ville, clé de rattachement des musées à l'import.
+Les musées sont complétés par la base [Muséofile](https://www.data.gouv.fr/datasets/musees-de-france-base-museofile) (Musées de France, Licence Ouverte 2.0) : adresse, code postal, téléphone, site Internet et histoire, rapprochés par le code Muséofile (`museum.code`). Le fichier (`Sync:MuseofileSourceUrl`, environ 3 Mo) est appliqué à chaque synchronisation, même quand Joconde n'a pas changé ; une panne de Muséofile ne fait pas échouer la synchronisation des œuvres. La ville, le département, la région et les coordonnées de Joconde sont gardés : Muséofile ne comble que les manques, et ne touche jamais à la ville, clé de rattachement des musées à l'import.
 
 ## Prérequis
 
@@ -67,7 +67,9 @@ dotnet run
 
 L'API écoute sur `https://localhost:5001` et `http://localhost:5000`. Swagger est disponible sur `https://localhost:5001/swagger` en développement.
 
-Si `JocondeData:CheckForUpdatesOnStartup` vaut `true`, un service d'arrière-plan synchronise les données au démarrage puis toutes les `JocondeSync:IntervalHours` heures, par le même chemin que `POST /api/sync/start`. Chaque synchronisation laisse une ligne dans la table `data_sync_log` ; une synchronisation interrompue par l'arrêt du serveur est marquée `Interrupted` au démarrage suivant.
+Les réglages des synchronisations tiennent dans la seule section `Sync` de `appsettings.json` (`SourceUrl`, `MuseofileSourceUrl`, `TempDirectory`, `CheckForUpdatesOnStartup`, `IntervalHours`) ; ils sont contrôlés au démarrage, et une adresse invalide ou un intervalle absurde arrête le serveur avec un message qui nomme la clé fautive.
+
+Si `Sync:CheckForUpdatesOnStartup` vaut `true`, un service d'arrière-plan synchronise les données au démarrage puis toutes les `Sync:IntervalHours` heures, par le même chemin que `POST /api/sync/start`. Chaque synchronisation laisse une ligne dans la table `data_sync_log` ; une synchronisation interrompue par l'arrêt du serveur est marquée `Interrupted` au démarrage suivant.
 
 ### Frontend
 

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+using OpenJoconde.Infrastructure.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -17,12 +19,12 @@ namespace OpenJoconde.Infrastructure.Services
 
         public AutoSyncService(
             ILogger<AutoSyncService> logger,
-            IConfiguration configuration,
+            IOptions<SyncOptions> options,
             ISyncCoordinator coordinator)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _coordinator = coordinator ?? throw new ArgumentNullException(nameof(coordinator));
-            _syncInterval = TimeSpan.FromHours(configuration.GetValue<double>("JocondeSync:IntervalHours", 24));
+            _syncInterval = TimeSpan.FromHours(options.Value.IntervalHours);
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
