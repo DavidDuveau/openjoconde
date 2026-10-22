@@ -49,3 +49,44 @@ jobs:
           cache-dependency-path: src/Frontend/package-lock.json
       - run: npm ci
       - run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: "Test_Passw0rd"
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      E2E_PG_PASSWORD: "Test_Passw0rd"
+    defaults:
+      run:
+        working-directory: src/Frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: src/Frontend/package-lock.json
+      - run: dotnet tool restore
+        working-directory: .
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Tests de bout en bout (API, base et front jetables)
+        run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-traces
+          path: src/Frontend/test-results

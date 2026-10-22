@@ -87,3 +87,9 @@ pnpm-debug.log*
 *.sw?
 !src/Backend/OpenJoconde.Infrastructure.Tests/Fixtures/*.json
 !dotnet-tools.json
+
+# Tests de bout en bout
+.e2e/
+src/Frontend/dist-e2e/
+src/Frontend/test-results/
+src/Frontend/playwright-report/
