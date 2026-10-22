@@ -16,6 +16,8 @@ namespace OpenJoconde.API.Controllers
     [Route("api/[controller]")]
     public class ArtworksController : ControllerBase
     {
+        private static readonly string[] SortKeys = { "title", "title_desc", "date", "date_desc", "relevance", "artist" };
+
         private readonly OpenJocondeDbContext _context;
         private readonly ILogger<ArtworksController> _logger;
 
@@ -36,7 +38,11 @@ namespace OpenJoconde.API.Controllers
         /// <param name="domainId">Ne garder que les œuvres de ce domaine</param>
         /// <param name="techniqueId">Ne garder que les œuvres réalisées avec cette technique</param>
         /// <param name="periodId">Ne garder que les œuvres de cette période</param>
-        /// <param name="sortBy">Tri : title (A-Z, par défaut) ou title_desc (Z-A) ; les œuvres sans titre viennent en dernier</param>
+        /// <param name="sortBy">
+        /// Tri : title (A-Z, par défaut), title_desc (Z-A), date (plus ancien d'abord), date_desc, relevance (pertinence,
+        /// avec une recherche) ou artist (nom du premier artiste, avec une recherche ou un filtre) ; les œuvres sans
+        /// titre, sans date lisible ou sans artiste viennent en dernier
+        /// </param>
         /// <returns>Liste paginée d'oeuvres d'art</returns>
         [HttpGet]
         public async Task<ActionResult<PaginatedResult<Artwork>>> GetArtworks(
@@ -50,8 +56,8 @@ namespace OpenJoconde.API.Controllers
             [FromQuery] Guid? periodId = null,
             [FromQuery] string? sortBy = null)
         {
-            if (sortBy != null && sortBy != "title" && sortBy != "title_desc")
-                return BadRequest("Tri inconnu : utiliser title ou title_desc.");
+            if (sortBy != null && !SortKeys.Contains(sortBy))
+                return BadRequest($"Tri inconnu : utiliser {string.Join(", ", SortKeys)}.");
 
             try
             {
@@ -75,7 +81,20 @@ namespace OpenJoconde.API.Controllers
                     query = ArtworkSearch.Apply(query, search!);
                 }
 
-                IQueryable<Artwork> ordered = ArtworkOrdering.ByTitle(query, searching || filtered, sortBy == "title_desc");
+                var condition = searching ? ArtworkSearch.BuildCondition(search!.Trim()) : null;
+                if (sortBy == "relevance" && condition == null)
+                    return BadRequest("Le tri par pertinence demande une recherche par mots.");
+                if (sortBy == "artist" && !(searching || filtered))
+                    return BadRequest("Le tri par artiste demande une recherche ou un filtre.");
+
+                IQueryable<Artwork> ordered = sortBy switch
+                {
+                    "relevance" => ArtworkOrdering.ByRelevance(query, condition!),
+                    "date" => ArtworkOrdering.ByDate(query),
+                    "date_desc" => ArtworkOrdering.ByDate(query, descending: true),
+                    "artist" => ArtworkOrdering.ByArtist(query),
+                    _ => ArtworkOrdering.ByTitle(query, searching || filtered, sortBy == "title_desc")
+                };
 
                 // Calculer le nombre total d'éléments
                 var totalItems = await ordered.CountAsync();
