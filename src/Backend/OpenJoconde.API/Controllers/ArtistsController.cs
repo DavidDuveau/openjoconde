@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using OpenJoconde.API.Dtos;
 using OpenJoconde.API.Security;
 using Microsoft.Extensions.Logging;
 using OpenJoconde.Core.Interfaces;
@@ -97,7 +98,7 @@ namespace OpenJoconde.API.Controllers
         /// <summary>
         /// Crée un nouvel artiste
         /// </summary>
-        /// <param name="artist">L'artiste à créer</param>
+        /// <param name="input">L'artiste à créer</param>
         /// <returns>L'artiste créé</returns>
         /// <response code="201">Retourne l'artiste créé</response>
         /// <response code="400">Requête invalide</response>
@@ -108,14 +109,12 @@ namespace OpenJoconde.API.Controllers
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<Artist>> CreateArtist([FromBody] Artist artist)
+        public async Task<ActionResult<Artist>> CreateArtist([FromBody] ArtistInput input)
         {
             try
             {
-                if (artist == null)
-                {
-                    return BadRequest("L'artiste ne peut pas être null.");
-                }
+                var artist = new Artist { CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+                input.ApplyTo(artist);
 
                 _logger.LogInformation("Création d'un nouvel artiste: {LastName}, {FirstName}",
                     artist.LastName, artist.FirstName);
@@ -134,7 +133,7 @@ namespace OpenJoconde.API.Controllers
         /// Met à jour un artiste existant
         /// </summary>
         /// <param name="id">Identifiant de l'artiste à mettre à jour</param>
-        /// <param name="artist">Les nouvelles informations de l'artiste</param>
+        /// <param name="input">Les nouvelles informations de l'artiste</param>
         /// <returns>Aucun contenu en cas de succès</returns>
         /// <response code="204">L'artiste a été mis à jour avec succès</response>
         /// <response code="400">Requête invalide</response>
@@ -147,20 +146,10 @@ namespace OpenJoconde.API.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> UpdateArtist(Guid id, [FromBody] Artist artist)
+        public async Task<IActionResult> UpdateArtist(Guid id, [FromBody] ArtistInput input)
         {
             try
             {
-                if (artist == null)
-                {
-                    return BadRequest("L'artiste ne peut pas être null.");
-                }
-
-                if (id != artist.Id)
-                {
-                    return BadRequest("L'identifiant dans l'URL ne correspond pas à l'identifiant de l'artiste.");
-                }
-
                 var existingArtist = await _artistRepository.GetByIdAsync(id);
                 if (existingArtist == null)
                 {
@@ -169,7 +158,9 @@ namespace OpenJoconde.API.Controllers
 
                 _logger.LogInformation("Mise à jour de l'artiste avec l'identifiant {Id}", id);
 
-                var result = await _artistRepository.UpdateAsync(artist);
+                input.ApplyTo(existingArtist);
+                existingArtist.UpdatedAt = DateTime.UtcNow;
+                var result = await _artistRepository.UpdateAsync(existingArtist);
                 if (!result)
                 {
                     return StatusCode(500, "La mise à jour de l'artiste a échoué.");
