@@ -24,7 +24,7 @@
       </div>
 
       <header class="museum-header">
-        <h1>{{ museum.name }}</h1>
+        <h1 data-testid="museum-heading">{{ museum.name }}</h1>
         <p class="museum-place" v-if="place">{{ place }}</p>
       </header>
 
@@ -68,7 +68,7 @@
       <p class="museum-description" v-if="museum.description">{{ museum.description }}</p>
 
       <section class="museum-artworks">
-        <h2>Œuvres<span v-if="artworksTotal"> ({{ artworksTotal }})</span></h2>
+        <h2>Œuvres<span v-if="artworksTotal" data-testid="museum-artworks-count"> ({{ artworksTotal }})</span></h2>
 
         <p v-if="artworksError" class="artworks-error">{{ artworksError }}</p>
         <p v-else-if="!artworksLoading && artworks.length === 0" class="no-artworks">
@@ -76,7 +76,7 @@
         </p>
 
         <ul v-else class="artwork-list">
-          <li v-for="artwork in artworks" :key="artwork.id">
+          <li v-for="artwork in artworks" :key="artwork.id" data-testid="museum-artwork">
             <router-link :to="`/artworks/${artwork.id}`">{{ displayTitle(artwork.title) }}</router-link>
             <span class="artwork-date" v-if="artwork.creationDate">{{ artwork.creationDate }}</span>
           </li>
