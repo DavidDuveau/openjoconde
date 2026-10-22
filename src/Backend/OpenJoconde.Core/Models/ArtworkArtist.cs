@@ -15,7 +15,7 @@ namespace OpenJoconde.Core.Models
         /// <summary>
         /// Reference to the Artwork
         /// </summary>
-        public Artwork Artwork { get; set; }
+        public Artwork Artwork { get; set; } = null!;
 
         /// <summary>
         /// Foreign key to Artist
@@ -25,11 +25,11 @@ namespace OpenJoconde.Core.Models
         /// <summary>
         /// Reference to the Artist
         /// </summary>
-        public Artist Artist { get; set; }
+        public Artist Artist { get; set; } = null!;
 
         /// <summary>
         /// Role of the artist for this artwork (e.g., "painter", "sculptor")
         /// </summary>
-        public string Role { get; set; }
+        public string Role { get; set; } = string.Empty;
     }
 }

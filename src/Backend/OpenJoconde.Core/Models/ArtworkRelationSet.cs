@@ -18,10 +18,13 @@ namespace OpenJoconde.Core.Models
         /// </summary>
         public List<ArtworkArtist> Artists { get; set; } = new List<ArtworkArtist>();
 
+        /// <summary>Identifiants des domaines de l'œuvre</summary>
         public List<Guid> DomainIds { get; set; } = new List<Guid>();
 
+        /// <summary>Identifiants des techniques de l'œuvre</summary>
         public List<Guid> TechniqueIds { get; set; } = new List<Guid>();
 
+        /// <summary>Identifiants des périodes de création de l'œuvre</summary>
         public List<Guid> PeriodIds { get; set; } = new List<Guid>();
 
         /// <summary>

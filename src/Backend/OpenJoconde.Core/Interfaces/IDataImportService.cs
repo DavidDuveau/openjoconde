@@ -21,7 +21,7 @@ namespace OpenJoconde.Core.Interfaces
         /// <returns>Statistiques sur l'importation</returns>
         Task<ImportStatistics> ImportDataAsync(
             ParsingResult parsingResult, 
-            Action<string, int, int> progressCallback = null, 
+            Action<string, int, int>? progressCallback = null, 
             CancellationToken cancellationToken = default);
 
         /// <summary>

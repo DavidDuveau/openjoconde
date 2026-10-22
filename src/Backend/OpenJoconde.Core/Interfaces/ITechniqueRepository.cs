@@ -13,7 +13,7 @@ namespace OpenJoconde.Core.Interfaces
         /// <summary>
         /// Récupère une technique par son identifiant
         /// </summary>
-        Task<Technique> GetByIdAsync(Guid id);
+        Task<Technique?> GetByIdAsync(Guid id);
 
         /// <summary>
         /// Récupère toutes les techniques

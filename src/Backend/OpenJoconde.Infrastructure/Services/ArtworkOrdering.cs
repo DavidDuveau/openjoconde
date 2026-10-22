@@ -62,7 +62,7 @@ namespace OpenJoconde.Infrastructure.Services
             query
                 .OrderBy(a => !a.Artists.Any())
                 .ThenBy(a => a.Artists.Select(x => x.Artist.LastName.ToLower()).Min())
-                .ThenBy(a => a.Artists.Select(x => x.Artist.FirstName.ToLower()).Min())
+                .ThenBy(a => a.Artists.Select(x => x.Artist.FirstName!.ToLower()).Min())
                 .ThenBy(a => a.Id);
     }
 }

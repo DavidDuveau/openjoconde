@@ -28,7 +28,7 @@ namespace OpenJoconde.Infrastructure.Data
         /// <summary>
         /// Get a period by ID
         /// </summary>
-        public async Task<Period> GetByIdAsync(Guid id)
+        public async Task<Period?> GetByIdAsync(Guid id)
         {
             return await _context.Periods
                 .AsNoTracking()

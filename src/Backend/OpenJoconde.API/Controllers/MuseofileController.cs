@@ -23,6 +23,7 @@ namespace OpenJoconde.API.Controllers
         private readonly SyncOptions _options;
         private readonly ILogger<MuseofileController> _logger;
 
+        /// <summary>Crée le contrôleur avec ses dépendances</summary>
         public MuseofileController(IMuseofileService museofile, IOptions<SyncOptions> options, ILogger<MuseofileController> logger)
         {
             _museofile = museofile ?? throw new ArgumentNullException(nameof(museofile));

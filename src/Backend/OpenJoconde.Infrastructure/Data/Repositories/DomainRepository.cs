@@ -28,7 +28,7 @@ namespace OpenJoconde.Infrastructure.Data
         /// <summary>
         /// Get a domain by ID
         /// </summary>
-        public async Task<Domain> GetByIdAsync(Guid id)
+        public async Task<Domain?> GetByIdAsync(Guid id)
         {
             return await _context.Domains
                 .AsNoTracking()

@@ -1,0 +1,7 @@
+<Project>
+  <!-- Zéro avertissement de nullabilité ni de documentation XML : un nouveau fait échouer la compilation (TECH-42).
+       Les autres avertissements (dépendances vulnérables NU19xx…) restent des avertissements. -->
+  <PropertyGroup>
+    <WarningsAsErrors>$(WarningsAsErrors);nullable;CS1591;CS1573;CS1570;CS1572;CS1587</WarningsAsErrors>
+  </PropertyGroup>
+</Project>

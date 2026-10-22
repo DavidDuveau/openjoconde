@@ -14,6 +14,9 @@ using System.Threading.Tasks;
 
 namespace OpenJoconde.API.Controllers
 {
+    /// <summary>
+    /// Consultation et gestion des artistes
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     [Produces("application/json")]
@@ -22,6 +25,7 @@ namespace OpenJoconde.API.Controllers
         private readonly IArtistRepository _artistRepository;
         private readonly ILogger<ArtistsController> _logger;
 
+        /// <summary>Crée le contrôleur avec ses dépendances</summary>
         public ArtistsController(
             IArtistRepository artistRepository,
             ILogger<ArtistsController> logger)

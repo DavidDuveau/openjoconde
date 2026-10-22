@@ -55,7 +55,7 @@ namespace OpenJoconde.Core.Models
         /// <summary>
         /// Message d'erreur en cas d'échec
         /// </summary>
-        public string ErrorMessage { get; set; }
+        public string? ErrorMessage { get; set; }
 
         // Propriétés pour autres entités - Total
         

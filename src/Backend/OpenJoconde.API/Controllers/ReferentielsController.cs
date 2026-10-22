@@ -16,6 +16,7 @@ namespace OpenJoconde.API.Controllers
     {
         private readonly OpenJocondeDbContext _context;
 
+        /// <summary>Crée le contrôleur avec ses dépendances</summary>
         public ReferentielsController(OpenJocondeDbContext context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));

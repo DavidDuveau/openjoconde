@@ -28,7 +28,7 @@ namespace OpenJoconde.Infrastructure.Data
         /// <summary>
         /// Get a technique by ID
         /// </summary>
-        public async Task<Technique> GetByIdAsync(Guid id)
+        public async Task<Technique?> GetByIdAsync(Guid id)
         {
             return await _context.Techniques
                 .AsNoTracking()

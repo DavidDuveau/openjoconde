@@ -31,9 +31,15 @@ namespace OpenJoconde.Core.Interfaces
         /// </summary>
         public DateTime? RunningSince { get; private init; }
 
+        /// <summary>
+        /// Résultat d'un démarrage accepté
+        /// </summary>
         public static SyncStartResult Running(Guid id, Task completion) =>
             new() { Started = true, SyncId = id, Completion = completion };
 
+        /// <summary>
+        /// Résultat d'un démarrage refusé parce qu'une synchronisation est déjà en cours
+        /// </summary>
         public static SyncStartResult Busy(DateTime? runningSince) =>
             new() { Started = false, RunningSince = runningSince };
     }
@@ -48,6 +54,7 @@ namespace OpenJoconde.Core.Interfaces
         /// Démarre une synchronisation en arrière-plan, sauf si une autre est déjà en cours
         /// </summary>
         /// <param name="triggeredBy">« Manual » ou « Automatic »</param>
+        /// <param name="cancellationToken">Annule le démarrage, pas la synchronisation une fois lancée (voir <see cref="RequestCancel"/>)</param>
         /// <param name="force">
         /// Télécharge et compare même si la source n'a pas changé depuis la dernière synchronisation réussie
         /// </param>
