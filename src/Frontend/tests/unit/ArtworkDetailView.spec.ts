@@ -101,4 +101,13 @@ describe('ArtworkDetailView', () => {
     expect(liens.map((l) => l.text())).toEqual(['19e siècle', '20e siècle']);
     expect(liens[0].props('to')).toEqual({ name: 'search', query: { periodId: 'p1', periodName: '19e siècle' } });
   });
+
+  it('renvoie chaque technique vers la recherche des œuvres de cette technique', async () => {
+    const vue = await afficher({ techniques: [{ id: 't1', name: 'huile sur toile' }] });
+
+    const liens = vue.findAllComponents(RouterLinkStub).filter((l) => l.attributes('data-testid') === 'technique-tag');
+
+    expect(liens.map((l) => l.text())).toEqual(['huile sur toile']);
+    expect(liens[0].props('to')).toEqual({ name: 'search', query: { techniqueId: 't1', techniqueName: 'huile sur toile' } });
+  });
 });

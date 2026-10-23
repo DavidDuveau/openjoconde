@@ -47,7 +47,14 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/periods',
     name: 'periods',
-    component: () => import('@/views/PeriodsView.vue')
+    component: () => import('@/views/ReferenceListView.vue'),
+    props: { kind: 'periods' }
+  },
+  {
+    path: '/techniques',
+    name: 'techniques',
+    component: () => import('@/views/ReferenceListView.vue'),
+    props: { kind: 'techniques' }
   },
   {
     path: '/about',
