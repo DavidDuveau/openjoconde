@@ -131,13 +131,15 @@
             <div class="tag-group" v-if="artwork.techniques && artwork.techniques.length">
               <h3>Techniques</h3>
               <div class="tag-list">
-                <span 
-                  v-for="technique in artwork.techniques" 
-                  :key="technique.id" 
+                <router-link
+                  v-for="technique in artwork.techniques"
+                  :key="technique.id"
                   class="tag"
+                  data-testid="technique-tag"
+                  :to="{ name: 'search', query: { techniqueId: technique.id, techniqueName: technique.name } }"
                 >
                   {{ technique.name }}
-                </span>
+                </router-link>
               </div>
             </div>
 

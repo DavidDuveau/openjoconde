@@ -12,6 +12,7 @@ describe('routeur', () => {
     ['/museums', 'museums'],
     ['/museums/m1', 'museum-detail'],
     ['/periods', 'periods'],
+    ['/techniques', 'techniques'],
     ['/about', 'about'],
     ['/inconnue/page', 'not-found']
   ])('%s mène à la route %s, dont la vue se charge', async (chemin, nom) => {

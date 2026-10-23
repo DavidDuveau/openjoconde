@@ -1,45 +1,45 @@
 <template>
-  <div class="periods-page">
-    <h1>Périodes</h1>
+  <div class="reference-page">
+    <h1>{{ config.title }}</h1>
 
     <div class="search-filter">
       <input
         type="text"
         v-model="searchQuery"
-        data-testid="period-search"
-        placeholder="Rechercher une période..."
+        data-testid="reference-search"
+        :placeholder="config.placeholder"
         @input="debounceSearch"
       />
     </div>
 
     <div v-if="loading" class="loading-container">
       <div class="loader"></div>
-      <p>Chargement des périodes...</p>
+      <p>{{ config.loading }}</p>
     </div>
 
     <div v-else-if="error" class="error-container">
       <h3>Une erreur est survenue</h3>
       <p>{{ error }}</p>
-      <button class="primary-button" @click="fetchPeriods">Réessayer</button>
+      <button class="primary-button" @click="fetchItems">Réessayer</button>
     </div>
 
-    <div v-else-if="periods.length === 0" class="no-results">
-      <h3>Aucune période trouvée</h3>
+    <div v-else-if="items.length === 0" class="no-results">
+      <h3>{{ config.none }}</h3>
       <p>Modifiez votre recherche ou essayez avec un autre terme.</p>
     </div>
 
     <div v-else>
-      <p class="result-count" data-testid="period-count">{{ totalItems }} période{{ totalItems !== 1 ? 's' : '' }}</p>
+      <p class="result-count" data-testid="reference-count">{{ totalItems }} {{ totalItems !== 1 ? config.plural : config.singular }}</p>
 
-      <div class="periods-grid">
+      <div class="reference-grid">
         <div
-          v-for="period in periods"
-          :key="period.id"
-          class="period-card"
-          data-testid="period-card"
-          @click="openPeriod(period)"
+          v-for="item in items"
+          :key="item.id"
+          class="reference-card"
+          data-testid="reference-card"
+          @click="openItem(item)"
         >
-          <h3>{{ period.name }}</h3>
+          <h3>{{ item.name }}</h3>
         </div>
       </div>
 
@@ -49,18 +49,63 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted } from 'vue';
+import { defineComponent, PropType, computed, ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import ApiService from '@/services/api';
 import PaginationBar from '@/components/PaginationBar.vue';
-import { NamedItem } from '@/types/models';
+import { NamedItem, PaginatedResult } from '@/types/models';
+
+export type ReferenceKind = 'periods' | 'techniques';
+
+interface ReferenceConfig {
+  title: string;
+  placeholder: string;
+  loading: string;
+  none: string;
+  singular: string;
+  plural: string;
+  failure: string;
+  fetch: (name: string, pageSize: number, page: number) => Promise<PaginatedResult<NamedItem>>;
+  /** Paramètres de la recherche d'œuvres filtrée par cet élément : identifiant et libellé (réaffiché dans le filtre) */
+  query: (item: NamedItem) => Record<string, string>;
+}
+
+// Une liste de référence par genre : les périodes et les techniques se parcourent de la même façon
+const CONFIGS: Record<ReferenceKind, ReferenceConfig> = {
+  periods: {
+    title: 'Périodes',
+    placeholder: 'Rechercher une période...',
+    loading: 'Chargement des périodes...',
+    none: 'Aucune période trouvée',
+    singular: 'période',
+    plural: 'périodes',
+    failure: 'Erreur lors du chargement des périodes. Veuillez réessayer.',
+    fetch: (name, pageSize, page) => ApiService.getPeriods(name, pageSize, page),
+    query: item => ({ periodId: item.id, periodName: item.name })
+  },
+  techniques: {
+    title: 'Techniques',
+    placeholder: 'Rechercher une technique...',
+    loading: 'Chargement des techniques...',
+    none: 'Aucune technique trouvée',
+    singular: 'technique',
+    plural: 'techniques',
+    failure: 'Erreur lors du chargement des techniques. Veuillez réessayer.',
+    fetch: (name, pageSize, page) => ApiService.getTechniques(name, pageSize, page),
+    query: item => ({ techniqueId: item.id, techniqueName: item.name })
+  }
+};
 
 export default defineComponent({
-  name: 'PeriodsView',
+  name: 'ReferenceListView',
   components: { PaginationBar },
-  setup() {
+  props: {
+    kind: { type: String as PropType<ReferenceKind>, required: true }
+  },
+  setup(props) {
     const router = useRouter();
-    const periods = ref<NamedItem[]>([]);
+    const config = computed(() => CONFIGS[props.kind]);
+    const items = ref<NamedItem[]>([]);
     const loading = ref<boolean>(false);
     const error = ref<string | null>(null);
     const currentPage = ref<number>(1);
@@ -70,25 +115,25 @@ export default defineComponent({
     const searchQuery = ref<string>('');
     let searchTimeout: number | null = null;
 
-    const fetchPeriods = async () => {
+    const fetchItems = async () => {
       loading.value = true;
       error.value = null;
 
       try {
-        const result = await ApiService.getPeriods(searchQuery.value.trim(), pageSize, currentPage.value);
-        periods.value = result.items;
+        const result = await config.value.fetch(searchQuery.value.trim(), pageSize, currentPage.value);
+        items.value = result.items;
         totalItems.value = result.totalItems;
         totalPages.value = result.totalPages;
       } catch (err) {
-        console.error('Error fetching periods:', err);
-        error.value = 'Erreur lors du chargement des périodes. Veuillez réessayer.';
-        periods.value = [];
+        console.error('Error fetching reference list:', err);
+        error.value = config.value.failure;
+        items.value = [];
       } finally {
         loading.value = false;
       }
     };
 
-    onMounted(fetchPeriods);
+    onMounted(fetchItems);
 
     // Recherche différée pour ne pas interroger l'API à chaque touche
     const debounceSearch = () => {
@@ -97,40 +142,40 @@ export default defineComponent({
       }
       searchTimeout = setTimeout(() => {
         currentPage.value = 1;
-        fetchPeriods();
+        fetchItems();
       }, 300) as unknown as number;
     };
 
     const goToPage = (page: number) => {
       currentPage.value = page;
-      fetchPeriods();
+      fetchItems();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    // Les œuvres d'une période : la recherche filtrée par période, dont le libellé suit dans l'adresse
-    const openPeriod = (period: NamedItem) => {
-      router.push({ name: 'search', query: { periodId: period.id, periodName: period.name } });
+    const openItem = (item: NamedItem) => {
+      router.push({ name: 'search', query: config.value.query(item) });
     };
 
     return {
-      periods,
+      config,
+      items,
       loading,
       error,
       currentPage,
       totalItems,
       totalPages,
       searchQuery,
-      fetchPeriods,
+      fetchItems,
       debounceSearch,
       goToPage,
-      openPeriod
+      openItem
     };
   }
 });
 </script>
 
 <style lang="scss" scoped>
-.periods-page {
+.reference-page {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
@@ -227,13 +272,13 @@ export default defineComponent({
   margin-bottom: 15px;
 }
 
-.periods-grid {
+.reference-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 16px;
 }
 
-.period-card {
+.reference-card {
   background-color: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
