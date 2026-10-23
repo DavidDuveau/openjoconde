@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5.0](https://github.com/DavidDuveau/openjoconde/compare/v0.4.0...v0.5.0) (2026-10-23)
+
+
+### Features
+
+* carte et filtres région/département sur la liste des musées, accès à la collection filtrée (US-NAVIGATION-02) ([61a5743](https://github.com/DavidDuveau/openjoconde/commit/61a5743c4801adddd8769f9ea0c1b24b9a941030))
+* navigation par musée, carte et filtres géographiques (US-NAVIGATION-02) ([8f996ee](https://github.com/DavidDuveau/openjoconde/commit/8f996ee61463e76cb13c225c30aa1dd66dbdb66f))
+* thématiques et collections spéciales (US-NAVIGATION-05) ([8d2e2eb](https://github.com/DavidDuveau/openjoconde/commit/8d2e2eb8e43251e9790395d31aacd77b0c090bb0))
+* thématiques et collections spéciales, parcours en étapes et collections de saison (US-NAVIGATION-05) ([cad74cc](https://github.com/DavidDuveau/openjoconde/commit/cad74cc07e24f1ea2c6acbdcff54c54687bde694))
+
 ## [0.4.0](https://github.com/DavidDuveau/openjoconde/compare/v0.3.0...v0.4.0) (2026-10-23)
 
 
