@@ -13,7 +13,7 @@ export default tseslint.config(
     languageOptions: { parserOptions: { parser: tseslint.parser } }
   },
   {
-    languageOptions: { globals: { ...globals.browser, ...globals.node } },
+    languageOptions: { globals: { ...globals.browser, ...globals.node, __APP_VERSION__: 'readonly' } },
     rules: {
       'no-console': 'off',
       '@typescript-eslint/no-explicit-any': 'off'

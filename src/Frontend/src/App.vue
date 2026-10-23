@@ -12,6 +12,7 @@
         Données : Ministère de la Culture (bases Joconde et Muséofile), Licence Ouverte 2.0 ·
         <router-link to="/about#sources">Sources et licences</router-link>
       </p>
+      <p class="footer-version" data-testid="app-version">Version {{ version }}</p>
     </footer>
   </div>
 </template>
@@ -23,6 +24,9 @@ import AppHeader from '@/components/AppHeader.vue';
 export default defineComponent({
   components: {
     AppHeader
+  },
+  setup() {
+    return { version: __APP_VERSION__ };
   }
 });
 </script>
@@ -79,6 +83,11 @@ footer {
   justify-content: center;
   gap: 4px;
   text-align: center;
+
+  .footer-version {
+    font-size: 0.7rem;
+    opacity: 0.6;
+  }
 
   .footer-source {
     font-size: 0.8rem;

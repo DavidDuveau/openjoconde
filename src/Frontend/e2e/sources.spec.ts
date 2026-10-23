@@ -1,5 +1,6 @@
 import { expect, test } from './fixtures';
 import { NOTICES } from './jeu';
+import pkg from '../package.json';
 
 // Les données du ministère de la Culture se réutilisent à condition d'en citer l'origine à chaque rediffusion.
 
@@ -36,4 +37,14 @@ test('la fiche d\'un musée cite Muséofile', async ({ page }) => {
   await page.getByText(NOTICES[0].musee, { exact: false }).first().click();
 
   await expect(page.getByTestId('source-citation')).toContainText('Muséofile');
+});
+
+test('le pied de page annonce la version du produit, la même que celle annoncée par l’API', async ({ page, request }) => {
+  await page.goto('/');
+
+  const sante = await request.get('http://localhost:5101/api/health');
+  const version = (await sante.json()).version;
+
+  expect(version).toBe(pkg.version);
+  await expect(page.getByTestId('app-version')).toHaveText('Version ' + version);
 });
