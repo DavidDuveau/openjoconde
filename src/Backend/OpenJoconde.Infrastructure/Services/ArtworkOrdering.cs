@@ -55,6 +55,21 @@ namespace OpenJoconde.Infrastructure.Services
                 .ThenBy(a => a.Id);
 
         /// <summary>
+        /// Par distance au point donné du musée qui conserve l'œuvre, le plus proche d'abord ; les œuvres dont le musée
+        /// n'est pas localisé viennent en dernier. La distance est celle d'une carte plane (cosinus de la latitude sur
+        /// la longitude) : l'ordre est juste à l'échelle de la France, sans fonction géographique en base.
+        /// </summary>
+        public static IOrderedQueryable<Artwork> ByDistance(IQueryable<Artwork> query, double latitude, double longitude)
+        {
+            var scale = Math.Cos(latitude * Math.PI / 180);
+            return query
+                .OrderBy(a => a.Museum == null || a.Museum.Latitude == null || a.Museum.Longitude == null)
+                .ThenBy(a => (a.Museum!.Latitude - latitude) * (a.Museum!.Latitude - latitude)
+                    + (a.Museum!.Longitude - longitude) * scale * (a.Museum!.Longitude - longitude) * scale)
+                .ThenBy(a => a.Id);
+        }
+
+        /// <summary>
         /// Par nom du premier artiste, les œuvres sans artiste en dernier. Une jointure par œuvre : à réserver aux
         /// résultats déjà restreints par une recherche ou un filtre.
         /// </summary>

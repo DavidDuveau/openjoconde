@@ -38,9 +38,13 @@ namespace OpenJoconde.API.Controllers
         /// <param name="domainId">Ne garder que les œuvres de ce domaine</param>
         /// <param name="techniqueId">Ne garder que les œuvres réalisées avec cette technique</param>
         /// <param name="periodId">Ne garder que les œuvres de cette période</param>
+        /// <param name="region">Ne garder que les œuvres des musées de cette région (nom exact, voir /api/museums/geography)</param>
+        /// <param name="department">Ne garder que les œuvres des musées de ce département (nom exact)</param>
+        /// <param name="latitude">Latitude de l'utilisateur, en degrés, pour le tri par distance</param>
+        /// <param name="longitude">Longitude de l'utilisateur, en degrés, pour le tri par distance</param>
         /// <param name="sortBy">
         /// Tri : title (A-Z, par défaut), title_desc (Z-A), date (plus ancien d'abord), date_desc, relevance (pertinence,
-        /// avec une recherche) ou artist (nom du premier artiste, avec une recherche ou un filtre) ; les œuvres sans
+        /// avec une recherche) ou artist (nom du premier artiste, avec une recherche ou un filtre) ou distance (musée le plus proche d'abord, avec latitude et longitude) ; les œuvres sans
         /// titre, sans date lisible ou sans artiste viennent en dernier
         /// </param>
         /// <returns>Liste paginée d'oeuvres d'art</returns>
@@ -54,7 +58,11 @@ namespace OpenJoconde.API.Controllers
             [FromQuery] Guid? domainId = null,
             [FromQuery] Guid? techniqueId = null,
             [FromQuery] Guid? periodId = null,
-            [FromQuery] string? sortBy = null)
+            [FromQuery] string? sortBy = null,
+            [FromQuery] string? region = null,
+            [FromQuery] string? department = null,
+            [FromQuery] double? latitude = null,
+            [FromQuery] double? longitude = null)
         {
             try
             {
@@ -71,7 +79,11 @@ namespace OpenJoconde.API.Controllers
                     DomainId = domainId,
                     TechniqueId = techniqueId,
                     PeriodId = periodId,
-                    SortBy = sortBy
+                    SortBy = sortBy,
+                    Region = region,
+                    Department = department,
+                    Latitude = latitude,
+                    Longitude = longitude
                 });
 
                 return Ok(result);

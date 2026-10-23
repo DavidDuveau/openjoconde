@@ -7,8 +7,8 @@ namespace OpenJoconde.Core.Models
     /// </summary>
     public class ArtworkSearchCriteria
     {
-        /// <summary>Tris connus : title (A-Z, par défaut), title_desc, date, date_desc, relevance, artist</summary>
-        public static readonly string[] SortKeys = { "title", "title_desc", "date", "date_desc", "relevance", "artist" };
+        /// <summary>Tris connus : title (A-Z, par défaut), title_desc, date, date_desc, relevance, artist, distance (proche d'abord)</summary>
+        public static readonly string[] SortKeys = { "title", "title_desc", "date", "date_desc", "relevance", "artist", "distance" };
 
         /// <summary>Numéro de la page, à partir de 1</summary>
         public int Page { get; init; } = 1;
@@ -26,6 +26,14 @@ namespace OpenJoconde.Core.Models
         public Guid? TechniqueId { get; init; }
         /// <summary>Ne garde que les œuvres de cette période</summary>
         public Guid? PeriodId { get; init; }
+        /// <summary>Ne garde que les œuvres des musées de cette région (nom exact, comme le rend la liste géographique)</summary>
+        public string? Region { get; init; }
+        /// <summary>Ne garde que les œuvres des musées de ce département (nom exact)</summary>
+        public string? Department { get; init; }
+        /// <summary>Latitude de l'utilisateur, en degrés : sert au tri par distance</summary>
+        public double? Latitude { get; init; }
+        /// <summary>Longitude de l'utilisateur, en degrés : sert au tri par distance</summary>
+        public double? Longitude { get; init; }
         /// <summary>Clé de tri (voir <see cref="SortKeys"/>) ; titre A-Z si absente</summary>
         public string? SortBy { get; init; }
     }

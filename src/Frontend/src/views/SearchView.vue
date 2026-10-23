@@ -73,6 +73,36 @@
             />
           </div>
 
+          <div class="form-group">
+            <label>Musée</label>
+            <FilterPicker
+              v-model="searchParams.museumId"
+              v-model:label="searchParams.museumName"
+              placeholder="Rechercher un musée"
+              :fetchOptions="findMuseums"
+              @update:modelValue="applyFilters"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>Région et département</label>
+            <GeographyFilter
+              v-model:region="searchParams.region"
+              v-model:department="searchParams.department"
+              @change="applyFilters"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>Près de moi</label>
+            <button type="button" class="secondary-button near-me" data-testid="near-me" @click="nearMe">Trier par distance</button>
+            <p v-if="hasPosition" class="position-note" data-testid="position-active">
+              Votre position sert au tri.
+              <a href="#" data-testid="position-clear" @click.prevent="clearPosition">La retirer</a>
+            </p>
+            <p v-if="positionError" class="position-note" data-testid="position-error">{{ positionError }}</p>
+          </div>
+
           <div class="filter-buttons">
             <button class="search-button" @click="search">Appliquer les filtres</button>
             <button class="reset-button" @click="resetFilters">Réinitialiser</button>
@@ -81,6 +111,8 @@
       </div>
 
       <div class="search-results">
+        <MuseumSummary v-if="searchParams.museumId" :museumId="searchParams.museumId" />
+
         <div v-if="artworkStore.loading" class="loading-container">
           <div class="loader"></div>
           <p>Recherche en cours...</p>
@@ -129,6 +161,7 @@
                 <option value="date_desc">Date (plus récent)</option>
                 <option v-if="canSortByRelevance" value="relevance">Pertinence</option>
                 <option v-if="canSortByArtist" value="artist">Artiste</option>
+                <option v-if="hasPosition" value="distance">Distance (musée le plus proche)</option>
               </select>
             </div>
           </div>
@@ -194,12 +227,16 @@ import { SearchParams, NamedItem } from '@/types/models';
 import ApiService from '@/services/api';
 import ArtworkCard from '@/components/ArtworkCard.vue';
 import FilterPicker, { PickerOption } from '@/components/FilterPicker.vue';
+import GeographyFilter from '@/components/GeographyFilter.vue';
+import MuseumSummary from '@/components/MuseumSummary.vue';
 
 export default defineComponent({
   name: 'SearchView',
   components: {
     ArtworkCard,
-    FilterPicker
+    FilterPicker,
+    GeographyFilter,
+    MuseumSummary
   },
   setup() {
     const artworkStore = useArtworkStore();
@@ -215,6 +252,11 @@ export default defineComponent({
       techniqueId: '',
       periodId: '',
       museumId: '',
+      museumName: '',
+      region: '',
+      department: '',
+      latitude: undefined,
+      longitude: undefined,
       artistName: '',
       domainName: '',
       techniqueName: '',
@@ -230,8 +272,14 @@ export default defineComponent({
              searchParams.domainId !== '' || 
              searchParams.techniqueId !== '' || 
              searchParams.periodId !== '' || 
-             searchParams.museumId !== '';
+             searchParams.museumId !== '' ||
+             searchParams.region !== '' ||
+             searchParams.department !== '';
     });
+
+    // « Près de moi » : le tri par distance suppose une position
+    const hasPosition = computed(() => searchParams.latitude !== undefined && searchParams.longitude !== undefined);
+    const positionError = ref('');
 
     // La pertinence suppose une recherche par mots ; le tri par artiste, une recherche ou un filtre (sinon l'API refuse)
     const canSortByRelevance = computed(() => /[\p{L}\p{N}]/u.test(searchParams.searchText ?? ''));
@@ -275,6 +323,15 @@ export default defineComponent({
         searchParams.museumId = '';
       }
       
+      searchParams.region = typeof newQuery.region === 'string' ? newQuery.region : '';
+      searchParams.department = typeof newQuery.department === 'string' ? newQuery.department : '';
+      searchParams.museumName = typeof newQuery.museumName === 'string' ? newQuery.museumName : '';
+      const latitude = Number(newQuery.lat);
+      const longitude = Number(newQuery.lon);
+      const located = typeof newQuery.lat === 'string' && typeof newQuery.lon === 'string' && Number.isFinite(latitude) && Number.isFinite(longitude);
+      searchParams.latitude = located ? latitude : undefined;
+      searchParams.longitude = located ? longitude : undefined;
+
       searchParams.artistName = typeof newQuery.artistName === 'string' ? newQuery.artistName : '';
       searchParams.domainName = typeof newQuery.domainName === 'string' ? newQuery.domainName : '';
       searchParams.techniqueName = typeof newQuery.techniqueName === 'string' ? newQuery.techniqueName : '';
@@ -304,6 +361,8 @@ export default defineComponent({
     const findDomains = async (text: string) => asOptions((await ApiService.getDomains(text)).items);
     const findTechniques = async (text: string) => asOptions((await ApiService.getTechniques(text)).items);
     const findPeriods = async (text: string) => asOptions((await ApiService.getPeriods(text)).items);
+    const findMuseums = async (text: string) =>
+      (await ApiService.getMuseums(1, 20, text)).items.map(museum => ({ id: museum.id, label: museum.name }));
     const findArtists = async (text: string) =>
       (await ApiService.getArtists(1, 20, text)).items.map(artist => ({
         id: artist.id,
@@ -314,6 +373,9 @@ export default defineComponent({
     function search() {
       // Un tri devenu impossible (recherche effacée) retombe sur le titre
       if ((sortBy.value === 'relevance' && !canSortByRelevance.value) || (sortBy.value === 'artist' && !canSortByArtist.value)) {
+        sortBy.value = 'title';
+      }
+      if (sortBy.value === 'distance' && !hasPosition.value) {
         sortBy.value = 'title';
       }
       // Mettre à jour les paramètres de tri
@@ -328,6 +390,11 @@ export default defineComponent({
           techniqueId: searchParams.techniqueId || undefined,
           periodId: searchParams.periodId || undefined,
           museumId: searchParams.museumId || undefined,
+          museumName: searchParams.museumId ? searchParams.museumName || undefined : undefined,
+          region: searchParams.region || undefined,
+          department: searchParams.department || undefined,
+          lat: hasPosition.value ? String(searchParams.latitude) : undefined,
+          lon: hasPosition.value ? String(searchParams.longitude) : undefined,
           artistName: searchParams.artistId ? searchParams.artistName || undefined : undefined,
           domainName: searchParams.domainId ? searchParams.domainName || undefined : undefined,
           techniqueName: searchParams.techniqueId ? searchParams.techniqueName || undefined : undefined,
@@ -356,6 +423,12 @@ export default defineComponent({
       searchParams.techniqueId = '';
       searchParams.periodId = '';
       searchParams.museumId = '';
+      searchParams.museumName = '';
+      searchParams.region = '';
+      searchParams.department = '';
+      searchParams.latitude = undefined;
+      searchParams.longitude = undefined;
+      positionError.value = '';
       searchParams.artistName = '';
       searchParams.domainName = '';
       searchParams.techniqueName = '';
@@ -367,6 +440,35 @@ export default defineComponent({
       search();
     };
     
+    // Position de l'utilisateur, arrondie à 3 décimales (une centaine de mètres) : assez pour classer des musées, et
+    // l'adresse partagée ne désigne pas un domicile
+    const nearMe = () => {
+      positionError.value = '';
+      if (!navigator.geolocation) {
+        positionError.value = 'Votre navigateur ne permet pas de connaître votre position.';
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          searchParams.latitude = Math.round(position.coords.latitude * 1000) / 1000;
+          searchParams.longitude = Math.round(position.coords.longitude * 1000) / 1000;
+          sortBy.value = 'distance';
+          searchParams.page = 1;
+          search();
+        },
+        () => {
+          positionError.value = "Votre position n'a pas pu être obtenue : autorisez la localisation pour trier par distance.";
+        }
+      );
+    };
+
+    const clearPosition = () => {
+      searchParams.latitude = undefined;
+      searchParams.longitude = undefined;
+      searchParams.page = 1;
+      search();
+    };
+
     // Search for similar terms
     const searchSimilar = (term: string) => {
       searchParams.searchText = term;
@@ -414,6 +516,11 @@ export default defineComponent({
       findDomains,
       findTechniques,
       findPeriods,
+      findMuseums,
+      nearMe,
+      clearPosition,
+      hasPosition,
+      positionError,
       sortBy,
       canSortByRelevance,
       canSortByArtist,

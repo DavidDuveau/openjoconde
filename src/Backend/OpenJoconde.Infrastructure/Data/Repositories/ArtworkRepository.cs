@@ -44,9 +44,11 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
             var pageSize = criteria.PageSize < 1 ? 10 : Math.Min(criteria.PageSize, 100);
 
             IQueryable<Artwork> query = _context.Artworks;
-            query = ArtworkFilter.Apply(query, criteria.MuseumId, criteria.ArtistId, criteria.DomainId, criteria.TechniqueId, criteria.PeriodId);
+            query = ArtworkFilter.Apply(query, criteria.MuseumId, criteria.ArtistId, criteria.DomainId, criteria.TechniqueId, criteria.PeriodId,
+                criteria.Region, criteria.Department);
             var filtered = criteria.MuseumId.HasValue || criteria.ArtistId.HasValue || criteria.DomainId.HasValue
-                || criteria.TechniqueId.HasValue || criteria.PeriodId.HasValue;
+                || criteria.TechniqueId.HasValue || criteria.PeriodId.HasValue
+                || !string.IsNullOrWhiteSpace(criteria.Region) || !string.IsNullOrWhiteSpace(criteria.Department);
 
             var searching = !string.IsNullOrWhiteSpace(criteria.Search);
             if (searching)
@@ -58,12 +60,16 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
             if (sortBy == "artist" && !(searching || filtered))
                 throw new InvalidArtworkSearchException("Le tri par artiste demande une recherche ou un filtre.");
 
+            if (sortBy == "distance" && !(criteria.Latitude.HasValue && criteria.Longitude.HasValue))
+                throw new InvalidArtworkSearchException("Le tri par distance demande la latitude et la longitude.");
+
             IQueryable<Artwork> ordered = sortBy switch
             {
                 "relevance" => ArtworkOrdering.ByRelevance(query, condition!),
                 "date" => ArtworkOrdering.ByDate(query),
                 "date_desc" => ArtworkOrdering.ByDate(query, descending: true),
                 "artist" => ArtworkOrdering.ByArtist(query),
+                "distance" => ArtworkOrdering.ByDistance(query, criteria.Latitude!.Value, criteria.Longitude!.Value),
                 _ => ArtworkOrdering.ByTitle(query, searching || filtered, sortBy == "title_desc")
             };
 

@@ -84,6 +84,10 @@ export const useArtworkStore = defineStore('artwork', {
           techniqueId: params.techniqueId || undefined,
           periodId: params.periodId || undefined,
           museumId: params.museumId || undefined,
+          region: params.region || undefined,
+          department: params.department || undefined,
+          latitude: params.latitude,
+          longitude: params.longitude,
           sortBy: params.sortBy && params.sortBy !== 'title' ? params.sortBy : undefined
         };
         const result = await ApiService.searchArtworks(searchParams);
