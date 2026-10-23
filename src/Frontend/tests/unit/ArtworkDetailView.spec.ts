@@ -15,7 +15,7 @@ const oeuvre = {
 };
 
 function monter() {
-  return mount(ArtworkDetailView, { global: { stubs: { RouterLink: RouterLinkStub, SimilarArtworks: true, ArtworkContext: true, ArtworkMuseum: true, ArtworkCitation: true, ShareLink: true } } });
+  return mount(ArtworkDetailView, { global: { stubs: { RouterLink: RouterLinkStub, SimilarArtworks: true, ArtworkContext: true, ArtworkMuseum: true, ArtworkCitation: true, ArtworkExport: true, ShareLink: true } } });
 }
 
 async function afficher(surcharge: object = {}) {
