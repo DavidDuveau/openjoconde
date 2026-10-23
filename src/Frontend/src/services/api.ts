@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { PaginatedResult, Artwork, ArtworkDetail } from '@/types/artwork';
-import { Artist, NamedItem, Museum, RegionGeography } from '@/types/models';
+import { Artist, NamedItem, Museum, MuseumLocations, RegionGeography } from '@/types/models';
 
 // Création de l'instance axios avec la configuration de base
 const http = axios.create({
@@ -72,6 +72,12 @@ const api = {
   // Régions et départements qui ont des musées, avec leur nombre de musées
   async getMuseumGeography(): Promise<RegionGeography[]> {
     const response = await http.get('/museums/geography');
+    return response.data;
+  },
+
+  // Musées qui ont des coordonnées (nom et position), et nombre total de musées : de quoi dessiner la carte
+  async getMuseumLocations(): Promise<MuseumLocations> {
+    const response = await http.get('/museums/locations');
     return response.data;
   },
 

@@ -25,3 +25,28 @@ namespace OpenJoconde.Core.Dtos
         public int Museums { get; init; }
     }
 }
+
+namespace OpenJoconde.Core.Dtos
+{
+    /// <summary>Un musée placé sur la carte : de quoi dessiner son point et ouvrir sa fiche</summary>
+    public class MuseumLocationDto
+    {
+        /// <summary>Identifiant du musée</summary>
+        public System.Guid Id { get; init; }
+        /// <summary>Nom du musée</summary>
+        public string Name { get; init; } = string.Empty;
+        /// <summary>Latitude, en degrés</summary>
+        public double Latitude { get; init; }
+        /// <summary>Longitude, en degrés</summary>
+        public double Longitude { get; init; }
+    }
+
+    /// <summary>Les musées que la carte peut placer, et le nombre total de musées (placés ou non)</summary>
+    public class MuseumLocationsDto
+    {
+        /// <summary>Nombre de musées en base, avec ou sans coordonnées</summary>
+        public int Total { get; init; }
+        /// <summary>Musées qui ont des coordonnées</summary>
+        public List<MuseumLocationDto> Items { get; init; } = new();
+    }
+}

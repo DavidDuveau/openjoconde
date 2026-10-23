@@ -97,3 +97,4 @@ src/Frontend/test-results/
 src/Frontend/playwright-report/
 coverage
 TestResults/
+!src/Frontend/src/assets/geo/france.json

@@ -96,6 +96,21 @@ namespace OpenJoconde.Infrastructure.Data
         }
 
         /// <summary>
+        /// Les musées qui ont des coordonnées (nom et position seulement : la carte n'a pas besoin du reste), avec le
+        /// nombre total de musées
+        /// </summary>
+        public async Task<MuseumLocationsDto> GetLocationsAsync()
+        {
+            var items = await _context.Museums
+                .AsNoTracking()
+                .Where(m => m.Latitude != null && m.Longitude != null)
+                .OrderBy(m => m.Name)
+                .Select(m => new MuseumLocationDto { Id = m.Id, Name = m.Name, Latitude = m.Latitude!.Value, Longitude = m.Longitude!.Value })
+                .ToListAsync();
+            return new MuseumLocationsDto { Total = await _context.Museums.CountAsync(), Items = items };
+        }
+
+        /// <summary>
         /// Add a new museum
         /// </summary>
         public async Task<Museum> AddAsync(Museum museum)

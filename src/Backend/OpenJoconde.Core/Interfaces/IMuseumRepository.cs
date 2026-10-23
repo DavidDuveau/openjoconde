@@ -27,6 +27,11 @@ namespace OpenJoconde.Core.Interfaces
         Task<List<RegionDto>> GetGeographyAsync();
 
         /// <summary>
+        /// Les musées qui ont des coordonnées, avec le nombre total de musées
+        /// </summary>
+        Task<MuseumLocationsDto> GetLocationsAsync();
+
+        /// <summary>
         /// Ajoute un nouveau musée
         /// </summary>
         Task<Museum> AddAsync(Museum museum);

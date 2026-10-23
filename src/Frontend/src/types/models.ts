@@ -80,6 +80,12 @@ export interface Museum {
   longitude?: number;
 }
 
+/** Les musées que la carte peut placer, et le nombre total de musées (placés ou non) */
+export interface MuseumLocations {
+  total: number;
+  items: { id: string; name: string; latitude: number; longitude: number }[];
+}
+
 /** Une région et ses départements, avec leur nombre de musées */
 export interface RegionGeography {
   name: string;
