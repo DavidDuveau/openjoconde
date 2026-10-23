@@ -49,6 +49,8 @@ src/Backend/OpenJoconde.API/Data/Temp/
 !package.json
 !package-lock.json
 !tsconfig.json
+!release-please-config.json
+!.release-please-manifest.json
 
 # NodeJS
 node_modules/

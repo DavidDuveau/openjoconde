@@ -4,6 +4,7 @@ import { mount } from '@vue/test-utils';
 vi.mock('@/components/AppHeader.vue', () => ({ default: { template: '<header data-testid="entete" />' } }));
 
 import App from '@/App.vue';
+import pkg from '../../package.json';
 
 describe('App', () => {
   it("compose l'en-tête, la vue courante et le pied de page avec le lien vers les sources", () => {
@@ -17,5 +18,11 @@ describe('App', () => {
     expect(vue.find('main [data-testid="vue"]').exists()).toBe(true);
     expect(vue.get('[data-testid="footer-source"]').text()).toContain('Licence Ouverte 2.0');
     expect(vue.get('[data-testid="footer-source"] a').attributes('href')).toBe('/about#sources');
+  });
+
+  it('affiche la version du produit, celle de package.json', () => {
+    const vue = mount(App, { global: { stubs: { 'router-view': true, 'router-link': true } } });
+
+    expect(vue.get('[data-testid="app-version"]').text()).toBe('Version ' + pkg.version);
   });
 });

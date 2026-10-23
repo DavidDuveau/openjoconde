@@ -106,6 +106,14 @@ Depuis VS Code :
 - **Run Task → `start-all`** : lance le backend et le frontend en parallèle.
 - **F5 → Full Stack** : même chose avec le débogueur attaché au backend et au navigateur.
 
+## Versions et releases
+
+Le produit a **une seule version** (SemVer), la même pour le back et le front : `<Version>` dans `src/Backend/Directory.Build.props` et `version` dans `src/Frontend/package.json`. Elle est dans les builds : `GET /api/health` l'annonce (`version`) et le pied de page du site l'affiche. Un test unitaire du front vérifie que les deux numéros sont identiques.
+
+Personne ne la modifie à la main. À chaque fusion dans `main`, le workflow `release.yml` ([release-please](https://github.com/googleapis/release-please)) lit les commits au format `feat:` / `fix:` (un `!` ou `BREAKING CHANGE:` pour une rupture) et tient à jour une pull request « chore(main): release x.y.z » qui monte les deux numéros et alimente `CHANGELOG.md`. La fusionner pose le tag `vX.Y.Z` et publie la release GitHub. Tant que la version est en `0.x`, un `feat:` monte le numéro mineur.
+
+Les checks de la CI ne se lancent pas sur la pull request de release : GitHub n'exécute pas de workflow déclenché par le jeton d'un autre workflow. Elle ne change que des numéros de version, et la fusion se fait après relecture.
+
 ## API
 
 | Route | Rôle |

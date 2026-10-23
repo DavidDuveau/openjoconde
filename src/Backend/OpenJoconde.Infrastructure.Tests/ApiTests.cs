@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using OpenJoconde.API;
 using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Core.Models;
 using Xunit;
@@ -34,6 +35,24 @@ public class ApiGeneralTests : IClassFixture<ApiFactory>
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("Healthy", body.GetProperty("status").GetString());
         Assert.Equal(0, body.GetProperty("statistics").GetProperty("artworks").GetInt32());
+    }
+
+    [Fact]
+    public async Task Sante_AnnonceLaVersionDuProduit()
+    {
+        var body = await _factory.CreateClient().GetFromJsonAsync<JsonElement>("/api/health");
+
+        var version = body.GetProperty("version").GetString();
+        Assert.Equal(AppVersion.Current, version);
+        Assert.Matches(@"^\d+\.\d+\.\d+$", version);
+    }
+
+    [Fact]
+    public void Version_VientDeDirectoryBuildProps()
+    {
+        var props = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Directory.Build.props"));
+
+        Assert.Contains($"<Version>{AppVersion.Current}</Version>", props);
     }
 
     [Fact]

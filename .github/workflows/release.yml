@@ -1,0 +1,21 @@
+name: Release
+
+# À chaque fusion dans main, release-please tient à jour une pull request « chore(main): release x.y.z » qui monte la
+# version (Directory.Build.props, package.json) d'après les commits feat:/fix:. La fusionner pose le tag vX.Y.Z et
+# publie la release GitHub.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

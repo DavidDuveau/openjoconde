@@ -1,5 +1,8 @@
 /// <reference types="vite/client" />
 
+/** Version du produit (package.json), injectée au build par Vite */
+declare const __APP_VERSION__: string;
+
 interface ImportMetaEnv {
   /** Adresse de l'API (défaut : https://localhost:5001/api) */
   readonly VUE_APP_API_URL?: string;

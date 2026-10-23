@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <None Update="Fixtures/*" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../Directory.Build.props" Link="Directory.Build.props" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

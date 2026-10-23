@@ -62,7 +62,7 @@ namespace OpenJoconde.API.Controllers
                         artists = await _context.Artists.CountAsync(),
                         museums = await _context.Museums.CountAsync()
                     },
-                    version = "1.2.0",
+                    version = AppVersion.Current,
                     environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"
                 });
             }
