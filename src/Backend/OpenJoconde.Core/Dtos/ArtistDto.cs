@@ -22,6 +22,10 @@ namespace OpenJoconde.Core.Dtos
         public string? Nationality { get; init; }
         /// <summary>Biographie</summary>
         public string? Biography { get; init; }
+        /// <summary>Courant ou mouvement artistique</summary>
+        public string? Movement { get; init; }
+        /// <summary>Article Wikipédia dont la biographie est tirée (à citer avec elle)</summary>
+        public string? WikipediaUrl { get; init; }
         /// <summary>Nombre d'œuvres de l'artiste</summary>
         public int ArtworksCount { get; init; }
     }

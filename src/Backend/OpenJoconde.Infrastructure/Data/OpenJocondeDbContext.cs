@@ -87,6 +87,9 @@ namespace OpenJoconde.Infrastructure.Data
                 entity.Property(e => e.DeathDate).HasMaxLength(100);
                 entity.Property(e => e.Nationality).HasMaxLength(200);
                 entity.Property(e => e.Biography).HasColumnType("text");
+                entity.Property(e => e.WikidataId).HasMaxLength(20);
+                entity.Property(e => e.WikipediaUrl).HasMaxLength(500);
+                entity.Property(e => e.Movement).HasMaxLength(200);
                 entity.HasIndex(e => e.LastName);
             });
 

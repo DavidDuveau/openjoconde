@@ -40,6 +40,9 @@
           <div class="artist-nationality" v-if="artist.nationality">
             {{ artist.nationality }}
           </div>
+          <div class="artist-nationality" v-if="artist.movement" data-testid="artist-movement">
+            {{ artist.movement }}
+          </div>
         </div>
       </header>
       
@@ -48,6 +51,10 @@
         <div class="biography-content">
           {{ artist.biography }}
         </div>
+        <p v-if="wikipediaUrl" class="biography-source" data-testid="biography-source">
+          Source : <a :href="wikipediaUrl" target="_blank" rel="noopener noreferrer">Wikipédia</a>
+          (<a href="https://creativecommons.org/licenses/by-sa/4.0/deed.fr" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>).
+        </p>
       </div>
       
       <section class="artist-artworks">
@@ -82,11 +89,12 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted, watch } from 'vue';
+import { defineComponent, ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ApiService from '@/services/api';
 import ArtworkCard from '@/components/ArtworkCard.vue';
 import PaginationBar from '@/components/PaginationBar.vue';
+import { safeWebUrl } from '@/utils/rights';
 import { Artist } from '@/types/models';
 import { Artwork } from '@/types/artwork';
 
@@ -183,7 +191,10 @@ export default defineComponent({
       router.push(`/artworks/${artworkId}`);
     };
     
+    const wikipediaUrl = computed(() => safeWebUrl(artist.value?.wikipediaUrl));
+
     return {
+      wikipediaUrl,
       artworks,
       artworksLoading,
       artworksError,
@@ -345,6 +356,12 @@ export default defineComponent({
     line-height: 1.6;
     color: #333;
     white-space: pre-line;
+  }
+
+  .biography-source {
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: #777;
   }
 }
 

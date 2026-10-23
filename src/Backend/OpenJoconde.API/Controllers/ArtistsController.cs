@@ -43,6 +43,8 @@ namespace OpenJoconde.API.Controllers
             DeathDate = artist.DeathDate,
             Nationality = artist.Nationality,
             Biography = artist.Biography,
+            Movement = artist.Movement,
+            WikipediaUrl = artist.WikipediaUrl,
             ArtworksCount = artworksCount
         };
 

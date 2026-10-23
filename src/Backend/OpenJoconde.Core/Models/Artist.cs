@@ -44,6 +44,21 @@ namespace OpenJoconde.Core.Models
         public string? Biography { get; set; }
 
         /// <summary>
+        /// Identifiant Wikidata de l'artiste (ex. Q296), quand le rapprochement avec la notice a été fait
+        /// </summary>
+        public string? WikidataId { get; set; }
+
+        /// <summary>
+        /// Adresse de l'article Wikipédia dont la biographie est tirée
+        /// </summary>
+        public string? WikipediaUrl { get; set; }
+
+        /// <summary>
+        /// Courant ou mouvement artistique de l'artiste, selon Wikidata
+        /// </summary>
+        public string? Movement { get; set; }
+
+        /// <summary>
         /// Creation timestamp
         /// </summary>
         public DateTime CreatedAt { get; set; }
