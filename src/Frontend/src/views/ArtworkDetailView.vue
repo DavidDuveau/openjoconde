@@ -20,6 +20,7 @@
         <router-link to="/artworks" class="back-link">
           &larr; Retour à la liste
         </router-link>
+        <ShareLink :title="displayTitle(artwork.title, Infinity)" />
       </div>
 
       <div class="artwork-main">
@@ -182,12 +183,13 @@ import { popNoticeUrl } from '@/utils/pop';
 import DataSource from '@/components/DataSource.vue';
 import ArtworkContext from '@/components/ArtworkContext.vue';
 import ArtworkMuseum from '@/components/ArtworkMuseum.vue';
+import ShareLink from '@/components/ShareLink.vue';
 import SimilarArtworks from '@/components/SimilarArtworks.vue';
 import { ArtworkDetail } from '@/types/artwork';
 
 export default defineComponent({
   name: 'ArtworkDetailView',
-  components: { DataSource, ArtworkContext, ArtworkMuseum, SimilarArtworks },
+  components: { DataSource, ArtworkContext, ArtworkMuseum, ShareLink, SimilarArtworks },
   setup() {
     const route = useRoute();
 
@@ -277,6 +279,11 @@ export default defineComponent({
 
   .artwork-content {
     .artwork-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
       margin-bottom: 20px;
       
       .back-link {
