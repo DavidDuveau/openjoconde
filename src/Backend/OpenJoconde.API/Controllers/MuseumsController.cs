@@ -37,6 +37,8 @@ namespace OpenJoconde.API.Controllers
         /// Recherche des musées par nom ou localisation
         /// </summary>
         /// <param name="name">Nom ou localisation partielle du musée à rechercher</param>
+        /// <param name="region">Région exacte (voir <c>GET /api/museums/geography</c>)</param>
+        /// <param name="department">Département exact</param>
         /// <param name="page">Numéro de page (commence à 1)</param>
         /// <param name="pageSize">Nombre d'éléments par page</param>
         /// <returns>Liste des musées correspondant aux critères de recherche</returns>
@@ -48,14 +50,16 @@ namespace OpenJoconde.API.Controllers
         public async Task<ActionResult<PaginatedResult<Museum>>> SearchMuseums(
             [FromQuery] string? name = null,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 10)
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? region = null,
+            [FromQuery] string? department = null)
         {
             try
             {
-                _logger.LogInformation("Recherche de musées - Nom/Localisation: {Name}, Page: {Page}, PageSize: {PageSize}",
-                    name ?? "null", page, pageSize);
+                _logger.LogInformation("Recherche de musées - Nom/Localisation: {Name}, Région: {Region}, Département: {Department}, Page: {Page}, PageSize: {PageSize}",
+                    name ?? "null", region ?? "null", department ?? "null", page, pageSize);
 
-                var museums = await _museumRepository.SearchByNameAsync(name, page, pageSize);
+                var museums = await _museumRepository.SearchByNameAsync(name, page, pageSize, region, department);
                 return Ok(museums);
             }
             catch (Exception ex)

@@ -40,7 +40,7 @@ namespace OpenJoconde.Infrastructure.Data
         /// <summary>
         /// Search museums by name
         /// </summary>
-        public async Task<PaginatedResult<Museum>> SearchByNameAsync(string? name, int page = 1, int pageSize = 10)
+        public async Task<PaginatedResult<Museum>> SearchByNameAsync(string? name, int page = 1, int pageSize = 10, string? region = null, string? department = null)
         {
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
@@ -56,6 +56,11 @@ namespace OpenJoconde.Infrastructure.Data
                     (m.City != null && EF.Functions.ILike(m.City, pattern)) ||
                     (m.Department != null && EF.Functions.ILike(m.Department, pattern)));
             }
+
+            if (!string.IsNullOrWhiteSpace(region))
+                query = query.Where(m => m.Region == region);
+            if (!string.IsNullOrWhiteSpace(department))
+                query = query.Where(m => m.Department == department);
 
             var ordered = query
                 .OrderBy(m => m.Name)

@@ -67,6 +67,12 @@
 
       <p class="museum-description" v-if="museum.description">{{ museum.description }}</p>
 
+      <p class="museum-explore">
+        <router-link :to="{ name: 'search', query: { museumId: museum.id, museumName: museum.name } }" data-testid="museum-explore">
+          Explorer la collection avec les filtres (période, artiste, technique…)
+        </router-link>
+      </p>
+
       <section class="museum-artworks">
         <h2>Œuvres<span v-if="artworksTotal" data-testid="museum-artworks-count"> ({{ artworksTotal }})</span></h2>
 

@@ -31,6 +31,16 @@ describe('MuseumDetailView', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
 
+  it("propose d'explorer la collection du musée avec les filtres de la recherche", async () => {
+    getMuseum.mockResolvedValue(musee);
+    searchArtworks.mockResolvedValue(oeuvres([]));
+
+    const vue = await afficher();
+
+    const lien = vue.getComponent('[data-testid="museum-explore"]');
+    expect(lien.props('to')).toEqual({ name: 'search', query: { museumId: 'm1', museumName: 'Musée des Confluences' } });
+  });
+
   it('affiche les coordonnées du musée et son lien de site', async () => {
     getMuseum.mockResolvedValue(musee);
     searchArtworks.mockResolvedValue(oeuvres([]));

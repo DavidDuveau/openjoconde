@@ -6,12 +6,13 @@ vi.mock('@/services/api', () => ({ default: { getMuseums } }));
 vi.mock('vue-router', () => ({ useRouter: () => ({ push }) }));
 
 import MuseumsView from '@/views/MuseumsView.vue';
+import GeographyFilter from '@/components/GeographyFilter.vue';
 
 const page = (items: object[], totalItems = items.length) => ({ items, totalItems, page: 1, pageSize: 12, totalPages: 1 });
 const musee = (id: string, name: string) => ({ id, name, city: 'Lyon', department: 'Rhône', region: 'Auvergne-Rhône-Alpes' });
 
 async function afficher() {
-  const vue = mount(MuseumsView);
+  const vue = mount(MuseumsView, { global: { stubs: { GeographyFilter: true, FranceMap: true } } });
   await flushPromises();
   return vue;
 }
@@ -64,7 +65,29 @@ describe('MuseumsView', () => {
     await vi.advanceTimersByTimeAsync(300);
 
     expect(getMuseums).toHaveBeenCalledTimes(2);
-    expect(getMuseums).toHaveBeenLastCalledWith(1, 12, 'guimet');
+    expect(getMuseums).toHaveBeenLastCalledWith(1, 12, 'guimet', '', '');
+  });
+
+  it('affiche la carte et les filtres de région et de département au-dessus de la liste', async () => {
+    getMuseums.mockResolvedValue(page([musee('m1', 'Musée des Confluences')]));
+
+    const vue = await afficher();
+
+    expect(vue.findComponent({ name: 'FranceMap' }).exists()).toBe(true);
+    expect(vue.findComponent(GeographyFilter).exists()).toBe(true);
+  });
+
+  it('filtre la liste par région et département, et repart de la première page', async () => {
+    getMuseums.mockResolvedValue(page([musee('m1', 'Musée des Confluences')]));
+    const vue = await afficher();
+    const filtre = vue.findComponent(GeographyFilter);
+
+    filtre.vm.$emit('update:region', 'Bretagne');
+    filtre.vm.$emit('update:department', 'Morbihan');
+    filtre.vm.$emit('change');
+    await flushPromises();
+
+    expect(getMuseums).toHaveBeenLastCalledWith(1, 12, '', 'Bretagne', 'Morbihan');
   });
 
   it("dit qu'aucun musée ne correspond", async () => {

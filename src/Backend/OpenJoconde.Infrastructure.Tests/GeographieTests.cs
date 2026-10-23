@@ -133,7 +133,7 @@ internal sealed class FailingMuseumRepository : OpenJoconde.Core.Interfaces.IMus
     public Task<MuseumLocationsDto> GetLocationsAsync() => throw new InvalidOperationException("base indisponible");
 
     public Task<Museum?> GetByIdAsync(Guid id) => throw new NotSupportedException();
-    public Task<PaginatedResult<Museum>> SearchByNameAsync(string? name, int page = 1, int pageSize = 10) => throw new NotSupportedException();
+    public Task<PaginatedResult<Museum>> SearchByNameAsync(string? name, int page = 1, int pageSize = 10, string? region = null, string? department = null) => throw new NotSupportedException();
     public Task<Museum> AddAsync(Museum museum) => throw new NotSupportedException();
     public Task<bool> UpdateAsync(Museum museum) => throw new NotSupportedException();
     public Task<bool> DeleteAsync(Guid id) => throw new NotSupportedException();

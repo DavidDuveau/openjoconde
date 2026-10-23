@@ -10,7 +10,10 @@
         placeholder="Rechercher un musée, une ville, un département..."
         @input="debounceSearch"
       />
+      <GeographyFilter v-model:region="region" v-model:department="department" @change="onGeography" />
     </div>
+
+    <FranceMap />
 
     <div v-if="loading" class="loading-container">
       <div class="loader"></div>
@@ -57,11 +60,13 @@ import { defineComponent, ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import ApiService from '@/services/api';
 import PaginationBar from '@/components/PaginationBar.vue';
+import GeographyFilter from '@/components/GeographyFilter.vue';
+import FranceMap from '@/components/FranceMap.vue';
 import { Museum } from '@/types/models';
 
 export default defineComponent({
   name: 'MuseumsView',
-  components: { PaginationBar },
+  components: { PaginationBar, GeographyFilter, FranceMap },
   setup() {
     const router = useRouter();
     const museums = ref<Museum[]>([]);
@@ -72,6 +77,8 @@ export default defineComponent({
     const totalItems = ref<number>(0);
     const totalPages = ref<number>(1);
     const searchQuery = ref<string>('');
+    const region = ref<string>('');
+    const department = ref<string>('');
     let searchTimeout: number | null = null;
 
     const fetchMuseums = async () => {
@@ -79,7 +86,8 @@ export default defineComponent({
       error.value = null;
 
       try {
-        const result = await ApiService.getMuseums(currentPage.value, pageSize.value, searchQuery.value.trim());
+        const result = await ApiService.getMuseums(
+          currentPage.value, pageSize.value, searchQuery.value.trim(), region.value, department.value);
         museums.value = result.items;
         totalItems.value = result.totalItems;
         totalPages.value = result.totalPages;
@@ -105,6 +113,12 @@ export default defineComponent({
       }, 300) as unknown as number;
     };
 
+    // Région ou département changé : retour à la première page
+    const onGeography = () => {
+      currentPage.value = 1;
+      fetchMuseums();
+    };
+
     const goToPage = (page: number) => {
       currentPage.value = page;
       fetchMuseums();
@@ -123,6 +137,9 @@ export default defineComponent({
       totalItems,
       totalPages,
       searchQuery,
+      region,
+      department,
+      onGeography,
       fetchMuseums,
       debounceSearch,
       goToPage,

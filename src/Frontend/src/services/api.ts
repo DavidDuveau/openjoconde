@@ -64,8 +64,10 @@ const api = {
     return response.data;
   },
 
-  async getMuseums(page = 1, pageSize = 10, name?: string): Promise<PaginatedResult<Museum>> {
-    const response = await http.get('/museums', { params: { page, pageSize, name: name || undefined } });
+  async getMuseums(page = 1, pageSize = 10, name?: string, region?: string, department?: string): Promise<PaginatedResult<Museum>> {
+    const response = await http.get('/museums', {
+      params: { page, pageSize, name: name || undefined, region: region || undefined, department: department || undefined }
+    });
     return response.data;
   },
 

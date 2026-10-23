@@ -102,6 +102,31 @@ public class MuseumRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Recherche_PeutEtreRestreinteAUneRegionEtAUnDepartement_ParDessusLeTexte()
+    {
+        await using (var context = _db.CreateContext())
+        {
+            await Repository(context).BulkUpsertAsync(new[]
+            {
+                new Museum { Name = "Musée Fabre", City = "Montpellier", Department = "Hérault", Region = "Occitanie" },
+                new Museum { Name = "Musée Soulages", City = "Rodez", Department = "Aveyron", Region = "Occitanie" },
+                new Museum { Name = "Musée de Bretagne", City = "Rennes", Department = "Ille-et-Vilaine", Region = "Bretagne" },
+                new Museum { Name = "Musée sans lieu" }
+            });
+        }
+
+        await using var read = _db.CreateContext();
+        var repository = Repository(read);
+        static string[] Noms(OpenJoconde.Core.Models.PaginatedResult<Museum> r) => r.Items.Select(m => m.Name).ToArray();
+
+        Assert.Equal(new[] { "Musée Fabre", "Musée Soulages" }, Noms(await repository.SearchByNameAsync(null, region: "Occitanie")));
+        Assert.Equal(new[] { "Musée Soulages" }, Noms(await repository.SearchByNameAsync(null, department: "Aveyron")));
+        Assert.Equal(new[] { "Musée Fabre" }, Noms(await repository.SearchByNameAsync("musée f", region: "Occitanie")));
+        Assert.Empty(Noms(await repository.SearchByNameAsync(null, region: "Bretagne", department: "Aveyron")));
+        Assert.Equal(4, (await repository.SearchByNameAsync(null, region: " ", department: "")).TotalItems);
+    }
+
+    [Fact]
     public async Task Recherche_ParNomVilleOuDepartement_BorneLaPagination()
     {
         await using (var context = _db.CreateContext())
