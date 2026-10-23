@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { PaginatedResult, Artwork, ArtworkDetail } from '@/types/artwork';
-import { Artist, NamedItem, Museum } from '@/types/models';
+import { Artist, NamedItem, Museum, RegionGeography } from '@/types/models';
 
 // Création de l'instance axios avec la configuration de base
 const http = axios.create({
@@ -66,6 +66,12 @@ const api = {
 
   async getMuseums(page = 1, pageSize = 10, name?: string): Promise<PaginatedResult<Museum>> {
     const response = await http.get('/museums', { params: { page, pageSize, name: name || undefined } });
+    return response.data;
+  },
+
+  // Régions et départements qui ont des musées, avec leur nombre de musées
+  async getMuseumGeography(): Promise<RegionGeography[]> {
+    const response = await http.get('/museums/geography');
     return response.data;
   },
 

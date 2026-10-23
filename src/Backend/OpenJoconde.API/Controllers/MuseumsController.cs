@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using OpenJoconde.API.Dtos;
 using OpenJoconde.API.Security;
 using Microsoft.Extensions.Logging;
+using OpenJoconde.Core.Dtos;
 using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Core.Models;
 using System;
@@ -61,6 +62,28 @@ namespace OpenJoconde.API.Controllers
             {
                 _logger.LogError(ex, "Erreur lors de la recherche de musées: {Message}", ex.Message);
                 return StatusCode(500, "Une erreur est survenue lors de la recherche de musées.");
+            }
+        }
+
+        /// <summary>
+        /// Régions et départements qui ont des musées, avec leur nombre de musées
+        /// </summary>
+        /// <returns>Les régions par ordre alphabétique, chacune avec ses départements</returns>
+        /// <response code="200">Retourne la liste géographique</response>
+        /// <response code="500">Erreur interne du serveur</response>
+        [HttpGet("geography")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<List<RegionDto>>> GetGeography()
+        {
+            try
+            {
+                return Ok(await _museumRepository.GetGeographyAsync());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la lecture de la liste géographique: {Message}", ex.Message);
+                return StatusCode(500, "Une erreur est survenue lors de la lecture de la liste géographique.");
             }
         }
 

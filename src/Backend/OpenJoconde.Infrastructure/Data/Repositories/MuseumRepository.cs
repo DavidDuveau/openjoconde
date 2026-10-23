@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using OpenJoconde.Core.Dtos;
 using OpenJoconde.Core.Interfaces;
 using OpenJoconde.Core.Models;
 using System;
@@ -67,6 +68,31 @@ namespace OpenJoconde.Infrastructure.Data
                 Page = page,
                 PageSize = pageSize
             };
+        }
+
+        /// <summary>
+        /// Régions et départements qui ont des musées, avec leur nombre de musées ; les musées sans région ou sans
+        /// département n'y figurent pas
+        /// </summary>
+        public async Task<List<RegionDto>> GetGeographyAsync()
+        {
+            var counts = await _context.Museums
+                .Where(m => m.Region != null && m.Region != "" && m.Department != null && m.Department != "")
+                .GroupBy(m => new { m.Region, m.Department })
+                .Select(g => new { Region = g.Key.Region!, Department = g.Key.Department!, Museums = g.Count() })
+                .ToListAsync();
+
+            return counts
+                .GroupBy(c => c.Region)
+                .Select(g => new RegionDto
+                {
+                    Name = g.Key,
+                    Museums = g.Sum(c => c.Museums),
+                    Departments = g.OrderBy(c => c.Department, StringComparer.Create(new System.Globalization.CultureInfo("fr-FR"), true))
+                        .Select(c => new DepartmentDto { Name = c.Department, Museums = c.Museums }).ToList()
+                })
+                .OrderBy(r => r.Name, StringComparer.Create(new System.Globalization.CultureInfo("fr-FR"), true))
+                .ToList();
         }
 
         /// <summary>

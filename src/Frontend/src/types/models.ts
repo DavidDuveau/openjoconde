@@ -80,6 +80,13 @@ export interface Museum {
   longitude?: number;
 }
 
+/** Une région et ses départements, avec leur nombre de musées */
+export interface RegionGeography {
+  name: string;
+  museums: number;
+  departments: { name: string; museums: number }[];
+}
+
 export interface SearchParams {
   searchText?: string;
   artistId?: string;
@@ -87,6 +94,13 @@ export interface SearchParams {
   techniqueId?: string;
   periodId?: string;
   museumId?: string;
+  // Région et département du musée qui conserve l'œuvre
+  region?: string;
+  department?: string;
+  // Position de l'utilisateur (« Près de moi »), pour le tri par distance
+  latitude?: number;
+  longitude?: number;
+  museumName?: string;
   // Libellés des filtres choisis, gardés dans l'adresse pour les réafficher au rechargement
   artistName?: string;
   domainName?: string;
@@ -94,7 +108,7 @@ export interface SearchParams {
   periodName?: string;
   page: number;
   pageSize: number;
-  sortBy?: string; // title (défaut), title_desc, date, date_desc, relevance ou artist
+  sortBy?: string; // title (défaut), title_desc, date, date_desc, relevance, artist ou distance
 }
 
 export interface PaginatedResult<T> {

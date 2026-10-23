@@ -1,3 +1,4 @@
+using OpenJoconde.Core.Dtos;
 using OpenJoconde.Core.Models;
 using System;
 using System.Collections.Generic;
@@ -19,6 +20,11 @@ namespace OpenJoconde.Core.Interfaces
         /// Recherche des musées par nom
         /// </summary>
         Task<PaginatedResult<Museum>> SearchByNameAsync(string? name, int page = 1, int pageSize = 10);
+
+        /// <summary>
+        /// Régions et départements qui ont des musées, avec leur nombre de musées
+        /// </summary>
+        Task<List<RegionDto>> GetGeographyAsync();
 
         /// <summary>
         /// Ajoute un nouveau musée

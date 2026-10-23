@@ -10,6 +10,13 @@ export const TITRES = [
 
 export const NOMBRE = 24;
 
+/** Les trois musées du jeu, indexés par numéro modulo 3 : leur situation, que la liste géographique et le tri par distance lisent */
+export const MUSEES = [
+  { nom: 'musée 0', region: 'Bretagne', departement: 'Morbihan', ville: 'Vannes', latitude: 47.658, longitude: -2.760 },
+  { nom: 'musée 1', region: 'Occitanie', departement: 'Tarn', ville: 'Albi', latitude: 43.929, longitude: 2.148 },
+  { nom: 'musée 2', region: 'Occitanie', departement: 'Haute-Garonne', ville: 'Toulouse', latitude: 43.604, longitude: 1.444 }
+];
+
 export interface Notice {
   numero: number;
   reference: string;

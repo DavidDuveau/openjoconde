@@ -2,17 +2,18 @@ import { request } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { API_KEY, API_PORT, repoDir } from './pile.mjs';
-import { NOMBRE, Notice, NOTICES } from './jeu';
+import { MUSEES, NOMBRE, Notice, NOTICES } from './jeu';
 
 /**
  * Notices de test (voir jeu.ts) : en-tête réel du fichier Joconde, titres variés (dont des œuvres sans titre), trois
- * domaines, quatre techniques, trois périodes, trois musées, un lien de site et des droits d'auteur pour certaines.
+ * domaines, quatre techniques, trois périodes, trois musées situés (région, département, coordonnées), un lien de site et des droits d'auteur pour certaines.
  */
 function csv(): string {
   const fixture = path.join(repoDir, 'src', 'Backend', 'OpenJoconde.Infrastructure.Tests', 'Fixtures', 'joconde_extrait_reel.csv');
   const colonnes = readFileSync(fixture, 'utf8').split(/\r?\n/)[0].split('|');
   const ligne = (notice: Notice) => {
     const i = notice.numero;
+    const musee = MUSEES[i % 3];
     const valeurs: Record<string, string> = {
       reference: notice.reference,
       titre: notice.titre,
@@ -22,6 +23,10 @@ function csv(): string {
       periode_de_creation: notice.periode,
       auteur: `${notice.auteur} Prénom`,
       nom_officiel_musee: notice.musee,
+      region: musee.region,
+      departement: musee.departement,
+      ville: musee.ville,
+      coordonnees: `${musee.latitude}, ${musee.longitude}`,
       lien_site_associe: i % 2 === 0 ? 'https://example.org/musee' : '',
       presence_image: notice.image,
       artiste_sous_droits: i % 4 === 0 ? 'oui' : '',
