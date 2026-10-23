@@ -17,9 +17,9 @@ namespace OpenJoconde.Core.Interfaces
         Task<Museum?> GetByIdAsync(Guid id);
 
         /// <summary>
-        /// Recherche des musées par nom
+        /// Recherche des musées par nom, ville ou département, restreinte à une région et à un département quand ils sont donnés
         /// </summary>
-        Task<PaginatedResult<Museum>> SearchByNameAsync(string? name, int page = 1, int pageSize = 10);
+        Task<PaginatedResult<Museum>> SearchByNameAsync(string? name, int page = 1, int pageSize = 10, string? region = null, string? department = null);
 
         /// <summary>
         /// Régions et départements qui ont des musées, avec leur nombre de musées
