@@ -30,7 +30,7 @@ describe('AppHeader', () => {
   it('affiche la navigation et la recherche sur grand écran', () => {
     const vue = afficher();
 
-    expect(vue.findAll('.main-nav li')).toHaveLength(5);
+    expect(vue.findAll('.main-nav li')).toHaveLength(6);
     expect(vue.find('.search-input').exists()).toBe(true);
     expect(vue.find('.search-toggle').exists()).toBe(false);
   });

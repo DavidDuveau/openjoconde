@@ -26,13 +26,13 @@ describe('client API', () => {
   ] as const)('%s cherche par nom dans une liste paginée', async (methode, route) => {
     await api[methode]('huile', 5);
 
-    expect(get).toHaveBeenCalledWith(route, { params: { name: 'huile', pageSize: 5 } });
+    expect(get).toHaveBeenCalledWith(route, { params: { name: 'huile', page: 1, pageSize: 5 } });
   });
 
   it("n'envoie pas de nom vide", async () => {
     await api.getTechniques('');
 
-    expect(get).toHaveBeenCalledWith('/techniques', { params: { name: undefined, pageSize: 20 } });
+    expect(get).toHaveBeenCalledWith('/techniques', { params: { name: undefined, page: 1, pageSize: 20 } });
   });
 
   it('cherche les artistes par nom', async () => {

@@ -92,4 +92,13 @@ describe('ArtworkDetailView', () => {
     expect(vue.text()).toContain("n'existe pas");
     expect(vue.text()).not.toContain('Une erreur est survenue');
   });
+
+  it('renvoie chaque période vers la recherche des œuvres de cette période', async () => {
+    const vue = await afficher({ periods: [{ id: 'p1', name: '19e siècle' }, { id: 'p2', name: '20e siècle' }] });
+
+    const liens = vue.findAllComponents(RouterLinkStub).filter((l) => l.attributes('data-testid') === 'period-tag');
+
+    expect(liens.map((l) => l.text())).toEqual(['19e siècle', '20e siècle']);
+    expect(liens[0].props('to')).toEqual({ name: 'search', query: { periodId: 'p1', periodName: '19e siècle' } });
+  });
 });

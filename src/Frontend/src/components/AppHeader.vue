@@ -11,6 +11,7 @@
             <li><router-link to="/artworks">Collections</router-link></li>
             <li><router-link to="/artists">Artistes</router-link></li>
             <li><router-link to="/museums">Musées</router-link></li>
+            <li><router-link to="/periods">Périodes</router-link></li>
             <li><router-link to="/about">À propos</router-link></li>
           </ul>
         </nav>

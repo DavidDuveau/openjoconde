@@ -49,18 +49,18 @@ const api = {
   },
 
   // Listes de référence des filtres : paginées, cherchées par une partie du nom
-  async getDomains(name?: string, pageSize = 20): Promise<PaginatedResult<NamedItem>> {
-    const response = await http.get('/domains', { params: { name: name || undefined, pageSize } });
+  async getDomains(name?: string, pageSize = 20, page = 1): Promise<PaginatedResult<NamedItem>> {
+    const response = await http.get('/domains', { params: { name: name || undefined, page, pageSize } });
     return response.data;
   },
 
-  async getTechniques(name?: string, pageSize = 20): Promise<PaginatedResult<NamedItem>> {
-    const response = await http.get('/techniques', { params: { name: name || undefined, pageSize } });
+  async getTechniques(name?: string, pageSize = 20, page = 1): Promise<PaginatedResult<NamedItem>> {
+    const response = await http.get('/techniques', { params: { name: name || undefined, page, pageSize } });
     return response.data;
   },
 
-  async getPeriods(name?: string, pageSize = 20): Promise<PaginatedResult<NamedItem>> {
-    const response = await http.get('/periods', { params: { name: name || undefined, pageSize } });
+  async getPeriods(name?: string, pageSize = 20, page = 1): Promise<PaginatedResult<NamedItem>> {
+    const response = await http.get('/periods', { params: { name: name || undefined, page, pageSize } });
     return response.data;
   },
 
