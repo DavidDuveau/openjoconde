@@ -26,6 +26,10 @@ export interface Artist {
   deathDate: string;
   nationality: string;
   biography: string;
+  /** Courant ou mouvement artistique (Wikidata) */
+  movement?: string | null;
+  /** Article Wikipédia dont la biographie est tirée */
+  wikipediaUrl?: string | null;
   /** Nombre d'œuvres ; les œuvres se lisent par la recherche d'œuvres filtrée par artiste */
   artworksCount: number;
 }

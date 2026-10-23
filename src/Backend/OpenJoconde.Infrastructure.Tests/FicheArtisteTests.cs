@@ -75,6 +75,26 @@ public class FicheArtisteTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task LaFiche_DonneLeContexteEnrichi_BiographieCourantEtSource()
+    {
+        var bernard = (await ListerAsync("bernard")).Items.Single();
+        await using (var context = _db.CreateContext())
+        {
+            var artiste = await context.Artists.FindAsync(bernard.Id);
+            artiste!.Biography = "Peintre français.";
+            artiste.Movement = "impressionnisme";
+            artiste.WikipediaUrl = "https://fr.wikipedia.org/wiki/Luc_Bernard";
+            await context.SaveChangesAsync();
+        }
+
+        var fiche = Assert.IsType<ArtistDto>(Assert.IsType<OkObjectResult>((await Controleur().GetArtist(bernard.Id)).Result).Value);
+
+        Assert.Equal("Peintre français.", fiche.Biography);
+        Assert.Equal("impressionnisme", fiche.Movement);
+        Assert.Equal("https://fr.wikipedia.org/wiki/Luc_Bernard", fiche.WikipediaUrl);
+    }
+
+    [Fact]
     public async Task UneFicheInconnue_Repond404() =>
         Assert.IsType<NotFoundResult>((await Controleur().GetArtist(Guid.NewGuid())).Result);
 }

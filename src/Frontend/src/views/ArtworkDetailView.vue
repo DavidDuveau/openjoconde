@@ -163,6 +163,8 @@
         </div>
       </div>
 
+      <ArtworkContext :artwork="artwork" />
+
       <SimilarArtworks :artwork="artwork" />
     </div>
   </div>
@@ -176,12 +178,13 @@ import { displayTitle } from '@/utils/title';
 import { rightsSummary, safeWebUrl } from '@/utils/rights';
 import { popNoticeUrl } from '@/utils/pop';
 import DataSource from '@/components/DataSource.vue';
+import ArtworkContext from '@/components/ArtworkContext.vue';
 import SimilarArtworks from '@/components/SimilarArtworks.vue';
 import { ArtworkDetail } from '@/types/artwork';
 
 export default defineComponent({
   name: 'ArtworkDetailView',
-  components: { DataSource, SimilarArtworks },
+  components: { DataSource, ArtworkContext, SimilarArtworks },
   setup() {
     const route = useRoute();
 

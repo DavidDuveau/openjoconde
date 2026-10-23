@@ -116,6 +116,11 @@ namespace OpenJoconde.Infrastructure.Migrations
                         .HasColumnType("citext")
                         .HasColumnName("last_name");
 
+                    b.Property<string>("Movement")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("movement");
+
                     b.Property<string>("Nationality")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
@@ -124,6 +129,16 @@ namespace OpenJoconde.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
+
+                    b.Property<string>("WikidataId")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("wikidata_id");
+
+                    b.Property<string>("WikipediaUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("wikipedia_url");
 
                     b.HasKey("Id")
                         .HasName("pk_artist");

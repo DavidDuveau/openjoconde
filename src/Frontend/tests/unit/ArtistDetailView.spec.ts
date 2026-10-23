@@ -53,6 +53,25 @@ describe('ArtistDetailView', () => {
     expect(vue.get('.biography-content').text()).toContain('impressionnisme');
   });
 
+  it("affiche le courant artistique et cite Wikipédia comme source de la biographie", async () => {
+    getArtist.mockResolvedValue(artiste({ movement: 'impressionnisme', wikipediaUrl: 'https://fr.wikipedia.org/wiki/Claude_Monet' }));
+
+    const vue = await afficher();
+
+    expect(vue.get('[data-testid="artist-movement"]').text()).toBe('impressionnisme');
+    expect(vue.get('[data-testid="biography-source"] a').attributes('href')).toBe('https://fr.wikipedia.org/wiki/Claude_Monet');
+    expect(vue.get('[data-testid="biography-source"]').text()).toContain('CC BY-SA 4.0');
+  });
+
+  it("n'affiche ni courant ni source sans enrichissement, et refuse un lien qui n'est pas web", async () => {
+    getArtist.mockResolvedValue(artiste({ wikipediaUrl: 'javascript:alert(1)' }));
+
+    const vue = await afficher();
+
+    expect(vue.find('[data-testid="artist-movement"]').exists()).toBe(false);
+    expect(vue.find('[data-testid="biography-source"]').exists()).toBe(false);
+  });
+
   it.each([
     [{ deathDate: null }, 'Né(e) en 1840'],
     [{ birthDate: null }, '? - 1926'],
