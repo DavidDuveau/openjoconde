@@ -170,6 +170,8 @@
 
       <ArtworkCitation :artwork="artwork" />
 
+      <ArtworkExport :artwork="artwork" />
+
       <SimilarArtworks :artwork="artwork" />
     </div>
   </div>
@@ -186,13 +188,14 @@ import DataSource from '@/components/DataSource.vue';
 import ArtworkContext from '@/components/ArtworkContext.vue';
 import ArtworkMuseum from '@/components/ArtworkMuseum.vue';
 import ArtworkCitation from '@/components/ArtworkCitation.vue';
+import ArtworkExport from '@/components/ArtworkExport.vue';
 import ShareLink from '@/components/ShareLink.vue';
 import SimilarArtworks from '@/components/SimilarArtworks.vue';
 import { ArtworkDetail } from '@/types/artwork';
 
 export default defineComponent({
   name: 'ArtworkDetailView',
-  components: { DataSource, ArtworkContext, ArtworkMuseum, ArtworkCitation, ShareLink, SimilarArtworks },
+  components: { DataSource, ArtworkContext, ArtworkMuseum, ArtworkCitation, ArtworkExport, ShareLink, SimilarArtworks },
   setup() {
     const route = useRoute();
 
