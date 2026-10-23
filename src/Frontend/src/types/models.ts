@@ -90,6 +90,12 @@ export interface Museum {
   longitude?: number;
 }
 
+/** Un type de collection (domaine thématique de Muséofile) et le nombre de musées qui l'ont */
+export interface CollectionType {
+  name: string;
+  museums: number;
+}
+
 /** Les musées que la carte peut placer, et le nombre total de musées (placés ou non) */
 export interface MuseumLocations {
   total: number;

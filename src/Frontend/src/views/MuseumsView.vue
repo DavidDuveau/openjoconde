@@ -11,6 +11,17 @@
         @input="debounceSearch"
       />
       <GeographyFilter v-model:region="region" v-model:department="department" @change="onGeography" />
+      <select
+        v-if="collectionTypes.length"
+        v-model="collection"
+        class="collection-select"
+        data-testid="collection-select"
+        aria-label="Type de collection"
+        @change="onGeography"
+      >
+        <option value="">Tous les types de collection</option>
+        <option v-for="type in collectionTypes" :key="type.name" :value="type.name">{{ type.name }} ({{ type.museums }})</option>
+      </select>
     </div>
 
     <FranceMap />
@@ -62,7 +73,7 @@ import ApiService from '@/services/api';
 import PaginationBar from '@/components/PaginationBar.vue';
 import GeographyFilter from '@/components/GeographyFilter.vue';
 import FranceMap from '@/components/FranceMap.vue';
-import { Museum } from '@/types/models';
+import { CollectionType, Museum } from '@/types/models';
 
 export default defineComponent({
   name: 'MuseumsView',
@@ -79,6 +90,8 @@ export default defineComponent({
     const searchQuery = ref<string>('');
     const region = ref<string>('');
     const department = ref<string>('');
+    const collection = ref<string>('');
+    const collectionTypes = ref<CollectionType[]>([]);
     let searchTimeout: number | null = null;
 
     const fetchMuseums = async () => {
@@ -87,7 +100,7 @@ export default defineComponent({
 
       try {
         const result = await ApiService.getMuseums(
-          currentPage.value, pageSize.value, searchQuery.value.trim(), region.value, department.value);
+          currentPage.value, pageSize.value, searchQuery.value.trim(), region.value, department.value, collection.value);
         museums.value = result.items;
         totalItems.value = result.totalItems;
         totalPages.value = result.totalPages;
@@ -100,7 +113,19 @@ export default defineComponent({
       }
     };
 
-    onMounted(fetchMuseums);
+    // Sans la liste des types (Muséofile pas encore appliqué, ou panne), le filtre n'est pas proposé : le reste marche
+    const loadCollectionTypes = async () => {
+      try {
+        collectionTypes.value = await ApiService.getMuseumCollections();
+      } catch (err) {
+        console.error('Erreur lors du chargement des types de collection:', err);
+      }
+    };
+
+    onMounted(() => {
+      fetchMuseums();
+      loadCollectionTypes();
+    });
 
     // Recherche différée pour ne pas interroger l'API à chaque touche
     const debounceSearch = () => {
@@ -139,6 +164,8 @@ export default defineComponent({
       searchQuery,
       region,
       department,
+      collection,
+      collectionTypes,
       onGeography,
       fetchMuseums,
       debounceSearch,
@@ -165,6 +192,14 @@ export default defineComponent({
 .search-filter {
   margin: 0 auto 20px;
   max-width: 500px;
+
+  .collection-select {
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
 
   input {
     width: 100%;

@@ -130,7 +130,7 @@ namespace OpenJoconde.Infrastructure.Services
                     Website: WebsiteUrl(Get("url")),
                     History: Get("histoire"),
                     Category: Cut(Get("categorie"), CategoryMax),
-                    ThematicDomains: Cut(Get("domaine_thematique"), CategoryMax),
+                    ThematicDomains: Cut(NormalizeList(Get("domaine_thematique")), CategoryMax),
                     Highlights: Get("atout"),
                     Latitude: latitude,
                     Longitude: longitude));
@@ -153,6 +153,19 @@ namespace OpenJoconde.Infrastructure.Services
             if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
                 return null;
             return url.Length <= WebsiteMax ? url : null;
+        }
+
+        /// <summary>
+        /// « Archéologie ; Histoire;Histoire » -> « Archéologie;Histoire » : valeurs rognées, sans doublon, séparées par
+        /// « ; » sans espace, la forme que la liste des musées sait filtrer
+        /// </summary>
+        public static string? NormalizeList(string? raw)
+        {
+            if (raw == null)
+                return null;
+            var values = raw.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Distinct(StringComparer.OrdinalIgnoreCase);
+            var joined = string.Join(';', values);
+            return joined.Length == 0 ? null : joined;
         }
 
         /// <summary>
