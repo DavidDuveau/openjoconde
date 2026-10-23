@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.0](https://github.com/DavidDuveau/openjoconde/compare/v0.3.0...v0.4.0) (2026-10-23)
+
+
+### Features
+
+* contexte de l'œuvre, biographie sourcée de l'artiste et glossaire à infobulles (US-VISUALISATION-03) ([6c8ed67](https://github.com/DavidDuveau/openjoconde/commit/6c8ed6780261def0bd037cc519ceb7232986dc35))
+* enrichissement des artistes intégré à l'API (TECH-44) ([4a6eeea](https://github.com/DavidDuveau/openjoconde/commit/4a6eeea0ec143b7b11914d3b55fa70a6f4f23e82))
+* enrichissement des artistes par Wikidata et Wikipédia intégré à l'API (TECH-44) ([08e6429](https://github.com/DavidDuveau/openjoconde/commit/08e6429a63767a714939ddeae3848747d7a700a1))
+* informations contextuelles (US-VISUALISATION-03) ([fd37d5f](https://github.com/DavidDuveau/openjoconde/commit/fd37d5ffb5ded5e26054b01d4408d6b656d3f899))
+
 ## [0.3.0](https://github.com/DavidDuveau/openjoconde/compare/v0.2.0...v0.3.0) (2026-10-23)
 
 
