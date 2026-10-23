@@ -125,3 +125,44 @@ public class GeographieTests : IAsyncLifetime
         Assert.Equal(new[] { ("Ain", 1), ("Rhône", 1) }, auvergne.Departments.Select(d => (d.Name, d.Museums)));
     }
 }
+
+/// <summary>Dépôt de musées dont chaque lecture géographique échoue (base indisponible).</summary>
+internal sealed class FailingMuseumRepository : OpenJoconde.Core.Interfaces.IMuseumRepository
+{
+    public Task<List<RegionDto>> GetGeographyAsync() => throw new InvalidOperationException("base indisponible");
+    public Task<MuseumLocationsDto> GetLocationsAsync() => throw new InvalidOperationException("base indisponible");
+
+    public Task<Museum?> GetByIdAsync(Guid id) => throw new NotSupportedException();
+    public Task<PaginatedResult<Museum>> SearchByNameAsync(string? name, int page = 1, int pageSize = 10) => throw new NotSupportedException();
+    public Task<Museum> AddAsync(Museum museum) => throw new NotSupportedException();
+    public Task<bool> UpdateAsync(Museum museum) => throw new NotSupportedException();
+    public Task<bool> DeleteAsync(Guid id) => throw new NotSupportedException();
+    public Task<HashSet<Guid>> GetExistingIdsAsync(IEnumerable<Guid> ids) => throw new NotSupportedException();
+    public Task<int> BulkUpsertAsync(IEnumerable<Museum> museums) => throw new NotSupportedException();
+}
+
+/// <summary>Pannes de la lecture géographique : l'API répond 500 avec un message, sans fuite de détail.</summary>
+public class GeographiePanneTests
+{
+    private static MuseumsController Controleur() => new(new FailingMuseumRepository(), NullLogger<MuseumsController>.Instance);
+
+    [Fact]
+    public async Task ListeGeographique_EnPanne_Repond500()
+    {
+        var reponse = await Controleur().GetGeography();
+
+        var resultat = Assert.IsType<ObjectResult>(reponse.Result);
+        Assert.Equal(500, resultat.StatusCode);
+        Assert.DoesNotContain("base indisponible", resultat.Value!.ToString());
+    }
+
+    [Fact]
+    public async Task MuseesLocalises_EnPanne_Repond500()
+    {
+        var reponse = await Controleur().GetLocations();
+
+        var resultat = Assert.IsType<ObjectResult>(reponse.Result);
+        Assert.Equal(500, resultat.StatusCode);
+        Assert.DoesNotContain("base indisponible", resultat.Value!.ToString());
+    }
+}
