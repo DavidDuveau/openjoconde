@@ -6,7 +6,7 @@ import { NOTICES } from './jeu';
 test('la liste des périodes les présente toutes, depuis le menu', async ({ page }) => {
   await page.goto('/');
 
-  await page.getByRole('link', { name: 'Périodes' }).click();
+  await page.getByRole('link', { name: 'Périodes', exact: true }).click();
 
   await expect(page).toHaveURL(/\/periods$/);
   await expect(page.getByTestId('reference-count')).toHaveText('3 périodes');
