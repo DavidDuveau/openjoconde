@@ -159,6 +159,9 @@ namespace OpenJoconde.Infrastructure.Data
                 entity.Property(e => e.Website).HasMaxLength(500);
                 entity.Property(e => e.Address).HasColumnType("text");
                 entity.Property(e => e.Description).HasColumnType("text");
+                entity.Property(e => e.Category).HasMaxLength(500);
+                entity.Property(e => e.ThematicDomains).HasMaxLength(500);
+                entity.Property(e => e.Highlights).HasColumnType("text");
                 entity.HasIndex(e => e.Name);
                 entity.HasIndex(e => e.City);
             });

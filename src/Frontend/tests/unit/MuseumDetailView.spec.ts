@@ -41,6 +41,43 @@ describe('MuseumDetailView', () => {
     expect(lien.props('to')).toEqual({ name: 'search', query: { museumId: 'm1', museumName: 'Musée des Confluences' } });
   });
 
+  it("montre la catégorie, les domaines des collections et les points forts de Muséofile", async () => {
+    getMuseum.mockResolvedValue({
+      ...musee, category: 'écomusée ; musée en territoire rural', thematicDomains: 'Archéologie;Ethnologie ; Histoire',
+      highlights: 'Une salle d\'art sacré.'
+    });
+    searchArtworks.mockResolvedValue(oeuvres([]));
+
+    const vue = await afficher();
+
+    expect(vue.get('[data-testid="museum-category"]').text()).toBe('Catégorie : écomusée, musée en territoire rural');
+    expect(vue.get('[data-testid="museum-domains"]').text()).toBe('Domaines : Archéologie, Ethnologie, Histoire');
+    expect(vue.get('[data-testid="museum-highlights"]').text()).toContain("Une salle d'art sacré.");
+  });
+
+  it("n'affiche ni collections ni points forts quand Muséofile n'en donne pas", async () => {
+    getMuseum.mockResolvedValue(musee);
+    searchArtworks.mockResolvedValue(oeuvres([]));
+
+    const vue = await afficher();
+
+    expect(vue.find('[data-testid="museum-collections"]').exists()).toBe(false);
+    expect(vue.find('[data-testid="museum-highlights"]').exists()).toBe(false);
+  });
+
+  it("propose de préparer la visite : carte et itinéraires, sans répéter les coordonnées déjà données", async () => {
+    getMuseum.mockResolvedValue(musee);
+    searchArtworks.mockResolvedValue(oeuvres([]));
+
+    const vue = await afficher();
+
+    const visite = vue.get('[data-testid="museum-visit-section"]');
+    expect(visite.get('[data-testid="visit-map"]').attributes('href')).toContain('mlat=45.73');
+    expect(visite.get('[data-testid="visit-route-osm"]').exists()).toBe(true);
+    expect(visite.find('[data-testid="visit-address"]').exists()).toBe(false);
+    expect(visite.get('[data-testid="visit-hours"]').text()).toContain('ne figurent pas dans les données publiées');
+  });
+
   it('affiche les coordonnées du musée et son lien de site', async () => {
     getMuseum.mockResolvedValue(musee);
     searchArtworks.mockResolvedValue(oeuvres([]));

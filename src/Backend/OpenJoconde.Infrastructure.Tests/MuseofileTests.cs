@@ -76,6 +76,35 @@ public class MuseofileTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Enrichit_CategorieDomainesThematiquesEtPointsForts()
+    {
+        await AjouterAsync(Musee("M0003"), Musee("M1128"));
+
+        await EnrichirAsync(Extrait);
+
+        var hanau = await MuseeAsync("M0003");
+        Assert.Equal("écomusée ; musée en territoire rural", hanau.Category);
+        Assert.Equal("Archéologie;Ethnologie;Histoire;Sciences de la nature", hanau.ThematicDomains);
+        Assert.StartsWith("Histoire du pays de Hanau", hanau.Highlights);
+        // Sans catégorie dans le fichier, la valeur reste vide
+        var pompiers = await MuseeAsync("M1128");
+        Assert.Null(pompiers.Category);
+        Assert.Equal("Ethnologie;Histoire;Technique et industrie", pompiers.ThematicDomains);
+    }
+
+    [Fact]
+    public async Task UneCategorieAbsenteDuFichier_NEffacePasCelleDeLaBase()
+    {
+        var musee = Musee("M1128");
+        musee.Category = "musée d'art";
+        await AjouterAsync(musee);
+
+        await EnrichirAsync(Extrait);
+
+        Assert.Equal("musée d'art", (await MuseeAsync("M1128")).Category);
+    }
+
+    [Fact]
     public async Task LeRapprochementIgnoreLaCasseDuCode()
     {
         await AjouterAsync(Musee("m1128"));
