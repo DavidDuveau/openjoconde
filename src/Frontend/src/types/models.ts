@@ -116,6 +116,9 @@ export interface SearchParams {
   domainName?: string;
   techniqueName?: string;
   periodName?: string;
+  // Plage d'années de création (négative avant J.-C.), en texte tel que saisi
+  yearFrom?: string;
+  yearTo?: string;
   page: number;
   pageSize: number;
   sortBy?: string; // title (défaut), title_desc, date, date_desc, relevance, artist ou distance
