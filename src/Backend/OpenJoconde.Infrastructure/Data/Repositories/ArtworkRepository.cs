@@ -43,10 +43,13 @@ namespace OpenJoconde.Infrastructure.Data.Repositories
             var page = Math.Max(criteria.Page, 1);
             var pageSize = criteria.PageSize < 1 ? 10 : Math.Min(criteria.PageSize, 100);
 
+            if (criteria.YearFrom > criteria.YearTo)
+                throw new InvalidArtworkSearchException("L'année de début doit précéder l'année de fin.");
+
             IQueryable<Artwork> query = _context.Artworks;
             query = ArtworkFilter.Apply(query, criteria.MuseumId, criteria.ArtistId, criteria.DomainId, criteria.TechniqueId, criteria.PeriodId,
-                criteria.Region, criteria.Department);
-            var filtered = criteria.MuseumId.HasValue || criteria.ArtistId.HasValue || criteria.DomainId.HasValue
+                criteria.Region, criteria.Department, criteria.YearFrom, criteria.YearTo);
+            var filtered = criteria.YearFrom.HasValue || criteria.YearTo.HasValue || criteria.MuseumId.HasValue || criteria.ArtistId.HasValue || criteria.DomainId.HasValue
                 || criteria.TechniqueId.HasValue || criteria.PeriodId.HasValue
                 || !string.IsNullOrWhiteSpace(criteria.Region) || !string.IsNullOrWhiteSpace(criteria.Department);
 

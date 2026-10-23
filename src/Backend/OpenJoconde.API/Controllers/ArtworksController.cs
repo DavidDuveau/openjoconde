@@ -40,6 +40,8 @@ namespace OpenJoconde.API.Controllers
         /// <param name="periodId">Ne garder que les œuvres de cette période</param>
         /// <param name="region">Ne garder que les œuvres des musées de cette région (nom exact, voir /api/museums/geography)</param>
         /// <param name="department">Ne garder que les œuvres des musées de ce département (nom exact)</param>
+        /// <param name="yearFrom">Ne garder que les œuvres créées à partir de cette année (négative avant J.-C.) ; une date illisible exclut l'œuvre</param>
+        /// <param name="yearTo">Ne garder que les œuvres créées jusqu'à cette année</param>
         /// <param name="latitude">Latitude de l'utilisateur, en degrés, pour le tri par distance</param>
         /// <param name="longitude">Longitude de l'utilisateur, en degrés, pour le tri par distance</param>
         /// <param name="sortBy">
@@ -62,7 +64,9 @@ namespace OpenJoconde.API.Controllers
             [FromQuery] string? region = null,
             [FromQuery] string? department = null,
             [FromQuery] double? latitude = null,
-            [FromQuery] double? longitude = null)
+            [FromQuery] double? longitude = null,
+            [FromQuery] int? yearFrom = null,
+            [FromQuery] int? yearTo = null)
         {
             try
             {
@@ -83,7 +87,9 @@ namespace OpenJoconde.API.Controllers
                     Region = region,
                     Department = department,
                     Latitude = latitude,
-                    Longitude = longitude
+                    Longitude = longitude,
+                    YearFrom = yearFrom,
+                    YearTo = yearTo
                 });
 
                 return Ok(result);

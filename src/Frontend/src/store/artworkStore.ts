@@ -86,6 +86,8 @@ export const useArtworkStore = defineStore('artwork', {
           museumId: params.museumId || undefined,
           region: params.region || undefined,
           department: params.department || undefined,
+          yearFrom: params.yearFrom ? Number(params.yearFrom) : undefined,
+          yearTo: params.yearTo ? Number(params.yearTo) : undefined,
           latitude: params.latitude,
           longitude: params.longitude,
           sortBy: params.sortBy && params.sortBy !== 'title' ? params.sortBy : undefined

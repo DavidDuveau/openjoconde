@@ -30,6 +30,12 @@ namespace OpenJoconde.Core.Models
         public string? Region { get; init; }
         /// <summary>Ne garde que les œuvres des musées de ce département (nom exact)</summary>
         public string? Department { get; init; }
+
+        /// <summary>Première année de création au plus tôt (négative avant J.-C.) ; les œuvres à date illisible sont exclues quand une borne est posée</summary>
+        public int? YearFrom { get; init; }
+
+        /// <summary>Première année de création au plus tard</summary>
+        public int? YearTo { get; init; }
         /// <summary>Latitude de l'utilisateur, en degrés : sert au tri par distance</summary>
         public double? Latitude { get; init; }
         /// <summary>Longitude de l'utilisateur, en degrés : sert au tri par distance</summary>

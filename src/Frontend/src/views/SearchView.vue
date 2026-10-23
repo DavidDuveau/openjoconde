@@ -8,9 +8,19 @@
     </div>
 
     <div class="search-container">
-      <div class="search-filters">
+      <div class="search-filters" :class="{ 'is-open': filtersOpen }">
         <h2>Filtres</h2>
-        <div class="search-form">
+        <button
+          type="button"
+          class="filters-toggle"
+          data-testid="filters-toggle"
+          :aria-expanded="filtersOpen"
+          aria-controls="search-form"
+          @click="filtersOpen = !filtersOpen"
+        >
+          {{ filtersOpen ? 'Masquer les filtres' : 'Afficher les filtres' }}<span v-if="activeFilters.length"> ({{ activeFilters.length }})</span>
+        </button>
+        <div id="search-form" class="search-form">
           <div class="form-group">
             <label>Recherche par mot-clé</label>
             <div class="inline-search">
@@ -41,11 +51,11 @@
           </div>
 
           <div class="form-group">
-            <label>Technique</label>
+            <label>Matériaux et techniques</label>
             <FilterPicker
               v-model="searchParams.techniqueId"
               v-model:label="searchParams.techniqueName"
-              placeholder="Rechercher une technique"
+              placeholder="Rechercher un matériau ou une technique"
               :fetchOptions="findTechniques"
               @update:modelValue="applyFilters"
             />
@@ -60,6 +70,34 @@
               :fetchOptions="findPeriods"
               @update:modelValue="applyFilters"
             />
+          </div>
+
+          <div class="form-group">
+            <label>Date de création (années)</label>
+            <div class="year-range">
+              <input
+                type="text"
+                inputmode="numeric"
+                v-model.trim="searchParams.yearFrom"
+                data-testid="year-from"
+                aria-label="À partir de l'année"
+                placeholder="de (ex. 1850)"
+                @change="applyFilters"
+                @keyup.enter="applyFilters"
+              />
+              <input
+                type="text"
+                inputmode="numeric"
+                v-model.trim="searchParams.yearTo"
+                data-testid="year-to"
+                aria-label="Jusqu'à l'année"
+                placeholder="à (ex. 1920)"
+                @change="applyFilters"
+                @keyup.enter="applyFilters"
+              />
+            </div>
+            <p class="year-note">Négative avant J.-C. (ex. -500). Les œuvres dont la date n'est pas lisible sont exclues.</p>
+            <p v-if="yearError" class="year-error" data-testid="year-error" role="alert">{{ yearError }}</p>
           </div>
 
           <div class="form-group">
@@ -111,6 +149,22 @@
       </div>
 
       <div class="search-results">
+        <div v-if="activeFilters.length" class="active-filters" data-testid="active-filters">
+          <span class="active-filters-title">{{ activeFilters.length }} filtre{{ activeFilters.length > 1 ? 's' : '' }} actif{{ activeFilters.length > 1 ? 's' : '' }} :</span>
+          <button
+            v-for="filter in activeFilters"
+            :key="filter.key"
+            type="button"
+            class="filter-chip"
+            data-testid="filter-chip"
+            :aria-label="`Supprimer le filtre ${filter.label}`"
+            @click="filter.remove()"
+          >
+            {{ filter.label }} <span aria-hidden="true">&times;</span>
+          </button>
+          <button type="button" class="clear-all" data-testid="clear-all-filters" @click="clearAll">Tout effacer</button>
+        </div>
+
         <MuseumSummary v-if="searchParams.museumId" :museumId="searchParams.museumId" />
 
         <div v-if="artworkStore.loading" class="loading-container">
@@ -261,6 +315,8 @@ export default defineComponent({
       domainName: '',
       techniqueName: '',
       periodName: '',
+      yearFrom: '',
+      yearTo: '',
       page: 1,
       pageSize: 12,
       sortBy: 'title'
@@ -274,7 +330,25 @@ export default defineComponent({
              searchParams.periodId !== '' || 
              searchParams.museumId !== '' ||
              searchParams.region !== '' ||
-             searchParams.department !== '';
+             searchParams.department !== '' ||
+             searchParams.yearFrom !== '' ||
+             searchParams.yearTo !== '';
+    });
+
+    // Les filtres sont ouverts à la demande sur petit écran ; les filtres actifs, eux, restent toujours visibles
+    const filtersOpen = ref(false);
+
+    // Une plage à l'envers n'est pas cherchée : le message dit pourquoi
+    const asYear = (text: string | undefined) => (/^-?\d{1,5}$/.test(text ?? '') ? Number(text) : undefined);
+    const yearError = computed(() => {
+      const from = searchParams.yearFrom ?? '';
+      const to = searchParams.yearTo ?? '';
+      if ((from !== '' && asYear(from) === undefined) || (to !== '' && asYear(to) === undefined)) {
+        return 'Les années s\'écrivent en chiffres, avec un signe moins avant J.-C.';
+      }
+      const start = asYear(from);
+      const end = asYear(to);
+      return start !== undefined && end !== undefined && start > end ? "L'année de début doit précéder l'année de fin." : '';
     });
 
     // « Près de moi » : le tri par distance suppose une position
@@ -323,6 +397,8 @@ export default defineComponent({
         searchParams.museumId = '';
       }
       
+      searchParams.yearFrom = typeof newQuery.yearFrom === 'string' ? newQuery.yearFrom : '';
+      searchParams.yearTo = typeof newQuery.yearTo === 'string' ? newQuery.yearTo : '';
       searchParams.region = typeof newQuery.region === 'string' ? newQuery.region : '';
       searchParams.department = typeof newQuery.department === 'string' ? newQuery.department : '';
       searchParams.museumName = typeof newQuery.museumName === 'string' ? newQuery.museumName : '';
@@ -371,6 +447,10 @@ export default defineComponent({
 
     // Search function (déclaration de fonction : le watch immédiat ci-dessus l'appelle avant cette ligne)
     function search() {
+      // Une plage invalide n'est ni mise dans l'adresse ni envoyée : le message du filtre l'explique
+      if (yearError.value) {
+        return;
+      }
       // Un tri devenu impossible (recherche effacée) retombe sur le titre
       if ((sortBy.value === 'relevance' && !canSortByRelevance.value) || (sortBy.value === 'artist' && !canSortByArtist.value)) {
         sortBy.value = 'title';
@@ -393,6 +473,8 @@ export default defineComponent({
           museumName: searchParams.museumId ? searchParams.museumName || undefined : undefined,
           region: searchParams.region || undefined,
           department: searchParams.department || undefined,
+          yearFrom: searchParams.yearFrom || undefined,
+          yearTo: searchParams.yearTo || undefined,
           lat: hasPosition.value ? String(searchParams.latitude) : undefined,
           lon: hasPosition.value ? String(searchParams.longitude) : undefined,
           artistName: searchParams.artistId ? searchParams.artistName || undefined : undefined,
@@ -426,6 +508,8 @@ export default defineComponent({
       searchParams.museumName = '';
       searchParams.region = '';
       searchParams.department = '';
+      searchParams.yearFrom = '';
+      searchParams.yearTo = '';
       searchParams.latitude = undefined;
       searchParams.longitude = undefined;
       positionError.value = '';
@@ -467,6 +551,38 @@ export default defineComponent({
       searchParams.longitude = undefined;
       searchParams.page = 1;
       search();
+    };
+
+    // Chaque filtre actif, avec de quoi le retirer seul : la recherche repart alors de la première page
+    interface ActiveFilter { key: string; label: string; remove: () => void }
+    const withdraw = (clear: () => void) => () => {
+      clear();
+      searchParams.page = 1;
+      search();
+    };
+    const activeFilters = computed<ActiveFilter[]>(() => {
+      const list: ActiveFilter[] = [];
+      const p = searchParams;
+      if (p.searchText?.trim()) list.push({ key: 'text', label: `Mots : ${p.searchText.trim()}`, remove: withdraw(() => { p.searchText = ''; }) });
+      if (p.domainId) list.push({ key: 'domain', label: `Domaine : ${p.domainName || 'sélectionné'}`, remove: withdraw(() => { p.domainId = ''; p.domainName = ''; }) });
+      if (p.techniqueId) list.push({ key: 'technique', label: `Technique : ${p.techniqueName || 'sélectionnée'}`, remove: withdraw(() => { p.techniqueId = ''; p.techniqueName = ''; }) });
+      if (p.periodId) list.push({ key: 'period', label: `Période : ${p.periodName || 'sélectionnée'}`, remove: withdraw(() => { p.periodId = ''; p.periodName = ''; }) });
+      if (p.artistId) list.push({ key: 'artist', label: `Artiste : ${p.artistName || 'sélectionné'}`, remove: withdraw(() => { p.artistId = ''; p.artistName = ''; }) });
+      if (p.museumId) list.push({ key: 'museum', label: `Musée : ${p.museumName || 'sélectionné'}`, remove: withdraw(() => { p.museumId = ''; p.museumName = ''; }) });
+      if (p.region) list.push({ key: 'region', label: `Région : ${p.region}`, remove: withdraw(() => { p.region = ''; p.department = ''; }) });
+      if (p.department) list.push({ key: 'department', label: `Département : ${p.department}`, remove: withdraw(() => { p.department = ''; }) });
+      if (p.yearFrom || p.yearTo) {
+        const label = p.yearFrom && p.yearTo ? `Créée entre ${p.yearFrom} et ${p.yearTo}` : p.yearFrom ? `Créée à partir de ${p.yearFrom}` : `Créée jusqu'en ${p.yearTo}`;
+        list.push({ key: 'years', label, remove: withdraw(() => { p.yearFrom = ''; p.yearTo = ''; }) });
+      }
+      if (hasPosition.value) list.push({ key: 'position', label: 'Près de moi', remove: withdraw(() => { p.latitude = undefined; p.longitude = undefined; }) });
+      return list;
+    });
+
+    // Tout retirer d'un coup, mots-clés compris
+    const clearAll = () => {
+      searchParams.searchText = '';
+      resetFilters();
     };
 
     // Search for similar terms
@@ -525,6 +641,10 @@ export default defineComponent({
       canSortByRelevance,
       canSortByArtist,
       hasFiltersEnabled,
+      filtersOpen,
+      yearError,
+      activeFilters,
+      clearAll,
       search,
       resetFilters,
       searchSimilar,
@@ -873,9 +993,87 @@ button {
   }
 }
 
+.filters-toggle {
+  display: none;
+}
+
+.year-range {
+  display: flex;
+  gap: 8px;
+
+  input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+}
+
+.year-note {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: #777;
+}
+
+.year-error {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: #dc3545;
+}
+
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+
+  .active-filters-title {
+    font-weight: bold;
+    font-size: 0.9rem;
+  }
+
+  .filter-chip {
+    padding: 4px 10px;
+    border: 1px solid var(--secondary-color);
+    border-radius: 14px;
+    background: white;
+    cursor: pointer;
+
+    &:hover {
+      background: #eaf7f1;
+    }
+  }
+
+  .clear-all {
+    border: none;
+    background: none;
+    color: var(--secondary-color);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}
+
 @media (max-width: 768px) {
   .search-container {
     flex-direction: column;
+  }
+
+  // Sur petit écran, les filtres se déplient à la demande ; les filtres actifs restent visibles
+  .filters-toggle {
+    display: block;
+    width: 100%;
+    margin-bottom: 8px;
+    padding: 10px;
+    border: 1px solid var(--secondary-color);
+    border-radius: 4px;
+    background: white;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+
+  .search-filters:not(.is-open) .search-form {
+    display: none;
   }
   
   .search-filters {

@@ -16,7 +16,7 @@ async function attendreTitres(page: Page, attendus: string[]) {
 }
 
 async function choisirTechnique(page: Page, nom: string) {
-  await page.getByPlaceholder('Rechercher une technique').fill(nom);
+  await page.getByPlaceholder('Rechercher un matériau ou une technique').fill(nom);
   await page.getByTestId('filter-option').filter({ hasText: new RegExp(`^${nom}$`) }).click();
 }
 
