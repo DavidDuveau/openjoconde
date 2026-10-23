@@ -144,13 +144,15 @@
             <div class="tag-group" v-if="artwork.periods && artwork.periods.length">
               <h3>Périodes</h3>
               <div class="tag-list">
-                <span 
-                  v-for="period in artwork.periods" 
-                  :key="period.id" 
+                <router-link
+                  v-for="period in artwork.periods"
+                  :key="period.id"
                   class="tag"
+                  data-testid="period-tag"
+                  :to="{ name: 'search', query: { periodId: period.id, periodName: period.name } }"
                 >
                   {{ period.name }}
-                </span>
+                </router-link>
               </div>
             </div>
           </div>
@@ -372,6 +374,15 @@ export default defineComponent({
                 background-color: #f0f0f0;
                 border-radius: 16px;
                 font-size: 0.9rem;
+              }
+
+              a.tag {
+                color: inherit;
+                text-decoration: none;
+
+                &:hover {
+                  background-color: #e2f3ea;
+                }
               }
             }
           }
