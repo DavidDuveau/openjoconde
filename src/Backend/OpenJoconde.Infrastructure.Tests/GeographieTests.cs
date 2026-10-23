@@ -78,7 +78,8 @@ public class GeographieTests : IAsyncLifetime
 
         var musees = references.Select(r => r.Split('-')[0]).Distinct().ToList();
         Assert.Equal(new[] { "Lyon", "Paris", "Marseille" }, musees.Take(3));
-        Assert.Equal(new[] { "Sans carte", "Sans" }, musees.Skip(3));
+        // Musée non localisé et œuvre sans musée : même rang, départagés par identifiant
+        Assert.Equal(new[] { "Sans", "Sans carte" }, musees.Skip(3).Order());
         Assert.Equal(9, references.Count);
     }
 
