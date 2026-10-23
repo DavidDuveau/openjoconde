@@ -16,6 +16,15 @@ namespace OpenJoconde.Core.Dtos
         public List<DepartmentDto> Departments { get; init; } = new();
     }
 
+    /// <summary>Un type de collection (domaine thématique de Muséofile) et le nombre de musées qui l'ont</summary>
+    public class CollectionTypeDto
+    {
+        /// <summary>Nom du type, tel que la liste des musées l'attend dans son filtre « collection »</summary>
+        public string Name { get; init; } = string.Empty;
+        /// <summary>Nombre de musées qui ont ce type de collection</summary>
+        public int Museums { get; init; }
+    }
+
     /// <summary>Un département et son nombre de musées</summary>
     public class DepartmentDto
     {

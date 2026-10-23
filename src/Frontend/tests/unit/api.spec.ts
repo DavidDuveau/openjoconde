@@ -55,7 +55,8 @@ describe('client API', () => {
     ['getArtist', ['r1'], '/artists/r1', undefined],
     ['getMuseum', ['m1'], '/museums/m1', undefined],
     ['getMuseumGeography', [], '/museums/geography', undefined],
-    ['getMuseumLocations', [], '/museums/locations', undefined]
+    ['getMuseumLocations', [], '/museums/locations', undefined],
+    ['getMuseumCollections', [], '/museums/collections', undefined]
   ] as const)('%s appelle %s', async (methode, args, route, options) => {
     get.mockResolvedValue({ data: { id: 'x' } });
 

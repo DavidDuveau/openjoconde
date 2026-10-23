@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { PaginatedResult, Artwork, ArtworkDetail } from '@/types/artwork';
-import { Artist, NamedItem, Museum, MuseumLocations, RegionGeography } from '@/types/models';
+import { Artist, CollectionType, NamedItem, Museum, MuseumLocations, RegionGeography } from '@/types/models';
 
 // Création de l'instance axios avec la configuration de base
 const http = axios.create({
@@ -64,10 +64,21 @@ const api = {
     return response.data;
   },
 
-  async getMuseums(page = 1, pageSize = 10, name?: string, region?: string, department?: string): Promise<PaginatedResult<Museum>> {
+  async getMuseums(
+    page = 1, pageSize = 10, name?: string, region?: string, department?: string, collection?: string
+  ): Promise<PaginatedResult<Museum>> {
     const response = await http.get('/museums', {
-      params: { page, pageSize, name: name || undefined, region: region || undefined, department: department || undefined }
+      params: {
+        page, pageSize, name: name || undefined, region: region || undefined, department: department || undefined,
+        collection: collection || undefined
+      }
     });
+    return response.data;
+  },
+
+  // Types de collection (domaines thématiques de Muséofile) et leur nombre de musées
+  async getMuseumCollections(): Promise<CollectionType[]> {
+    const response = await http.get('/museums/collections');
     return response.data;
   },
 

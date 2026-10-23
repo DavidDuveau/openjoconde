@@ -101,6 +101,72 @@ public class MuseumRepositoryTests : IAsyncLifetime
         Assert.False(await Repository(refusing).DeleteAsync(id));
     }
 
+    private async Task SemerCollectionsAsync()
+    {
+        await using var context = _db.CreateContext();
+        await Repository(context).BulkUpsertAsync(new[]
+        {
+            new Museum { Name = "Musée A", City = "Lyon", ThematicDomains = "Archéologie;Beaux-Arts;Histoire" },
+            new Museum { Name = "Musée B", City = "Albi", ThematicDomains = "Beaux-arts;Histoire naturelle" },
+            new Museum { Name = "Musée C", City = "Brest", ThematicDomains = "Archéologie" },
+            new Museum { Name = "Musée D", City = "Rouen", ThematicDomains = "" },
+            new Museum { Name = "Musée E" }
+        });
+    }
+
+    [Fact]
+    public async Task Recherche_PeutEtreRestreinteAUnTypeDeCollection_ValeurEntiere_SansTenirCompteDeLaCasse()
+    {
+        await SemerCollectionsAsync();
+        await using var read = _db.CreateContext();
+        var repository = Repository(read);
+        static string[] Noms(OpenJoconde.Core.Models.PaginatedResult<Museum> r) => r.Items.Select(m => m.Name).ToArray();
+
+        Assert.Equal(new[] { "Musée A", "Musée C" }, Noms(await repository.SearchByNameAsync(null, collection: "Archéologie")));
+        Assert.Equal(new[] { "Musée A", "Musée B" }, Noms(await repository.SearchByNameAsync(null, collection: "beaux-arts")));
+        // « Histoire » ne ramène pas « Histoire naturelle » : la valeur est entière
+        Assert.Equal(new[] { "Musée A" }, Noms(await repository.SearchByNameAsync(null, collection: "Histoire")));
+        Assert.Equal(new[] { "Musée B" }, Noms(await repository.SearchByNameAsync(null, collection: "Histoire naturelle")));
+        Assert.Equal(new[] { "Musée C" }, Noms(await repository.SearchByNameAsync("brest", collection: "Archéologie")));
+        Assert.Empty(Noms(await repository.SearchByNameAsync("lyon", collection: "Histoire naturelle")));
+        Assert.Equal(5, (await repository.SearchByNameAsync(null, collection: "  ")).TotalItems);
+    }
+
+    [Fact]
+    public async Task Recherche_UnTypeAvecDesCaracteresSpeciaux_EstCherchePTelQuel()
+    {
+        await using (var context = _db.CreateContext())
+            await Repository(context).BulkUpsertAsync(new[] { new Museum { Name = "Musée %", ThematicDomains = "100%_pur" }, new Museum { Name = "Musée X", ThematicDomains = "Archéologie" } });
+        await using var read = _db.CreateContext();
+        var repository = Repository(read);
+
+        Assert.Empty((await repository.SearchByNameAsync(null, collection: "%")).Items);
+        Assert.Empty((await repository.SearchByNameAsync(null, collection: "_")).Items);
+        Assert.Equal("Musée %", (await repository.SearchByNameAsync(null, collection: "100%_pur")).Items.Single().Name);
+    }
+
+    [Fact]
+    public async Task TypesDeCollection_RegroupentLesEcrituresEtComptentLesMusees()
+    {
+        await SemerCollectionsAsync();
+        await using var read = _db.CreateContext();
+
+        var types = await Repository(read).GetCollectionTypesAsync();
+
+        Assert.Equal(new[] { ("Archéologie", 2), ("Beaux-Arts", 2), ("Histoire", 1), ("Histoire naturelle", 1) },
+            types.Select(t => (t.Name, t.Museums)));
+    }
+
+    [Fact]
+    public async Task TypesDeCollection_SansMuseeEnrichi_RendUneListeVide()
+    {
+        await using (var context = _db.CreateContext())
+            await Repository(context).BulkUpsertAsync(new[] { new Museum { Name = "Musée sans domaines" } });
+        await using var read = _db.CreateContext();
+
+        Assert.Empty(await Repository(read).GetCollectionTypesAsync());
+    }
+
     [Fact]
     public async Task Recherche_PeutEtreRestreinteAUneRegionEtAUnDepartement_ParDessusLeTexte()
     {

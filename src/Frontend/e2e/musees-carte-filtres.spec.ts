@@ -35,3 +35,11 @@ test('la fiche du musée mène à la recherche de sa collection, déjà filtrée
   await expect(page.getByTestId('artwork-card').first()).toBeVisible();
   expect(nom).toMatch(/^musée \d$/);
 });
+
+test("sans données Muséofile, le filtre par type de collection n'est pas proposé et la liste reste complète", async ({ page }) => {
+  await page.goto('/museums');
+
+  await expect(page.getByTestId('museum-count')).toHaveText('3 musées');
+  await expect(page.getByTestId('region-select')).toBeVisible();
+  await expect(page.getByTestId('collection-select')).toHaveCount(0);
+});

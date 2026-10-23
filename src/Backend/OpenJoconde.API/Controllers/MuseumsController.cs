@@ -39,6 +39,7 @@ namespace OpenJoconde.API.Controllers
         /// <param name="name">Nom ou localisation partielle du musée à rechercher</param>
         /// <param name="region">Région exacte (voir <c>GET /api/museums/geography</c>)</param>
         /// <param name="department">Département exact</param>
+        /// <param name="collection">Type de collection exact (voir <c>GET /api/museums/collections</c>)</param>
         /// <param name="page">Numéro de page (commence à 1)</param>
         /// <param name="pageSize">Nombre d'éléments par page</param>
         /// <returns>Liste des musées correspondant aux critères de recherche</returns>
@@ -52,14 +53,15 @@ namespace OpenJoconde.API.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10,
             [FromQuery] string? region = null,
-            [FromQuery] string? department = null)
+            [FromQuery] string? department = null,
+            [FromQuery] string? collection = null)
         {
             try
             {
                 _logger.LogInformation("Recherche de musées - Nom/Localisation: {Name}, Région: {Region}, Département: {Department}, Page: {Page}, PageSize: {PageSize}",
                     name ?? "null", region ?? "null", department ?? "null", page, pageSize);
 
-                var museums = await _museumRepository.SearchByNameAsync(name, page, pageSize, region, department);
+                var museums = await _museumRepository.SearchByNameAsync(name, page, pageSize, region, department, collection);
                 return Ok(museums);
             }
             catch (Exception ex)
@@ -88,6 +90,28 @@ namespace OpenJoconde.API.Controllers
             {
                 _logger.LogError(ex, "Erreur lors de la lecture de la liste géographique: {Message}", ex.Message);
                 return StatusCode(500, "Une erreur est survenue lors de la lecture de la liste géographique.");
+            }
+        }
+
+        /// <summary>
+        /// Types de collection qui ont des musées (domaines thématiques de Muséofile), avec leur nombre de musées
+        /// </summary>
+        /// <returns>Les types par ordre alphabétique</returns>
+        /// <response code="200">Retourne la liste des types de collection</response>
+        /// <response code="500">Erreur interne du serveur</response>
+        [HttpGet("collections")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<List<CollectionTypeDto>>> GetCollectionTypes()
+        {
+            try
+            {
+                return Ok(await _museumRepository.GetCollectionTypesAsync());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la lecture des types de collection: {Message}", ex.Message);
+                return StatusCode(500, "Une erreur est survenue lors de la lecture des types de collection.");
             }
         }
 

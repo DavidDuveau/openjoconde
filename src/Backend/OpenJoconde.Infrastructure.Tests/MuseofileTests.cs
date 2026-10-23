@@ -104,6 +104,16 @@ public class MuseofileTests : IAsyncLifetime
         Assert.Equal("musée d'art", (await MuseeAsync("M1128")).Category);
     }
 
+    [Theory]
+    [InlineData("Archéologie ; Histoire;Histoire;  Beaux-Arts", "Archéologie;Histoire;Beaux-Arts")]
+    [InlineData("Histoire", "Histoire")]
+    [InlineData("histoire;Histoire", "histoire")]
+    [InlineData(" ; ;", null)]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    public void NormalizeList_RogneDedoublonneEtSepareSansEspace(string? brut, string? attendu) =>
+        Assert.Equal(attendu, MuseofileService.NormalizeList(brut));
+
     [Fact]
     public async Task LeRapprochementIgnoreLaCasseDuCode()
     {

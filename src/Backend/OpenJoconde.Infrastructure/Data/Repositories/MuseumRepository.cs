@@ -40,7 +40,7 @@ namespace OpenJoconde.Infrastructure.Data
         /// <summary>
         /// Search museums by name
         /// </summary>
-        public async Task<PaginatedResult<Museum>> SearchByNameAsync(string? name, int page = 1, int pageSize = 10, string? region = null, string? department = null)
+        public async Task<PaginatedResult<Museum>> SearchByNameAsync(string? name, int page = 1, int pageSize = 10, string? region = null, string? department = null, string? collection = null)
         {
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
@@ -61,6 +61,13 @@ namespace OpenJoconde.Infrastructure.Data
                 query = query.Where(m => m.Region == region);
             if (!string.IsNullOrWhiteSpace(department))
                 query = query.Where(m => m.Department == department);
+
+            if (!string.IsNullOrWhiteSpace(collection))
+            {
+                // Les domaines sont rangés « A;B;C » : on cherche la valeur entière entre deux séparateurs, sans tenir compte de la casse
+                var wanted = ";" + collection.Trim().ToLowerInvariant() + ";";
+                query = query.Where(m => m.ThematicDomains != null && (";" + m.ThematicDomains + ";").ToLower().Contains(wanted));
+            }
 
             var ordered = query
                 .OrderBy(m => m.Name)
@@ -97,6 +104,30 @@ namespace OpenJoconde.Infrastructure.Data
                         .Select(c => new DepartmentDto { Name = c.Department, Museums = c.Museums }).ToList()
                 })
                 .OrderBy(r => r.Name, StringComparer.Create(new System.Globalization.CultureInfo("fr-FR"), true))
+                .ToList();
+        }
+
+        /// <summary>
+        /// Types de collection présents chez les musées. Les domaines se lisent dans le texte « A;B;C » de chaque musée
+        /// (531 lignes) ; « Beaux-arts » et « Beaux-Arts » sont le même type, présenté sous l'écriture la plus courante.
+        /// </summary>
+        public async Task<List<CollectionTypeDto>> GetCollectionTypesAsync()
+        {
+            var rows = await _context.Museums
+                .Where(m => m.ThematicDomains != null && m.ThematicDomains != "")
+                .Select(m => m.ThematicDomains!)
+                .ToListAsync();
+
+            var french = StringComparer.Create(new System.Globalization.CultureInfo("fr-FR"), true);
+            return rows
+                .SelectMany(row => row.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Distinct(StringComparer.OrdinalIgnoreCase))
+                .GroupBy(domain => domain, StringComparer.OrdinalIgnoreCase)
+                .Select(g => new CollectionTypeDto
+                {
+                    Name = g.GroupBy(d => d).OrderByDescending(x => x.Count()).ThenBy(x => x.Key, StringComparer.Ordinal).First().Key,
+                    Museums = g.Count()
+                })
+                .OrderBy(c => c.Name, french)
                 .ToList();
         }
 

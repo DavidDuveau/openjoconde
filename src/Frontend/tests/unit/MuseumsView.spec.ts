@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 
-const { getMuseums, push } = vi.hoisted(() => ({ getMuseums: vi.fn(), push: vi.fn() }));
-vi.mock('@/services/api', () => ({ default: { getMuseums } }));
+const { getMuseums, getMuseumCollections, push } = vi.hoisted(() => ({ getMuseums: vi.fn(), getMuseumCollections: vi.fn(), push: vi.fn() }));
+vi.mock('@/services/api', () => ({ default: { getMuseums, getMuseumCollections } }));
 vi.mock('vue-router', () => ({ useRouter: () => ({ push }) }));
 
 import MuseumsView from '@/views/MuseumsView.vue';
@@ -20,6 +20,8 @@ async function afficher() {
 describe('MuseumsView', () => {
   beforeEach(() => {
     getMuseums.mockReset();
+    getMuseumCollections.mockReset();
+    getMuseumCollections.mockResolvedValue([]);
     push.mockReset();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
@@ -65,7 +67,7 @@ describe('MuseumsView', () => {
     await vi.advanceTimersByTimeAsync(300);
 
     expect(getMuseums).toHaveBeenCalledTimes(2);
-    expect(getMuseums).toHaveBeenLastCalledWith(1, 12, 'guimet', '', '');
+    expect(getMuseums).toHaveBeenLastCalledWith(1, 12, 'guimet', '', '', '');
   });
 
   it('affiche la carte et les filtres de région et de département au-dessus de la liste', async () => {
@@ -87,7 +89,56 @@ describe('MuseumsView', () => {
     filtre.vm.$emit('change');
     await flushPromises();
 
-    expect(getMuseums).toHaveBeenLastCalledWith(1, 12, '', 'Bretagne', 'Morbihan');
+    expect(getMuseums).toHaveBeenLastCalledWith(1, 12, '', 'Bretagne', 'Morbihan', '');
+  });
+
+  it("propose les types de collection avec leur nombre de musées, et filtre la liste par le type choisi", async () => {
+    getMuseums.mockResolvedValue(page([musee('m1', 'Musée des Confluences')]));
+    getMuseumCollections.mockResolvedValue([{ name: 'Archéologie', museums: 12 }, { name: 'Beaux-Arts', museums: 40 }]);
+    const vue = await afficher();
+
+    const options = vue.findAll('[data-testid="collection-select"] option').map(o => o.text());
+    expect(options).toEqual(['Tous les types de collection', 'Archéologie (12)', 'Beaux-Arts (40)']);
+
+    await vue.get('[data-testid="collection-select"]').setValue('Archéologie');
+    await flushPromises();
+
+    expect(getMuseums).toHaveBeenLastCalledWith(1, 12, '', '', '', 'Archéologie');
+  });
+
+  it("revient à la première page quand le type de collection change", async () => {
+    getMuseums.mockResolvedValue({ ...page([musee('m1', 'Musée des Confluences')]), totalPages: 3 });
+    getMuseumCollections.mockResolvedValue([{ name: 'Archéologie', museums: 12 }]);
+    const vue = await afficher();
+    window.scrollTo = vi.fn();
+    (vue.vm as unknown as { goToPage: (p: number) => void }).goToPage(3);
+    await flushPromises();
+    expect(getMuseums).toHaveBeenLastCalledWith(3, 12, '', '', '', '');
+
+    await vue.get('[data-testid="collection-select"]').setValue('Archéologie');
+    await flushPromises();
+
+    expect(getMuseums).toHaveBeenLastCalledWith(1, 12, '', '', '', 'Archéologie');
+  });
+
+  it("ne propose pas le filtre quand aucun type n'est connu, et la liste fonctionne", async () => {
+    getMuseums.mockResolvedValue(page([musee('m1', 'Musée des Confluences')]));
+    getMuseumCollections.mockResolvedValue([]);
+
+    const vue = await afficher();
+
+    expect(vue.find('[data-testid="collection-select"]').exists()).toBe(false);
+    expect(vue.findAll('[data-testid="museum-card"]')).toHaveLength(1);
+  });
+
+  it("garde la liste quand les types de collection ne se chargent pas", async () => {
+    getMuseums.mockResolvedValue(page([musee('m1', 'Musée des Confluences')]));
+    getMuseumCollections.mockRejectedValue(new Error('panne'));
+
+    const vue = await afficher();
+
+    expect(vue.find('[data-testid="collection-select"]').exists()).toBe(false);
+    expect(vue.findAll('[data-testid="museum-card"]')).toHaveLength(1);
   });
 
   it("dit qu'aucun musée ne correspond", async () => {

@@ -131,9 +131,10 @@ internal sealed class FailingMuseumRepository : OpenJoconde.Core.Interfaces.IMus
 {
     public Task<List<RegionDto>> GetGeographyAsync() => throw new InvalidOperationException("base indisponible");
     public Task<MuseumLocationsDto> GetLocationsAsync() => throw new InvalidOperationException("base indisponible");
+    public Task<List<CollectionTypeDto>> GetCollectionTypesAsync() => throw new InvalidOperationException("base indisponible");
 
     public Task<Museum?> GetByIdAsync(Guid id) => throw new NotSupportedException();
-    public Task<PaginatedResult<Museum>> SearchByNameAsync(string? name, int page = 1, int pageSize = 10, string? region = null, string? department = null) => throw new NotSupportedException();
+    public Task<PaginatedResult<Museum>> SearchByNameAsync(string? name, int page = 1, int pageSize = 10, string? region = null, string? department = null, string? collection = null) => throw new NotSupportedException();
     public Task<Museum> AddAsync(Museum museum) => throw new NotSupportedException();
     public Task<bool> UpdateAsync(Museum museum) => throw new NotSupportedException();
     public Task<bool> DeleteAsync(Guid id) => throw new NotSupportedException();
@@ -150,6 +151,16 @@ public class GeographiePanneTests
     public async Task ListeGeographique_EnPanne_Repond500()
     {
         var reponse = await Controleur().GetGeography();
+
+        var resultat = Assert.IsType<ObjectResult>(reponse.Result);
+        Assert.Equal(500, resultat.StatusCode);
+        Assert.DoesNotContain("base indisponible", resultat.Value!.ToString());
+    }
+
+    [Fact]
+    public async Task TypesDeCollection_EnPanne_Repond500()
+    {
+        var reponse = await Controleur().GetCollectionTypes();
 
         var resultat = Assert.IsType<ObjectResult>(reponse.Result);
         Assert.Equal(500, resultat.StatusCode);
