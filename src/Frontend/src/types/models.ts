@@ -80,6 +80,12 @@ export interface Museum {
   description: string;
   region?: string;
   code?: string;
+  /** Catégorie selon Muséofile, valeurs séparées par « ; » */
+  category?: string | null;
+  /** Domaines thématiques des collections selon Muséofile, séparés par « ; » */
+  thematicDomains?: string | null;
+  /** Points forts du musée selon Muséofile */
+  highlights?: string | null;
   latitude?: number;
   longitude?: number;
 }

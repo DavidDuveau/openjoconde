@@ -165,6 +165,8 @@
 
       <ArtworkContext :artwork="artwork" />
 
+      <ArtworkMuseum :artwork="artwork" />
+
       <SimilarArtworks :artwork="artwork" />
     </div>
   </div>
@@ -179,12 +181,13 @@ import { rightsSummary, safeWebUrl } from '@/utils/rights';
 import { popNoticeUrl } from '@/utils/pop';
 import DataSource from '@/components/DataSource.vue';
 import ArtworkContext from '@/components/ArtworkContext.vue';
+import ArtworkMuseum from '@/components/ArtworkMuseum.vue';
 import SimilarArtworks from '@/components/SimilarArtworks.vue';
 import { ArtworkDetail } from '@/types/artwork';
 
 export default defineComponent({
   name: 'ArtworkDetailView',
-  components: { DataSource, ArtworkContext, SimilarArtworks },
+  components: { DataSource, ArtworkContext, ArtworkMuseum, SimilarArtworks },
   setup() {
     const route = useRoute();
 

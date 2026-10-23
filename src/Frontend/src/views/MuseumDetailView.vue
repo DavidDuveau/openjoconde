@@ -65,7 +65,22 @@
         </template>
       </dl>
 
+      <section class="museum-collections" v-if="categories.length || domaines.length" data-testid="museum-collections">
+        <h2>Ses collections</h2>
+        <p v-if="categories.length" data-testid="museum-category">Catégorie : {{ categories.join(', ') }}</p>
+        <p v-if="domaines.length" data-testid="museum-domains">Domaines : {{ domaines.join(', ') }}</p>
+      </section>
+
+      <p class="museum-highlights" v-if="museum.highlights" data-testid="museum-highlights">
+        <strong>Points forts.</strong> {{ museum.highlights }}
+      </p>
+
       <p class="museum-description" v-if="museum.description">{{ museum.description }}</p>
+
+      <section class="museum-visit-section" data-testid="museum-visit-section">
+        <h2>Préparer la visite</h2>
+        <MuseumVisit :museum="museum" :show-contact="false" />
+      </section>
 
       <p class="museum-explore">
         <router-link :to="{ name: 'search', query: { museumId: museum.id, museumName: museum.name } }" data-testid="museum-explore">
@@ -104,12 +119,13 @@ import { displayTitle } from '@/utils/title';
 import { safeWebUrl } from '@/utils/rights';
 import PaginationBar from '@/components/PaginationBar.vue';
 import DataSource from '@/components/DataSource.vue';
+import MuseumVisit from '@/components/MuseumVisit.vue';
 import { Artwork } from '@/types/artwork';
 import { Museum } from '@/types/models';
 
 export default defineComponent({
   name: 'MuseumDetailView',
-  components: { PaginationBar, DataSource },
+  components: { PaginationBar, DataSource, MuseumVisit },
   setup() {
     const route = useRoute();
     const museum = ref<Museum | null>(null);
@@ -193,7 +209,14 @@ export default defineComponent({
       `https://www.openstreetmap.org/?mlat=${museum.value?.latitude}&mlon=${museum.value?.longitude}#map=15/${museum.value?.latitude}/${museum.value?.longitude}`
     );
 
+    // Muséofile sépare les valeurs par « ; » (parfois « ; » entouré d'espaces)
+    const valeurs = (texte?: string | null) => (texte ?? '').split(';').map(v => v.trim()).filter(Boolean);
+    const categories = computed(() => valeurs(museum.value?.category));
+    const domaines = computed(() => valeurs(museum.value?.thematicDomains));
+
     return {
+      categories,
+      domaines,
       displayTitle,
       museum,
       loading,

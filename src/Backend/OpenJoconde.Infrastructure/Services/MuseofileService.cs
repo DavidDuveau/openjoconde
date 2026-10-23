@@ -21,6 +21,7 @@ namespace OpenJoconde.Infrastructure.Services
         private const int ZipMax = 20;
         private const int WebsiteMax = 500;
         private const int NameMax = 200;
+        private const int CategoryMax = 500;
 
         private readonly OpenJocondeDbContext _context;
         private readonly HttpClient _httpClient;
@@ -128,6 +129,9 @@ namespace OpenJoconde.Infrastructure.Services
                     Phone: Cut(Get("telephone"), PhoneMax),
                     Website: WebsiteUrl(Get("url")),
                     History: Get("histoire"),
+                    Category: Cut(Get("categorie"), CategoryMax),
+                    ThematicDomains: Cut(Get("domaine_thematique"), CategoryMax),
+                    Highlights: Get("atout"),
                     Latitude: latitude,
                     Longitude: longitude));
             }
@@ -185,6 +189,9 @@ namespace OpenJoconde.Infrastructure.Services
             Set(museum.Phone, entry.Phone, v => museum.Phone = v);
             Set(museum.Website, entry.Website, v => museum.Website = v);
             Set(museum.Description, entry.History, v => museum.Description = v);
+            Set(museum.Category, entry.Category, v => museum.Category = v);
+            Set(museum.ThematicDomains, entry.ThematicDomains, v => museum.ThematicDomains = v);
+            Set(museum.Highlights, entry.Highlights, v => museum.Highlights = v);
 
             // Joconde fait foi pour la localisation : Muséofile ne comble que les manques
             if (string.IsNullOrWhiteSpace(museum.Department)) Set(museum.Department, entry.Department, v => museum.Department = v);
@@ -201,6 +208,7 @@ namespace OpenJoconde.Infrastructure.Services
 
         private sealed record MuseofileEntry(
             string? Address, string? ZipCode, string? Department, string? Region,
-            string? Phone, string? Website, string? History, double? Latitude, double? Longitude);
+            string? Phone, string? Website, string? History, string? Category, string? ThematicDomains, string? Highlights,
+            double? Latitude, double? Longitude);
     }
 }

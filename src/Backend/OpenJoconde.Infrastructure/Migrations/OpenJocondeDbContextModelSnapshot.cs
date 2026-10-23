@@ -438,6 +438,11 @@ namespace OpenJoconde.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("address");
 
+                    b.Property<string>("Category")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("category");
+
                     b.Property<string>("City")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
@@ -465,6 +470,10 @@ namespace OpenJoconde.Infrastructure.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("email");
 
+                    b.Property<string>("Highlights")
+                        .HasColumnType("text")
+                        .HasColumnName("highlights");
+
                     b.Property<double?>("Latitude")
                         .HasColumnType("double precision")
                         .HasColumnName("latitude");
@@ -486,6 +495,11 @@ namespace OpenJoconde.Infrastructure.Migrations
                     b.Property<string>("Region")
                         .HasColumnType("text")
                         .HasColumnName("region");
+
+                    b.Property<string>("ThematicDomains")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("thematic_domains");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")

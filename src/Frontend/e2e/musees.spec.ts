@@ -42,6 +42,6 @@ test('cliquer une œuvre de la fiche d\'un musée ouvre sa fiche, qui renvoie ve
 
   await expect(page).toHaveURL(/\/artworks\//);
   await expect(page.getByTestId('artwork-reference')).toHaveText(/^E2E\d{5}$/);
-  await page.getByRole('link', { name: 'musée 0' }).click();
+  await page.getByTestId('artwork-museum-link').click();
   await expect(page.getByTestId('museum-heading')).toHaveText('musée 0');
 });

@@ -69,6 +69,21 @@ namespace OpenJoconde.Core.Models
         public string? Code { get; set; }
 
         /// <summary>
+        /// Catégorie du musée selon Muséofile (« écomusée ; musée en territoire rural »), valeurs séparées par « ; »
+        /// </summary>
+        public string? Category { get; set; }
+
+        /// <summary>
+        /// Domaines thématiques des collections selon Muséofile (« Archéologie;Beaux-Arts;Histoire »), séparés par « ; »
+        /// </summary>
+        public string? ThematicDomains { get; set; }
+
+        /// <summary>
+        /// Points forts du musée selon Muséofile, en texte libre
+        /// </summary>
+        public string? Highlights { get; set; }
+
+        /// <summary>
         /// Longitude of the museum location
         /// </summary>
         public double? Longitude { get; set; }
