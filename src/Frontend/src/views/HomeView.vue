@@ -12,6 +12,14 @@
       </div>
     </div>
 
+    <section class="thematiques" data-testid="home-thematiques" aria-labelledby="home-thematiques-title">
+      <h2 id="home-thematiques-title">Thématiques</h2>
+      <div class="thematiques-grille">
+        <ThematiqueCard v-for="t in enAvant" :key="t.slug" :thematique="t" />
+      </div>
+      <p class="toutes"><router-link :to="{ name: 'thematiques' }" data-testid="home-thematiques-toutes">Toutes les thématiques</router-link></p>
+    </section>
+
     <FranceMap />
 
     <section class="featured">
@@ -49,12 +57,15 @@ import { defineComponent, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import SearchBar from '@/components/SearchBar.vue';
 import FranceMap from '@/components/FranceMap.vue';
+import ThematiqueCard from '@/components/ThematiqueCard.vue';
+import { THEMATIQUES, saisonEnCours } from '@/utils/thematiques';
 
 export default defineComponent({
   name: 'HomeView',
   components: {
     SearchBar,
-    FranceMap
+    FranceMap,
+    ThematiqueCard
   },
   setup() {
     const router = useRouter();
@@ -70,7 +81,12 @@ export default defineComponent({
       router.push(path);
     };
 
+    // Les collections mises en avant, et celles de saison tant qu'elles sont ouvertes
+    const maintenant = new Date();
+    const enAvant = THEMATIQUES.filter(t => t.enAvant || (t.saison && saisonEnCours(t.saison, maintenant)));
+
     return {
+      enAvant,
       searchQuery,
       searchArtworks,
       navigateTo
@@ -81,6 +97,26 @@ export default defineComponent({
 
 <style scoped lang="scss">
 .home {
+  .thematiques {
+    margin: 40px 0;
+
+    h2 {
+      margin-bottom: 16px;
+      color: var(--primary-color);
+    }
+
+    .thematiques-grille {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .toutes {
+      margin-top: 12px;
+      text-align: center;
+    }
+  }
+
   .hero {
     text-align: center;
     padding: 60px 20px;

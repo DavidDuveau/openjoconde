@@ -57,6 +57,16 @@ const routes: Array<RouteRecordRaw> = [
     props: { kind: 'techniques' }
   },
   {
+    path: '/thematiques',
+    name: 'thematiques',
+    component: () => import('@/views/ThematiquesView.vue')
+  },
+  {
+    path: '/thematiques/:slug',
+    name: 'thematique',
+    component: () => import('@/views/ThematiqueView.vue')
+  },
+  {
     path: '/about',
     name: 'about',
     component: () => import('@/views/AboutView.vue')

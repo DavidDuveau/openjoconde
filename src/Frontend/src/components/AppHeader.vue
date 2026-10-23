@@ -9,6 +9,7 @@
           <ul>
             <li><router-link to="/">Accueil</router-link></li>
             <li><router-link to="/artworks">Collections</router-link></li>
+            <li><router-link to="/thematiques">Thématiques</router-link></li>
             <li><router-link to="/artists">Artistes</router-link></li>
             <li><router-link to="/museums">Musées</router-link></li>
             <li><router-link to="/periods">Périodes</router-link></li>

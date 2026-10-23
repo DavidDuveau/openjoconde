@@ -59,6 +59,15 @@ describe('HomeView', () => {
     expect(push).not.toHaveBeenCalled();
   });
 
+  it("met en avant des thématiques sur l'accueil, avec un lien vers toutes", () => {
+    const vue = mount(HomeView, { global: { stubs: { ...stubs, FranceMap: true } } });
+
+    const cartes = vue.findAll('[data-testid="home-thematiques"] [data-testid="thematique-card"]');
+    expect(cartes.length).toBeGreaterThanOrEqual(3);
+    expect(vue.get('[data-testid="home-thematiques"]').text()).toContain('Portraits');
+    expect(vue.get('[data-testid="home-thematiques-toutes"]').exists()).toBe(true);
+  });
+
   it.each([
     [0, 'peinture'],
     [1, 'sculpture'],

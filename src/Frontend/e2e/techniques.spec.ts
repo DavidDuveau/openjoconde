@@ -6,7 +6,7 @@ import { NOTICES } from './jeu';
 test('la liste des techniques les présente toutes, depuis le menu', async ({ page }) => {
   await page.goto('/');
 
-  await page.getByRole('link', { name: 'Techniques' }).click();
+  await page.getByRole('link', { name: 'Techniques', exact: true }).click();
 
   await expect(page).toHaveURL(/\/techniques$/);
   await expect(page.getByTestId('reference-count')).toHaveText('4 techniques');
