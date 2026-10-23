@@ -88,6 +88,28 @@ namespace OpenJoconde.API.Controllers
         }
 
         /// <summary>
+        /// Les musées placés sur la carte : nom et position de ceux qui ont des coordonnées, et nombre total de musées
+        /// </summary>
+        /// <returns>Les musées localisés par ordre alphabétique, et le nombre total de musées</returns>
+        /// <response code="200">Retourne les musées localisés</response>
+        /// <response code="500">Erreur interne du serveur</response>
+        [HttpGet("locations")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<MuseumLocationsDto>> GetLocations()
+        {
+            try
+            {
+                return Ok(await _museumRepository.GetLocationsAsync());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la lecture des musées localisés: {Message}", ex.Message);
+                return StatusCode(500, "Une erreur est survenue lors de la lecture des musées localisés.");
+            }
+        }
+
+        /// <summary>
         /// Récupère un musée par son identifiant
         /// </summary>
         /// <param name="id">Identifiant du musée</param>

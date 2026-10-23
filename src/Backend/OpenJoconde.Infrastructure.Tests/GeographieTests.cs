@@ -100,6 +100,19 @@ public class GeographieTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task MuseesLocalises_RendLesMuseesAvecCoordonneesEtLeTotal()
+    {
+        var controleur = new MuseumsController(new MuseumRepository(_db.CreateContext(), NullLogger<MuseumRepository>.Instance), NullLogger<MuseumsController>.Instance);
+
+        var locations = Assert.IsType<MuseumLocationsDto>(Assert.IsType<OkObjectResult>((await controleur.GetLocations()).Result).Value);
+
+        Assert.Equal(4, locations.Total);
+        Assert.Equal(new[] { "Lyon", "Marseille", "Paris" }, locations.Items.Select(m => m.Name));
+        var paris = locations.Items.Single(m => m.Name == "Paris");
+        Assert.Equal((48.8566, 2.3522), (paris.Latitude, paris.Longitude));
+    }
+
+    [Fact]
     public async Task ListeGeographique_RangeLesDepartementsParRegionAvecLeurNombreDeMusees()
     {
         var controleur = new MuseumsController(new MuseumRepository(_db.CreateContext(), NullLogger<MuseumRepository>.Instance), NullLogger<MuseumsController>.Instance);

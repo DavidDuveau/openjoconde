@@ -43,7 +43,7 @@ describe('HomeView', () => {
   beforeEach(() => push.mockReset());
 
   it('ouvre la recherche avec le texte saisi', async () => {
-    const vue = mount(HomeView, { global: { stubs } });
+    const vue = mount(HomeView, { global: { stubs: { ...stubs, FranceMap: true } } });
 
     await vue.get('.search-input').setValue('monet');
     await vue.get('form').trigger('submit');
@@ -52,7 +52,7 @@ describe('HomeView', () => {
   });
 
   it("ne cherche pas un texte réduit à des espaces", () => {
-    const vue = mount(HomeView, { global: { stubs } });
+    const vue = mount(HomeView, { global: { stubs: { ...stubs, FranceMap: true } } });
 
     (vue.vm as unknown as { searchArtworks: (t: string) => void }).searchArtworks('   ');
 
@@ -65,7 +65,7 @@ describe('HomeView', () => {
     [2, 'graphique'],
     [3, 'photographie']
   ])('ouvre la collection de la catégorie %i (%s)', async (index, domaine) => {
-    const vue = mount(HomeView, { global: { stubs } });
+    const vue = mount(HomeView, { global: { stubs: { ...stubs, FranceMap: true } } });
 
     await vue.findAll('.category-card')[index].trigger('click');
 

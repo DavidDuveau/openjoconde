@@ -12,6 +12,8 @@
       </div>
     </div>
 
+    <FranceMap />
+
     <section class="featured">
       <h2>Catégories</h2>
       <div class="categories">
@@ -46,11 +48,13 @@
 import { defineComponent, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import SearchBar from '@/components/SearchBar.vue';
+import FranceMap from '@/components/FranceMap.vue';
 
 export default defineComponent({
   name: 'HomeView',
   components: {
-    SearchBar
+    SearchBar,
+    FranceMap
   },
   setup() {
     const router = useRouter();
