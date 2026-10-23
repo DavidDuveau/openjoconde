@@ -107,6 +107,10 @@ namespace OpenJoconde.Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("death_date");
 
+                    b.Property<DateTime?>("EnrichmentAttemptedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("enrichment_attempted_at");
+
                     b.Property<string>("FirstName")
                         .HasColumnType("citext")
                         .HasColumnName("first_name");
@@ -142,6 +146,9 @@ namespace OpenJoconde.Infrastructure.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_artist");
+
+                    b.HasIndex("EnrichmentAttemptedAt")
+                        .HasDatabaseName("ix_artist_enrichment_attempted_at");
 
                     b.HasIndex("LastName")
                         .HasDatabaseName("ix_artist_last_name");

@@ -70,6 +70,12 @@ builder.Services.AddOptions<SyncOptions>()
     .ValidateOnStart();
 builder.Services.AddSingleton<IValidateOptions<SyncOptions>, SyncOptionsValidator>();
 
+// Réglages de l'enrichissement des artistes (section « Enrichment »), contrôlés au démarrage
+builder.Services.AddOptions<EnrichmentOptions>()
+    .Bind(builder.Configuration.GetSection(EnrichmentOptions.SectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<EnrichmentOptions>, EnrichmentOptionsValidator>();
+
 // Register infrastructure services
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
@@ -77,6 +83,12 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 if (builder.Configuration.GetValue<bool>($"{SyncOptions.SectionName}:{nameof(SyncOptions.CheckForUpdatesOnStartup)}"))
 {
     builder.Services.AddHostedService<AutoSyncService>();
+}
+
+// Enrichissement des artistes par Wikidata et Wikipédia, en arrière-plan, s'il est activé
+if (builder.Configuration.GetValue<bool>($"{EnrichmentOptions.SectionName}:{nameof(EnrichmentOptions.Enabled)}"))
+{
+    builder.Services.AddHostedService<ArtistEnrichmentBackgroundService>();
 }
 
 // CORS Policy

@@ -59,6 +59,11 @@ namespace OpenJoconde.Core.Models
         public string? Movement { get; set; }
 
         /// <summary>
+        /// Date du dernier examen par l'enrichissement Wikidata, qu'il ait trouvé une correspondance ou non
+        /// </summary>
+        public DateTime? EnrichmentAttemptedAt { get; set; }
+
+        /// <summary>
         /// Creation timestamp
         /// </summary>
         public DateTime CreatedAt { get; set; }

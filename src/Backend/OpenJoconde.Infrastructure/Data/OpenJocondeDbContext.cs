@@ -90,6 +90,7 @@ namespace OpenJoconde.Infrastructure.Data
                 entity.Property(e => e.WikidataId).HasMaxLength(20);
                 entity.Property(e => e.WikipediaUrl).HasMaxLength(500);
                 entity.Property(e => e.Movement).HasMaxLength(200);
+                entity.HasIndex(e => e.EnrichmentAttemptedAt);
                 entity.HasIndex(e => e.LastName);
             });
 
