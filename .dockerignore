@@ -1,0 +1,13 @@
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/dist-e2e
+**/test-results
+**/TestResults
+**/.env*
+.git
+graphify-out
+src/Backend/OpenJoconde.Infrastructure.Tests
+src/Frontend/e2e
+src/Frontend/tests

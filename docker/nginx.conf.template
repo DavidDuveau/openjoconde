@@ -1,0 +1,24 @@
+server {
+    listen 8080;
+    root /usr/share/nginx/html;
+
+    # L'API : même domaine que le front
+    location /api/ {
+        proxy_pass http://${API_UPSTREAM};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        client_max_body_size 50m;
+    }
+
+    # Fichiers à nom haché : cache long
+    location /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    # Application monopage : toute autre adresse renvoie index.html
+    location / {
+        try_files $uri /index.html;
+        add_header Cache-Control "no-cache";
+    }
+}
