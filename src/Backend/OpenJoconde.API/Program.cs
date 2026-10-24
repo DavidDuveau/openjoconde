@@ -155,6 +155,7 @@ if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
 }
 
+app.UseTrustedForwardedHeaders();
 app.UseHttpsRedirection();
 app.UseCors("AllowVueApp");
 app.UseRateLimiter();
