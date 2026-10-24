@@ -149,6 +149,8 @@ Les routes d'écriture et d'import (`POST`, `PUT`, `DELETE`) exigent l'en-tête 
 dotnet user-secrets set "Security:ApiKey" "<clé>" --project src/Backend/OpenJoconde.API
 ```
 
+Derrière un reverse proxy, déclarer ses adresses (`ForwardedHeaders:KnownProxies`, ex. variable `ForwardedHeaders__KnownProxies__0=10.0.0.1`) ou ses plages (`ForwardedHeaders:KnownNetworks`, notation CIDR) : l'API lit alors `X-Forwarded-For` et `X-Forwarded-Proto` de ces seuls proxys, et la limite de 20 requêtes s'applique par visiteur au lieu de s'appliquer au proxy. Sans déclaration, ces en-têtes sont ignorés (n'importe qui pourrait sinon forger son adresse).
+
 La liste complète est dans Swagger.
 
 ## Structure
