@@ -20,7 +20,10 @@
         <router-link to="/artworks" class="back-link">
           &larr; Retour à la liste
         </router-link>
-        <ShareLink :title="displayTitle(artwork.title, Infinity)" />
+        <div class="header-actions">
+          <FavoriteButton :id="artwork.id" :title="artwork.title || ''" />
+          <ShareLink :title="displayTitle(artwork.title, Infinity)" />
+        </div>
       </div>
 
       <div class="artwork-main">
@@ -190,12 +193,13 @@ import ArtworkMuseum from '@/components/ArtworkMuseum.vue';
 import ArtworkCitation from '@/components/ArtworkCitation.vue';
 import ArtworkExport from '@/components/ArtworkExport.vue';
 import ShareLink from '@/components/ShareLink.vue';
+import FavoriteButton from '@/components/FavoriteButton.vue';
 import SimilarArtworks from '@/components/SimilarArtworks.vue';
 import { ArtworkDetail } from '@/types/artwork';
 
 export default defineComponent({
   name: 'ArtworkDetailView',
-  components: { DataSource, ArtworkContext, ArtworkMuseum, ArtworkCitation, ArtworkExport, ShareLink, SimilarArtworks },
+  components: { DataSource, ArtworkContext, ArtworkMuseum, ArtworkCitation, ArtworkExport, ShareLink, FavoriteButton, SimilarArtworks },
   setup() {
     const route = useRoute();
 
@@ -291,6 +295,13 @@ export default defineComponent({
       align-items: center;
       justify-content: space-between;
       margin-bottom: 20px;
+
+      .header-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: flex-start;
+      }
       
       .back-link {
         display: inline-block;

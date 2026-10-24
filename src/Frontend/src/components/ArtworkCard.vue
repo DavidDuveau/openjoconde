@@ -4,6 +4,7 @@
       <img v-if="imageUrl" :src="imageUrl" :alt="title" />
       <div v-else class="no-image" aria-hidden="true">Pas d'aperçu</div>
       <span v-if="hasImage" class="image-badge" data-testid="pop-badge" title="Une image existe sur la plateforme POP">Image sur POP</span>
+      <FavoriteButton class="card-favorite" :id="id" :title="title" compact />
     </div>
     <div class="artwork-info">
       <h3 :title="title" data-testid="artwork-title">{{ shownTitle }}</h3>
@@ -18,9 +19,11 @@
 <script lang="ts">
 import { defineComponent, computed } from 'vue';
 import { displayTitle } from '@/utils/title';
+import FavoriteButton from '@/components/FavoriteButton.vue';
 
 export default defineComponent({
   name: 'ArtworkCard',
+  components: { FavoriteButton },
   props: {
     id: {
       type: String,
@@ -96,6 +99,13 @@ export default defineComponent({
       background: #f0f2f5;
       color: #8a8f98;
       font-size: 0.9rem;
+    }
+
+    .card-favorite {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      z-index: 1;
     }
 
     .image-badge {
