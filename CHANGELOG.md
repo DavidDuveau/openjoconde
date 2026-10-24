@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/DavidDuveau/openjoconde/compare/v0.7.0...v0.8.0) (2026-10-24)
+
+
+### Nouveautés
+
+* **navigation:** consulter les nouveautés de chaque version dans le site (US-NAVIGATION-06) ([02b3fd5](https://github.com/DavidDuveau/openjoconde/commit/02b3fd5180fa284d1b4a03fdc21ba2028984af07))
+
 ## [0.7.0](https://github.com/DavidDuveau/openjoconde/compare/v0.6.0...v0.7.0) (2026-10-24)
 
 
