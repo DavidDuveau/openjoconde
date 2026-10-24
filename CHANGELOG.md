@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.7.0](https://github.com/DavidDuveau/openjoconde/compare/v0.6.0...v0.7.0) (2026-10-24)
+
+
+### Features
+
+* collections personnelles, export/import et partage par lien (US-COMPTE-03) ([fa2aacf](https://github.com/DavidDuveau/openjoconde/commit/fa2aacf1ed1230b132d8b5876685fa448d829b75))
+* collections personnelles, export/import et partage par lien (US-COMPTE-03) ([369cdf5](https://github.com/DavidDuveau/openjoconde/commit/369cdf5e0a2544288be08722a430e1beebe333fd))
+* favoris dans le navigateur, sans compte (US-COMPTE-04) ([8fdae0e](https://github.com/DavidDuveau/openjoconde/commit/8fdae0e278afe1350d559c538c21114b616de3e3))
+* favoris dans le navigateur, sans compte (US-COMPTE-04) ([f5e125e](https://github.com/DavidDuveau/openjoconde/commit/f5e125e13d57dc28f528936d4cb1ef01cbff8045))
+
 ## [0.6.0](https://github.com/DavidDuveau/openjoconde/compare/v0.5.0...v0.6.0) (2026-10-23)
 
 
