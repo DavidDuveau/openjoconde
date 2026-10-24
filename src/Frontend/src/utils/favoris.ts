@@ -16,7 +16,7 @@ export type ProblemeFavoris = 'stockage' | 'limite' | null;
 
 const etat = reactive({ favoris: [] as Favori[], probleme: null as ProblemeFavoris });
 
-const estIdentifiant = (valeur: unknown): valeur is string =>
+export const estIdentifiant = (valeur: unknown): valeur is string =>
   typeof valeur === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(valeur);
 
 /** Relit les favoris du navigateur ; tout ce qui n'a pas la forme attendue est écarté, jamais interprété */
@@ -92,6 +92,18 @@ export function retirerFavori(id: string): void {
   const suivants = etat.favoris.filter(f => f.id !== id);
   if (!ecrire(suivants)) etat.probleme = 'stockage';
   etat.favoris = suivants;
+}
+
+/** Remplace tous les favoris (import d'une sauvegarde) ; faux, sans rien changer, si le stockage refuse */
+export function definirFavoris(liste: Favori[]): boolean {
+  etat.probleme = null;
+  const suivants = liste.slice(0, LIMITE_FAVORIS);
+  if (!ecrire(suivants)) {
+    etat.probleme = 'stockage';
+    return false;
+  }
+  etat.favoris = suivants;
+  return true;
 }
 
 export function basculerFavori(id: string): boolean {

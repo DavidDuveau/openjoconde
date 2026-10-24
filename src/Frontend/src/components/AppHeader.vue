@@ -15,6 +15,7 @@
             <li><router-link to="/periods">Périodes</router-link></li>
             <li><router-link to="/techniques">Techniques</router-link></li>
             <li><router-link to="/favoris">Favoris</router-link></li>
+            <li><router-link to="/collections">Mes collections</router-link></li>
             <li><router-link to="/about">À propos</router-link></li>
           </ul>
         </nav>

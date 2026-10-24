@@ -72,6 +72,21 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('@/views/FavorisView.vue')
   },
   {
+    path: '/collections',
+    name: 'collections',
+    component: () => import('@/views/CollectionsView.vue')
+  },
+  {
+    path: '/collections/:id',
+    name: 'collection',
+    component: () => import('@/views/CollectionView.vue')
+  },
+  {
+    path: '/partage',
+    name: 'collection-partagee',
+    component: () => import('@/views/CollectionPartageeView.vue')
+  },
+  {
     path: '/about',
     name: 'about',
     component: () => import('@/views/AboutView.vue')
@@ -86,8 +101,9 @@ const routes: Array<RouteRecordRaw> = [
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
-  // Un lien vers une ancre (/about#sources) y mène ; sinon, en haut de la page
-  scrollBehavior: to => (to.hash ? { el: to.hash, top: 80 } : { top: 0 })
+  // Un lien vers une ancre (/about#sources) y mène ; sinon, en haut de la page. Le fragment d'une collection partagée
+  // n'est pas une ancre : il porte la collection, et n'est jamais utilisé comme sélecteur.
+  scrollBehavior: to => (to.hash && to.name !== 'collection-partagee' ? { el: to.hash, top: 80 } : { top: 0 })
 });
 
 export default router;
