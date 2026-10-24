@@ -41,4 +41,12 @@ describe('ArtworkCard', () => {
 
     expect(card.emitted('click')).toHaveLength(1);
   });
+
+  it("propose l'étoile des favoris sans ouvrir la fiche", async () => {
+    const card = mount(ArtworkCard, { props: { ...base, title: 'T' } });
+
+    await card.get('[data-testid="favorite-button"]').trigger('click');
+
+    expect(card.emitted('click')).toBeUndefined();
+  });
 });
