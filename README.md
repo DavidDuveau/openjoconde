@@ -114,6 +114,15 @@ Le produit a **une seule version** (SemVer), la même pour le back et le front :
 
 Personne ne la modifie à la main. À chaque fusion dans `main`, le workflow `release.yml` ([release-please](https://github.com/googleapis/release-please)) lit les commits au format `feat:` / `fix:` (un `!` ou `BREAKING CHANGE:` pour une rupture) et tient à jour une pull request « chore(main): release x.y.z » qui monte les deux numéros et alimente `CHANGELOG.md`. La fusionner pose le tag `vX.Y.Z` et publie la release GitHub. Tant que la version est en `0.x`, un `feat:` monte le numéro mineur.
 
+### Écrire un changelog lisible
+
+Le changelog n'est pas déduit du code : il reprend **le sujet des commits**. Son intention vient donc du message, et lui seul.
+
+- **Écrire le sujet comme l'effet pour l'utilisateur**, à l'infinitif ou au nominal, avec la référence de la story : `feat(export): télécharger les données d'une œuvre en JSON et CSV (US-EXPORT-01)`. Pas « ajout du composant X ».
+- **Un `type(portée):` par commit**, la portée étant le thème (`navigation`, `recherche`, `visualisation`, `export`, `compte`, `tech`). Elle apparaît en gras devant la ligne. Types visibles dans le changelog : `feat` (Nouveautés), `fix` (Corrections), `perf`, `revert`, `docs` ; `refactor`, `test`, `build`, `ci`, `chore` n'y figurent pas.
+- **Le titre de la pull request n'a pas de préfixe** (`Favoris dans le navigateur (US-COMPTE-04)`) : le commit de fusion le reprend, et avec `feat:` le changement serait compté deux fois. La CI refuse un titre qui en porte un (sauf la PR de release).
+- **Corriger une ligne après coup** : dans la description de la PR fusionnée, un bloc `BEGIN_COMMIT_OVERRIDE` … `END_COMMIT_OVERRIDE` contenant les lignes `feat: nouveau texte` remplace les commits de cette PR dans le prochain changelog.
+
 Les checks de la CI ne se lancent pas sur la pull request de release : GitHub n'exécute pas de workflow déclenché par le jeton d'un autre workflow. Elle ne change que des numéros de version, et la fusion se fait après relecture.
 
 ## API
