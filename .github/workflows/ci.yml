@@ -125,3 +125,10 @@ jobs:
           name: e2e-traces
           path: src/Frontend/test-results
           retention-days: 7
+
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Les images de l'API et du front se construisent et fonctionnent ensemble
+        run: scripts/verifier-images.sh
