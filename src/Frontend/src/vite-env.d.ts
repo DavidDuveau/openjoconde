@@ -3,6 +3,9 @@
 /** Version du produit (package.json), injectée au build par Vite */
 declare const __APP_VERSION__: string;
 
+/** Texte du CHANGELOG.md de release-please, injecté au build par Vite */
+declare const __CHANGELOG__: string;
+
 interface ImportMetaEnv {
   /** Adresse de l'API (défaut : https://localhost:5001/api) */
   readonly VUE_APP_API_URL?: string;

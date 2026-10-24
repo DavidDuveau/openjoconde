@@ -12,7 +12,10 @@
         Données : Ministère de la Culture (bases Joconde et Muséofile), Licence Ouverte 2.0 ·
         <router-link to="/about#sources">Sources et licences</router-link>
       </p>
-      <p class="footer-version" data-testid="app-version">Version {{ version }}</p>
+      <p class="footer-version">
+        <span data-testid="app-version">Version {{ version }}</span> ·
+        <router-link to="/nouveautes" data-testid="footer-nouveautes">Nouveautés</router-link>
+      </p>
     </footer>
   </div>
 </template>

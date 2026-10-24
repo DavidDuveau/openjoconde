@@ -16,6 +16,7 @@ describe('routeur', () => {
     ['/thematiques', 'thematiques'],
     ['/thematiques/portraits', 'thematique'],
     ['/favoris', 'favoris'],
+    ['/nouveautes', 'nouveautes'],
     ['/collections', 'collections'],
     ['/collections/c1', 'collection'],
     ['/partage', 'collection-partagee'],
