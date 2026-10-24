@@ -16,6 +16,9 @@ describe('routeur', () => {
     ['/thematiques', 'thematiques'],
     ['/thematiques/portraits', 'thematique'],
     ['/favoris', 'favoris'],
+    ['/collections', 'collections'],
+    ['/collections/c1', 'collection'],
+    ['/partage', 'collection-partagee'],
     ['/about', 'about'],
     ['/inconnue/page', 'not-found']
   ])('%s mène à la route %s, dont la vue se charge', async (chemin, nom) => {

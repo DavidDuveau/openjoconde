@@ -22,6 +22,7 @@
         </router-link>
         <div class="header-actions">
           <FavoriteButton :id="artwork.id" :title="artwork.title || ''" />
+          <AddToCollection :id="artwork.id" />
           <ShareLink :title="displayTitle(artwork.title, Infinity)" />
         </div>
       </div>
@@ -194,12 +195,13 @@ import ArtworkCitation from '@/components/ArtworkCitation.vue';
 import ArtworkExport from '@/components/ArtworkExport.vue';
 import ShareLink from '@/components/ShareLink.vue';
 import FavoriteButton from '@/components/FavoriteButton.vue';
+import AddToCollection from '@/components/AddToCollection.vue';
 import SimilarArtworks from '@/components/SimilarArtworks.vue';
 import { ArtworkDetail } from '@/types/artwork';
 
 export default defineComponent({
   name: 'ArtworkDetailView',
-  components: { DataSource, ArtworkContext, ArtworkMuseum, ArtworkCitation, ArtworkExport, ShareLink, FavoriteButton, SimilarArtworks },
+  components: { DataSource, ArtworkContext, ArtworkMuseum, ArtworkCitation, ArtworkExport, ShareLink, FavoriteButton, AddToCollection, SimilarArtworks },
   setup() {
     const route = useRoute();
 

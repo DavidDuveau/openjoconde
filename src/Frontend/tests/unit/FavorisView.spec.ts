@@ -102,25 +102,25 @@ describe('FavorisView', () => {
 
     const vue = await afficher();
 
-    expect(vue.get('[data-testid="favori-retiree"]').text()).toContain('Œuvre retirée de la base');
+    expect(vue.get('[data-testid="oeuvre-retiree"]').text()).toContain('Œuvre retirée de la base');
     expect(vue.findAll('[data-testid="artwork-title"]')).toHaveLength(1);
 
-    await vue.get('[data-testid="favori-retiree"] button').trigger('click');
+    await vue.get('[data-testid="oeuvre-retiree"] button').trigger('click');
 
     expect(estFavori(id(2))).toBe(false);
-    expect(vue.find('[data-testid="favori-retiree"]').exists()).toBe(false);
+    expect(vue.find('[data-testid="oeuvre-retiree"]').exists()).toBe(false);
   });
 
   it("propose de réessayer quand une œuvre n'a pas pu être chargée, sans la croire retirée", async () => {
     favoriser(1);
     getArtwork.mockRejectedValueOnce(new Error('réseau')).mockResolvedValueOnce(detail(1));
     const vue = await afficher();
-    expect(vue.get('[data-testid="favori-panne"]').text()).toContain("n'a pas pu être chargée");
+    expect(vue.get('[data-testid="oeuvre-panne"]').text()).toContain("n'a pas pu être chargée");
 
-    await vue.get('[data-testid="favori-panne"] button').trigger('click');
+    await vue.get('[data-testid="oeuvre-panne"] button').trigger('click');
     await flushPromises();
 
-    expect(vue.find('[data-testid="favori-panne"]').exists()).toBe(false);
+    expect(vue.find('[data-testid="oeuvre-panne"]').exists()).toBe(false);
     expect(vue.get('[data-testid="artwork-title"]').text()).toBe('Œuvre 1');
   });
 
@@ -129,7 +129,7 @@ describe('FavorisView', () => {
     getArtwork.mockRejectedValue(new Error('réseau'));
     const vue = await afficher();
 
-    await vue.findAll('[data-testid="favori-panne"] button')[1].trigger('click');
+    await vue.findAll('[data-testid="oeuvre-panne"] button')[1].trigger('click');
 
     expect(estFavori(id(1))).toBe(false);
   });
