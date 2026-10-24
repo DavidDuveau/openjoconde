@@ -20,6 +20,9 @@
           <li>Fiche détaillée de chaque œuvre, avec renvoi vers sa notice sur la plateforme POP</li>
           <li>Annuaire des artistes et des musées, avec leurs œuvres</li>
         </ul>
+        <p data-testid="about-nouveautes">
+          <router-link to="/nouveautes">Voir les nouveautés de chaque version</router-link>
+        </p>
       </section>
 
       <section class="about-section">
