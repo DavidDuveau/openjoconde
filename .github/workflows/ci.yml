@@ -6,6 +6,21 @@ on:
   pull_request:
 
 jobs:
+  titre-pr:
+    # Le commit de fusion reprend le titre de la PR : avec un préfixe feat:/fix:, release-please compterait deux fois le
+    # changement (le commit de la branche et celui de la fusion). Le préfixe se met sur le commit, pas sur le titre de PR.
+    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Le titre de la PR n'a pas de préfixe de commit conventionnel
+        env:
+          TITRE: ${{ github.event.pull_request.title }}
+        run: |
+          if printf '%s' "$TITRE" | grep -Eq '^(feat|fix|perf|revert|docs|refactor|test|build|ci|chore|style)(\([a-zA-Z0-9_ ,/-]*\))?!?:'; then
+            echo "::error::Le titre de la PR commence par un préfixe conventionnel (« $TITRE ») : le changelog compterait le changement deux fois. Retirez le préfixe (ex. « Favoris dans le navigateur (US-COMPTE-04) »)."
+            exit 1
+          fi
+
   backend:
     runs-on: ubuntu-latest
     services:
