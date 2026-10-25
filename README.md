@@ -60,6 +60,19 @@ Les musées sont complétés par la base [Muséofile](https://www.data.gouv.fr/d
 
    Les tests d'intégration créent chacun une base jetable. Ils se connectent à `Host=localhost;Port=5432;Username=postgres` (mot de passe lu dans `pgpass.conf`), ou à la connexion donnée par la variable d'environnement `OPENJOCONDE_TEST_POSTGRES` (serveur sans nom de base).
 
+### Avec Docker Compose
+
+La pile complète (PostgreSQL 17, API, front) démarre par une commande ; seul le front est publié, et nginx relaie `/api` vers l'API :
+
+```bash
+cp .env.example .env   # renseigner POSTGRES_PASSWORD et API_KEY
+docker compose up -d --build
+```
+
+L'application répond alors sur `http://localhost:8080` (`FRONT_PORT` pour changer le port). Les données de la base sont dans le volume `pgdata`, le CSV téléchargé par la synchronisation dans le volume `synctemp` (au moins 1,5 Go libres). Les réglages passent par les variables d'environnement de `.env.example`. `scripts/verifier-compose.sh` rejoue la vérification de la pile (aussi lancée en CI).
+
+Le schéma n'est pas encore créé au démarrage : tant que la migration au démarrage n'est pas en place, appliquer les migrations (étape 3 ci-dessus) sur la base du conteneur, ou la base reste vide et `/api/health` répond 503.
+
 ### Backend
 
 ```bash

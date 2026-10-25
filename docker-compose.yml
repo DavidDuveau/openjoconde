@@ -1,0 +1,77 @@
+# Pile complète : base PostgreSQL, API, front (nginx, qui relaie /api vers l'API).
+#   cp .env.example .env   (puis renseigner POSTGRES_PASSWORD et API_KEY)
+#   docker compose up -d --build
+# Le front est le seul service publié : http://localhost:${FRONT_PORT:-8080}
+name: openjoconde
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: openjoconde
+      POSTGRES_DB: openjoconde
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Renseigner POSTGRES_PASSWORD dans .env}
+      # Collationnement ICU français : tri correct des titres (voir README)
+      POSTGRES_INITDB_ARGS: --locale-provider=icu --icu-locale=fr-FR
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openjoconde -d openjoconde"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks: [interne]
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    image: openjoconde-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__DefaultConnection: Host=db;Database=openjoconde;Username=openjoconde;Password=${POSTGRES_PASSWORD}
+      Security__ApiKey: ${API_KEY:?Renseigner API_KEY dans .env}
+      # nginx (réseau interne) transmet l'adresse du visiteur : la limite de requêtes s'applique par visiteur
+      ForwardedHeaders__KnownNetworks__0: 172.28.0.0/24
+      Sync__CheckForUpdatesOnStartup: ${SYNC_ON_STARTUP:-false}
+      Sync__IntervalHours: ${SYNC_INTERVAL_HOURS:-24}
+      Enrichment__Enabled: ${ENRICHMENT_ENABLED:-false}
+    volumes:
+      - synctemp:/data/temp
+    healthcheck:
+      # L'image aspnet n'a ni curl ni wget : sonde par une connexion TCP au port de l'API
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/8080'"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+    networks: [interne]
+
+  front:
+    build:
+      context: .
+      dockerfile: docker/front.Dockerfile
+    image: openjoconde-front
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      API_UPSTREAM: api:8080
+    ports:
+      - "${FRONT_PORT:-8080}:8080"
+    networks: [interne]
+
+volumes:
+  pgdata:
+  synctemp:
+
+networks:
+  interne:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
