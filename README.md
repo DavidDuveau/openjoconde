@@ -99,6 +99,19 @@ Mesuré sur la base pleine : sauvegarde de 24 s pour 224 Mo, restauration compl�
 
 Amorcer une nouvelle machine sans tout retélécharger : démarrer la pile, puis `scripts/restaurer-base.sh fichier.dump --oui` (2 min au lieu de 18 min de synchronisation).
 
+#### HTTPS
+
+Caddy se met devant la pile et obtient seul le certificat (Let's Encrypt) :
+
+```bash
+# .env : DOMAINE=exemple.fr (l'enregistrement DNS doit pointer vers le serveur, ports 80 et 443 ouverts)
+docker compose -f docker-compose.yml -f docker-compose.https.yml up -d --build
+```
+
+Le front n'est alors plus publié : seuls les ports 80 et 443 de Caddy sont exposés. Pour essayer en local, `DOMAINE=localhost` (avec `HTTP_PORT` et `HTTPS_PORT` si 80 et 443 sont pris) : Caddy utilise sa propre autorité, le navigateur demande d'accepter le certificat. Les certificats sont dans le volume `caddy_data` : à conserver, Let's Encrypt limite les émissions.
+
+La limite de requêtes s'applique par visiteur : Caddy transmet l'adresse réelle, nginx la reprend (il ne croit `X-Forwarded-For` que lorsque Caddy est devant, et l'ignore sinon) et l'API la lit (`ForwardedHeaders`). Vérifié avec et sans Caddy (`scripts/verifier-https.sh` et `scripts/verifier-compose.sh`, aussi en CI) : un en-tête `X-Forwarded-For` falsifié ne contourne pas la limite.
+
 #### Images publiées
 
 À chaque release, les images sont publiées sur GHCR pour amd64 et arm64 (un serveur ARM, souvent moins cher, convient) : `ghcr.io/davidduveau/openjoconde-api` et `ghcr.io/davidduveau/openjoconde-front`, étiquetées `vX.Y.Z` et `latest`. Elles ne contiennent aucun secret : tout passe par les variables d'environnement de `.env.example`. Avant publication, Trivy refuse toute vulnérabilité haute ou critique pour laquelle un correctif existe ; la même analyse tourne sur chaque pull request (`scripts/publier-images.sh essai`).

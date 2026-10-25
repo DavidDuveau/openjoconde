@@ -138,3 +138,5 @@ jobs:
         run: scripts/publier-images.sh essai
       - name: La pile docker-compose démarre et répond
         run: scripts/verifier-compose.sh
+      - name: La pile en HTTPS (Caddy) répond et la limite de requêtes résiste à un en-tête falsifié
+        run: scripts/verifier-https.sh

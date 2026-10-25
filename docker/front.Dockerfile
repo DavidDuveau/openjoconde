@@ -15,7 +15,7 @@ RUN npm run build
 FROM nginxinc/nginx-unprivileged:alpine AS runtime
 # Correctifs de sécurité de la base Alpine publiés depuis la construction de l'image nginx (contrôlé par Trivy en CI)
 USER root
-RUN apk upgrade --no-cache
+RUN apk upgrade --no-cache && mkdir -p /etc/nginx/realip
 USER nginx
 # Adresse de l'API, lue au démarrage (modèle nginx traité par envsubst)
 ENV API_UPSTREAM=api:8080

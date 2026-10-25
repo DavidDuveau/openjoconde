@@ -47,4 +47,11 @@ sql "update oj_marqueur set v = 'apres'" > /dev/null
 scripts/restaurer-base.sh "$archive" --oui
 [ "$(sql 'select v from oj_marqueur')" = "avant" ] || { echo "La restauration n'a pas rétabli la sauvegarde"; exit 1; }
 attendre http://localhost:$FRONT_PORT/api/health Healthy
+# Sans proxy devant, un X-Forwarded-For falsifié ne doit pas contourner la limite de requêtes
+refusees=0
+for i in $(seq 1 25); do
+  code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json'     -H "X-Forwarded-For: 198.51.100.$i" -d '{}' "http://localhost:$FRONT_PORT/api/museums")
+  [ "$code" = "429" ] && refusees=$((refusees + 1))
+done
+[ "$refusees" -gt 0 ] || { echo "Aucune requête limitée : l'adresse falsifiée a été crue"; exit 1; }
 echo "Pile docker-compose vérifiée"
