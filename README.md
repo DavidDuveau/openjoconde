@@ -71,7 +71,7 @@ docker compose up -d --build
 
 L'application répond alors sur `http://localhost:8080` (`FRONT_PORT` pour changer le port). Les données de la base sont dans le volume `pgdata`, le CSV téléchargé par la synchronisation dans le volume `synctemp` (au moins 1,5 Go libres). Les réglages passent par les variables d'environnement de `.env.example`. `scripts/verifier-compose.sh` rejoue la vérification de la pile (aussi lancée en CI).
 
-Le schéma n'est pas encore créé au démarrage : tant que la migration au démarrage n'est pas en place, appliquer les migrations (étape 3 ci-dessus) sur la base du conteneur, ou la base reste vide et `/api/health` répond 503.
+Le compose active `Database__MigrateOnStartup` : l'API crée le schéma et applique les migrations en attente à son démarrage, sous un verrou consultatif PostgreSQL (deux instances ne migrent pas en même temps). Ce réglage (`Database:MigrateOnStartup`) est désactivé par défaut hors Docker, où l'étape 3 ci-dessus reste la voie normale ; si une migration échoue, l'API s'arrête au lieu de servir un schéma incomplet.
 
 ### Backend
 

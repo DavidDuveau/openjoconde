@@ -30,7 +30,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public ImportDatabase Database => _db;
 
-    public Task InitializeAsync() => _db.InitializeAsync();
+    /// <summary>Base créée sans schéma, comme au premier déploiement</summary>
+    public bool EmptyDatabase { get; init; }
+
+    public Task InitializeAsync() => _db.InitializeAsync(migrate: !EmptyDatabase);
 
     Task IAsyncLifetime.DisposeAsync() => DisposeAsync().AsTask();
 

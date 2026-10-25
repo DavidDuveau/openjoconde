@@ -34,6 +34,8 @@ services:
         condition: service_healthy
     environment:
       ConnectionStrings__DefaultConnection: Host=db;Database=openjoconde;Username=openjoconde;Password=${POSTGRES_PASSWORD}
+      # Schéma créé et mis à jour au démarrage (verrou consultatif : une seule instance migre à la fois)
+      Database__MigrateOnStartup: "true"
       Security__ApiKey: ${API_KEY:?Renseigner API_KEY dans .env}
       # nginx (réseau interne) transmet l'adresse du visiteur : la limite de requêtes s'applique par visiteur
       ForwardedHeaders__KnownNetworks__0: 172.28.0.0/24
