@@ -98,3 +98,6 @@ src/Frontend/playwright-report/
 coverage
 TestResults/
 !src/Frontend/src/assets/geo/france.json
+
+# Sauvegardes de la base (scripts/sauvegarder-base.sh)
+sauvegardes/

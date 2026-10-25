@@ -37,11 +37,17 @@ services:
       # Schéma créé et mis à jour au démarrage (verrou consultatif : une seule instance migre à la fois)
       Database__MigrateOnStartup: "true"
       Security__ApiKey: ${API_KEY:?Renseigner API_KEY dans .env}
-      # nginx (réseau interne) transmet l'adresse du visiteur : la limite de requêtes s'applique par visiteur
-      ForwardedHeaders__KnownNetworks__0: 172.28.0.0/24
+      # nginx transmet l'adresse du visiteur : la limite de requêtes s'applique par visiteur. L'API n'est joignable que par
+      # nginx, sur le réseau interne du compose, dont Docker choisit la plage : on fait confiance aux plages privées
+      ForwardedHeaders__KnownNetworks__0: 10.0.0.0/8
+      ForwardedHeaders__KnownNetworks__1: 172.16.0.0/12
+      ForwardedHeaders__KnownNetworks__2: 192.168.0.0/16
       Sync__CheckForUpdatesOnStartup: ${SYNC_ON_STARTUP:-false}
       Sync__IntervalHours: ${SYNC_INTERVAL_HOURS:-24}
       Enrichment__Enabled: ${ENRICHMENT_ENABLED:-false}
+    # Mesuré (échantillons toutes les 20 s) : pic de 772 Mo à la première synchronisation, 1 046 Mo à une synchronisation forcée
+    # (1,18 M de notices) ; 2 Go laissent une marge d'environ x2
+    mem_limit: ${API_MEMORY_LIMIT:-2g}
     volumes:
       - synctemp:/data/temp
     healthcheck:
@@ -74,6 +80,3 @@ volumes:
 
 networks:
   interne:
-    ipam:
-      config:
-        - subnet: 172.28.0.0/24
