@@ -73,6 +73,32 @@ L'application répond alors sur `http://localhost:8080` (`FRONT_PORT` pour chang
 
 Le compose active `Database__MigrateOnStartup` : l'API crée le schéma et applique les migrations en attente à son démarrage, sous un verrou consultatif PostgreSQL (deux instances ne migrent pas en même temps). Ce réglage (`Database:MigrateOnStartup`) est désactivé par défaut hors Docker, où l'étape 3 ci-dessus reste la voie normale ; si une migration échoue, l'API s'arrête au lieu de servir un schéma incomplet.
 
+#### Données, sauvegarde et premier remplissage
+
+La base est vide au premier démarrage : lancer la synchronisation (`POST /api/sync/start` avec l'en-tête `X-Api-Key`, ou `Sync__CheckForUpdatesOnStartup=true`). Mesuré sur la pile du compose (WSL à 3,5 Go, 2026-10-25) :
+
+| Mesure | Valeur |
+|---|---|
+| Première synchronisation sur base vide | 18 min, 1 182 026 notices lues, 1 061 181 œuvres, 105 527 artistes, 531 musées, 0 erreur |
+| Mémoire de l'API pendant l'import | pic de 772 Mo à la première synchronisation, 1 046 Mo à une synchronisation forcée (mesures toutes les 20 s : un pic plus court a pu passer entre deux) ; le compose la plafonne à 2 Go (`API_MEMORY_LIMIT`), sans arrêt par manque de mémoire |
+| Mémoire de PostgreSQL | environ 1,5 Go en fin d'import (cache compris) |
+| Base de données | 1,9 Go (`pg_database_size`), 2,9 Go dans le volume `pgdata` (journaux et marge compris) |
+| Volume `synctemp` | le CSV (environ 1,2 Go) est supprimé après l'import : prévoir 1,5 Go libres pendant la synchronisation |
+| Images | API 355 Mo, front 92 Mo, `postgres:17` 646 Mo |
+| Synchronisation suivante, source inchangée | quelques secondes (`UpToDate`, rien n'est retéléchargé) |
+| Synchronisation forcée (`?force=true`) | 2,5 min : fichier retéléchargé, 1 054 586 notices inchangées reconnues par leur empreinte, 6 645 réécrites |
+
+**Sauvegarde et restauration** (la pile doit tourner) :
+
+```bash
+scripts/sauvegarder-base.sh              # écrit sauvegardes/openjoconde-<date>.dump
+scripts/restaurer-base.sh fichier.dump   # écrase la base, demande confirmation (--oui pour l'éviter)
+```
+
+Mesuré sur la base pleine : sauvegarde de 24 s pour 224 Mo, restauration complète de 2 min, mêmes effectifs et recherche fonctionnelle ensuite. Les biographies d'artistes (enrichissement Wikidata et Wikipédia) coûtent des heures d'appels pour être recalculées : c'est ce que la sauvegarde protège, le reste se reconstruit par une synchronisation. Garder les sauvegardes hors du serveur. Le dossier `sauvegardes/` est ignoré par git.
+
+Amorcer une nouvelle machine sans tout retélécharger : démarrer la pile, puis `scripts/restaurer-base.sh fichier.dump --oui` (2 min au lieu de 18 min de synchronisation).
+
 ### Backend
 
 ```bash

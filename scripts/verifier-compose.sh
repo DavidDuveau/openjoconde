@@ -37,4 +37,14 @@ fournisseur=$(compose exec -T db psql -U openjoconde -tAc "select datlocprovider
 
 code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:$FRONT_PORT/api/sync/start)
 [ "$code" = "401" ] || { echo "POST /api/sync/start sans clé a répondu $code au lieu de 401"; exit 1; }
+# Sauvegarde puis restauration : un marqueur modifié après la sauvegarde retrouve sa valeur d'origine
+sql() { compose exec -T db psql -U openjoconde -tAc "$1"; }
+export COMPOSE_PROJECT_NAME=$projet
+archive=$(mktemp -d)/essai.dump
+sql "create table oj_marqueur(v text); insert into oj_marqueur values ('avant')" > /dev/null
+scripts/sauvegarder-base.sh "$archive"
+sql "update oj_marqueur set v = 'apres'" > /dev/null
+scripts/restaurer-base.sh "$archive" --oui
+[ "$(sql 'select v from oj_marqueur')" = "avant" ] || { echo "La restauration n'a pas rétabli la sauvegarde"; exit 1; }
+attendre http://localhost:$FRONT_PORT/api/health Healthy
 echo "Pile docker-compose vérifiée"
