@@ -132,5 +132,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Les images de l'API et du front se construisent et fonctionnent ensemble
         run: scripts/verifier-images.sh
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Les images sont sans vulnérabilité haute ou critique corrigeable et se construisent pour amd64 et arm64
+        run: scripts/publier-images.sh essai
       - name: La pile docker-compose démarre et répond
         run: scripts/verifier-compose.sh
