@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/DavidDuveau/openjoconde/compare/v0.9.0...v0.10.0) (2026-10-25)
+
+
+### Nouveautés
+
+* HTTPS automatique devant l'application avec Caddy, limite de requêtes non contournable ([56773a4](https://github.com/DavidDuveau/openjoconde/commit/56773a400b59a91ef35e3244aa5f5cee790309ad))
+
 ## [0.9.0](https://github.com/DavidDuveau/openjoconde/compare/v0.8.1...v0.9.0) (2026-10-25)
 
 
