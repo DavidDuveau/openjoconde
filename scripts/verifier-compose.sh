@@ -29,6 +29,8 @@ attendre() { # url, motif attendu dans la réponse
 
 attendre http://localhost:$FRONT_PORT/ '<div id="app"'
 attendre http://localhost:$FRONT_PORT/api/health/ping pong
+# Santé complète : la base répond et le schéma a été créé par l'API au démarrage
+attendre http://localhost:$FRONT_PORT/api/health Healthy
 
 fournisseur=$(compose exec -T db psql -U openjoconde -tAc "select datlocprovider::text || ':' || datlocale from pg_database where datname = 'openjoconde'")
 [ "$fournisseur" = "i:fr-FR" ] || { echo "Collationnement inattendu : $fournisseur"; exit 1; }

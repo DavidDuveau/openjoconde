@@ -46,9 +46,14 @@ public sealed class ImportDatabase : IAsyncLifetime
         await command.ExecuteNonQueryAsync();
     }
 
-    public async Task InitializeAsync()
+    public Task InitializeAsync() => InitializeAsync(migrate: true);
+
+    /// <summary>Crée la base jetable ; sans migration, elle reste vide comme celle d'un premier déploiement</summary>
+    public async Task InitializeAsync(bool migrate)
     {
         await RunOnServerAsync($"CREATE DATABASE {_databaseName}");
+        if (!migrate)
+            return;
         await using var context = CreateContext();
         // Les migrations, pas EnsureCreated : c'est le schéma que créera vraiment `dotnet ef database update`
         await context.Database.MigrateAsync();

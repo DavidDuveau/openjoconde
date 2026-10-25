@@ -162,6 +162,8 @@ app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
 
+await app.MigrateDatabaseIfConfiguredAsync();
+
 app.Run();
 
 /// <summary>Point d'entrée de l'API, public pour que les tests d'intégration le démarrent (WebApplicationFactory)</summary>
