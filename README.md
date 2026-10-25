@@ -99,6 +99,12 @@ Mesuré sur la base pleine : sauvegarde de 24 s pour 224 Mo, restauration compl�
 
 Amorcer une nouvelle machine sans tout retélécharger : démarrer la pile, puis `scripts/restaurer-base.sh fichier.dump --oui` (2 min au lieu de 18 min de synchronisation).
 
+#### Images publiées
+
+À chaque release, les images sont publiées sur GHCR pour amd64 et arm64 (un serveur ARM, souvent moins cher, convient) : `ghcr.io/davidduveau/openjoconde-api` et `ghcr.io/davidduveau/openjoconde-front`, étiquetées `vX.Y.Z` et `latest`. Elles ne contiennent aucun secret : tout passe par les variables d'environnement de `.env.example`. Avant publication, Trivy refuse toute vulnérabilité haute ou critique pour laquelle un correctif existe ; la même analyse tourne sur chaque pull request (`scripts/publier-images.sh essai`).
+
+Publier à la main une release existante : onglet Actions, « Publier les images », en donnant l'étiquette (`vX.Y.Z`). Après la première publication, vérifier dans GitHub (Packages, paramètres du paquet) que les deux images sont publiques.
+
 ### Backend
 
 ```bash

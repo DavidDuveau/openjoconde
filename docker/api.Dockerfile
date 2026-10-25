@@ -1,10 +1,13 @@
 # Image de l'API. Contexte de build : la racine du dépôt.
 #   docker build -f docker/api.Dockerfile -t openjoconde-api .
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# Compilation sur l'architecture de la machine de build (pas d'émulation), pour l'architecture de l'image demandée (amd64 ou arm64)
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+ARG TARGETARCH
 WORKDIR /src
 COPY NuGet.config ./
 COPY src/Backend src/Backend
-RUN dotnet publish src/Backend/OpenJoconde.API/OpenJoconde.API.csproj -c Release -o /app --no-self-contained
+RUN dotnet publish src/Backend/OpenJoconde.API/OpenJoconde.API.csproj -c Release -o /app --no-self-contained \
+    -a $([ "$TARGETARCH" = "arm64" ] && echo arm64 || echo x64)
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app

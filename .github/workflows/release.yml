@@ -2,7 +2,7 @@ name: Release
 
 # À chaque fusion dans main, release-please tient à jour une pull request « chore(main): release x.y.z » qui monte la
 # version (Directory.Build.props, package.json) d'après les commits feat:/fix:. La fusionner pose le tag vX.Y.Z et
-# publie la release GitHub.
+# publie la release GitHub, puis publie les images sur GHCR (publier-images.yml).
 on:
   push:
     branches: [main]
@@ -14,8 +14,23 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-      - uses: googleapis/release-please-action@v4
+      - id: release
+        uses: googleapis/release-please-action@v4
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  # Les événements créés avec le jeton du workflow ne déclenchent pas d'autre workflow : on enchaîne ici
+  images:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/publier-images.yml
+    with:
+      etiquette: ${{ needs.release-please.outputs.tag_name }}

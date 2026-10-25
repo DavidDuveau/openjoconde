@@ -1,0 +1,39 @@
+name: Publier les images
+
+# Construit, analyse (Trivy) et publie les images de l'API et du front sur GHCR, pour amd64 et arm64.
+# Appelé par le workflow Release quand une release est créée ; lançable à la main pour une release existante.
+# Les images ne contiennent aucun secret : la configuration (mot de passe de la base, clé d'API) vient de l'environnement.
+on:
+  workflow_call:
+    inputs:
+      etiquette:
+        description: Étiquette Git de la release (vX.Y.Z)
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      etiquette:
+        description: Étiquette Git de la release (vX.Y.Z)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.etiquette }}
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Analyser puis publier les images
+        run: scripts/publier-images.sh "${{ inputs.etiquette }}" --publier
