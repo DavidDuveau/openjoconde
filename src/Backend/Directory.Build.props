@@ -4,7 +4,7 @@
   <!-- Version du produit : une seule pour le back et le front, mise à jour par release-please à chaque release
        (le front la lit dans src/Frontend/package.json, même numéro). -->
   <PropertyGroup>
-    <Version>0.8.1</Version>
+    <Version>0.9.0</Version>
   </PropertyGroup>
   <PropertyGroup>
     <WarningsAsErrors>$(WarningsAsErrors);nullable;CS1591;CS1573;CS1570;CS1572;CS1587</WarningsAsErrors>

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/DavidDuveau/openjoconde/compare/v0.8.1...v0.9.0) (2026-10-25)
+
+
+### Nouveautés
+
+* installer l'application par Docker, avec des images publiées à chaque release ([cbf5491](https://github.com/DavidDuveau/openjoconde/commit/cbf5491da3d8167969e27ca25b88bd3b32d627b6))
+
 ## [0.8.1](https://github.com/DavidDuveau/openjoconde/compare/v0.8.0...v0.8.1) (2026-10-25)
 
 
