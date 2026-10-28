@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.1](https://github.com/DavidDuveau/openjoconde/compare/v0.10.0...v0.10.1) (2026-10-28)
+
+
+### Corrections
+
+* barre de navigation sur toute la largeur et thématiques de l'accueil centrées (TECH-54) ([5a40393](https://github.com/DavidDuveau/openjoconde/commit/5a403933293603292389311b9936df7ccb762049))
+* en-tête sur deux lignes sous 1100 px au lieu de couper la navigation (TECH-54) ([2203245](https://github.com/DavidDuveau/openjoconde/commit/220324562cd18fcffff350b6535673ff86b0572c))
+
 ## [0.10.0](https://github.com/DavidDuveau/openjoconde/compare/v0.9.0...v0.10.0) (2026-10-25)
 
 
