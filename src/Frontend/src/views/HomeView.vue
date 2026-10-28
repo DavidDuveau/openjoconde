@@ -107,7 +107,8 @@ export default defineComponent({
 
     .thematiques-grille {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 300px));
+      justify-content: center;
       gap: 16px;
     }
 
