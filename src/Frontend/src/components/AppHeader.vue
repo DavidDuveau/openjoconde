@@ -1,5 +1,5 @@
 <template>
-  <header class="app-header">
+  <header class="app-header" data-testid="app-header">
     <div class="container">
       <div class="header-left">
         <router-link to="/" class="logo">
@@ -165,17 +165,19 @@ export default defineComponent({
   padding: 12px 0;
   
   .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
+    width: 100%;
+    padding: 0 24px;
+    box-sizing: border-box;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 24px;
   }
   
   .header-left {
     display: flex;
     align-items: center;
+    min-width: 0;
   }
   
   .logo {
@@ -192,15 +194,20 @@ export default defineComponent({
   
   .main-nav {
     margin-left: 30px;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
     
     ul {
       display: flex;
+      flex-wrap: nowrap;
       list-style: none;
       padding: 0;
       margin: 0;
       
       li {
         margin-right: 20px;
+        white-space: nowrap;
         
         a {
           color: #555;
@@ -219,12 +226,19 @@ export default defineComponent({
   .header-right {
     display: flex;
     align-items: center;
+    flex: 1;
+    justify-content: flex-end;
+    min-width: 0;
   }
   
   .search-section {
     position: relative;
     display: flex;
     align-items: center;
+    flex: 1;
+    justify-content: flex-end;
+    max-width: 480px;
+    min-width: 0;
     
     .search-toggle {
       background: none;
@@ -252,6 +266,51 @@ export default defineComponent({
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+  }
+}
+
+@media (max-width: 1600px) {
+  .app-header {
+    .container {
+      padding: 0 16px;
+      gap: 16px;
+    }
+
+    .main-nav {
+      margin-left: 16px;
+
+      ul li {
+        margin-right: 10px;
+
+        a {
+          font-size: 0.9rem;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 1100px) {
+  .app-header {
+    .logo h1 {
+      font-size: 1.25rem;
+    }
+
+    .main-nav {
+      margin-left: 12px;
+
+      ul li {
+        margin-right: 8px;
+
+        a {
+          font-size: 0.85rem;
+        }
+      }
+    }
+
+    .search-section {
+      min-width: 200px;
     }
   }
 }
