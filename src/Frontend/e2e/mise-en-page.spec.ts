@@ -14,14 +14,27 @@ test("la barre de navigation occupe toute la largeur sur une seule ligne, avec u
   expect(recherche!.width).toBeGreaterThan(250);
 });
 
-test("à 1024 px, la barre de navigation tient sans faire défiler la page", async ({ page }) => {
-  await page.setViewportSize({ width: 1024, height: 768 });
-  await page.goto('/');
+for (const largeur of [1024, 800]) {
+  test(`à ${largeur} px, la navigation n'est ni coupée ni cause de défilement de la page`, async ({ page }) => {
+    await page.setViewportSize({ width: largeur, height: 768 });
+    await page.goto('/');
 
-  const defilement = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    const mesures = await page.evaluate(() => {
+      const nav = document.querySelector('.main-nav')!;
+      const dernier = nav.querySelector('li:last-child')!.getBoundingClientRect();
+      const recherche = document.querySelector('.app-header .search-section')!.getBoundingClientRect();
+      return {
+        defilementPage: document.documentElement.scrollWidth - window.innerWidth,
+        navCoupee: nav.scrollWidth - nav.clientWidth,
+        dernierSousRecherche: dernier.right > recherche.left && dernier.top < recherche.bottom
+      };
+    });
 
-  expect(defilement).toBeLessThanOrEqual(0);
-});
+    expect(mesures.defilementPage).toBeLessThanOrEqual(0);
+    expect(mesures.navCoupee).toBeLessThanOrEqual(0);
+    expect(mesures.dernierSousRecherche).toBe(false);
+  });
+}
 
 test("les cartes de thématiques de l'accueil sont centrées", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });

@@ -293,24 +293,40 @@ export default defineComponent({
 
 @media (max-width: 1100px) {
   .app-header {
-    .logo h1 {
-      font-size: 1.25rem;
+    .container {
+      flex-wrap: wrap;
+      gap: 8px 16px;
     }
 
-    .main-nav {
-      margin-left: 12px;
+    .header-left {
+      display: contents;
+    }
 
-      ul li {
-        margin-right: 8px;
+    .logo {
+      order: 1;
 
-        a {
-          font-size: 0.85rem;
-        }
+      h1 {
+        font-size: 1.25rem;
       }
     }
 
-    .search-section {
-      min-width: 200px;
+    .header-right {
+      order: 2;
+    }
+
+    .main-nav {
+      order: 3;
+      width: 100%;
+      margin-left: 0;
+      overflow-x: visible;
+
+      ul li {
+        margin-right: 14px;
+
+        a {
+          font-size: 0.9rem;
+        }
+      }
     }
   }
 }
